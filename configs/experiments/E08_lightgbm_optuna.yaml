@@ -1,0 +1,11 @@
+id: E08
+name: LightGBM + Optuna (40 trials, validación interna)
+hypothesis: >-
+  Ajustar hiperparámetros del boosting (Optuna TPE, 40 trials, semilla 42) con la última temporada
+  de entrenamiento de cada fold como validación interna exprime más al boosting que los valores a
+  priori de E07.
+uses_odds: false
+model:
+  type: optuna_lightgbm
+  groups: [elo, form, schedule, xg]
+  n_trials: 40

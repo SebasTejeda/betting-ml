@@ -1,0 +1,12 @@
+id: E09
+name: Dixon-Coles sobre xG
+hypothesis: >-
+  Estimar los ratings de ataque/defensa con xG en vez de goles (verosimilitud de Poisson sobre xG;
+  ρ estimado después sobre los goles reales) es menos ruidoso y mejora a Dixon-Coles con goles
+  (E04). ξ se elige en validación interna dentro de {0.0005, 0.001, 0.0019, 0.003}.
+uses_odds: false
+model:
+  type: dixon_coles
+  xi_grid: [0.0005, 0.001, 0.0019, 0.003]
+  target: xg
+  refit_days: 7

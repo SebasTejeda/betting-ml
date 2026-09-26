@@ -1,0 +1,258 @@
+{
+  "exp_id": "E08",
+  "config": {
+    "id": "E08",
+    "name": "LightGBM + Optuna (40 trials, validación interna)",
+    "hypothesis": "Ajustar hiperparámetros del boosting (Optuna TPE, 40 trials, semilla 42) con la última temporada de entrenamiento de cada fold como validación interna exprime más al boosting que los valores a priori de E07.",
+    "uses_odds": false,
+    "model": {
+      "type": "optuna_lightgbm",
+      "groups": [
+        "elo",
+        "form",
+        "schedule",
+        "xg"
+      ],
+      "n_trials": 40
+    },
+    "variants": null,
+    "feature_overrides": {},
+    "notes": null
+  },
+  "spec": {
+    "type": "optuna_lightgbm",
+    "groups": [
+      "elo",
+      "form",
+      "schedule",
+      "xg"
+    ],
+    "n_trials": 40
+  },
+  "folds": {
+    "F1": {
+      "train": [
+        "2014-15",
+        "2015-16",
+        "2016-17",
+        "2017-18",
+        "2018-19",
+        "2019-20",
+        "2020-21",
+        "2021-22"
+      ],
+      "valid": "2022-23"
+    },
+    "F2": {
+      "train": [
+        "2014-15",
+        "2015-16",
+        "2016-17",
+        "2017-18",
+        "2018-19",
+        "2019-20",
+        "2020-21",
+        "2021-22",
+        "2022-23"
+      ],
+      "valid": "2023-24"
+    },
+    "F3": {
+      "train": [
+        "2014-15",
+        "2015-16",
+        "2016-17",
+        "2017-18",
+        "2018-19",
+        "2019-20",
+        "2020-21",
+        "2021-22",
+        "2022-23",
+        "2023-24"
+      ],
+      "valid": "2024-25"
+    }
+  },
+  "fold_metrics": {
+    "F1": {
+      "log_loss": 0.9820825960520307,
+      "brier": 0.584339348878996,
+      "rps": 0.2008689049493135,
+      "ece": 0.008426685948793202,
+      "accuracy": 0.5306681270536692,
+      "n": 1826
+    },
+    "F2": {
+      "log_loss": 0.973482689556903,
+      "brier": 0.5786769324969258,
+      "rps": 0.19273226534182147,
+      "ece": 0.012808396059834443,
+      "accuracy": 0.5422374429223744,
+      "n": 1752
+    },
+    "F3": {
+      "log_loss": 0.979991228045677,
+      "brier": 0.5838045154575568,
+      "rps": 0.19856831054342985,
+      "ece": 0.025391763814062877,
+      "accuracy": 0.5371004566210046,
+      "n": 1752
+    }
+  },
+  "mean_metrics": {
+    "log_loss": 0.9785188378848703,
+    "brier": 0.5822735989444928,
+    "rps": 0.19738982694485493,
+    "ece": 0.01554228194089684,
+    "accuracy": 0.5366686755323494,
+    "n": 1776.6666666666667
+  },
+  "models": {
+    "F1": {
+      "name": "lightgbm_optuna[elo+form+schedule+xg]",
+      "uses_odds": false,
+      "kind": "lightgbm",
+      "groups": [
+        "elo",
+        "form",
+        "schedule",
+        "xg"
+      ],
+      "params": {},
+      "n_features": 87,
+      "n_trials": 40,
+      "best_params": {
+        "learning_rate": 0.011314763055217213,
+        "num_leaves": 13,
+        "min_child_samples": 26,
+        "subsample": 0.5542979308579252,
+        "colsample_bytree": 0.8544261332346642,
+        "reg_lambda": 0.01087349131295968,
+        "reg_alpha": 0.588725930443725,
+        "n_estimators": 206
+      }
+    },
+    "F2": {
+      "name": "lightgbm_optuna[elo+form+schedule+xg]",
+      "uses_odds": false,
+      "kind": "lightgbm",
+      "groups": [
+        "elo",
+        "form",
+        "schedule",
+        "xg"
+      ],
+      "params": {},
+      "n_features": 87,
+      "n_trials": 40,
+      "best_params": {
+        "learning_rate": 0.023261136337497004,
+        "num_leaves": 20,
+        "min_child_samples": 20,
+        "subsample": 0.5834937798439758,
+        "colsample_bytree": 0.5242136229806164,
+        "reg_lambda": 0.003539749075294675,
+        "reg_alpha": 9.359065159056177,
+        "n_estimators": 153
+      }
+    },
+    "F3": {
+      "name": "lightgbm_optuna[elo+form+schedule+xg]",
+      "uses_odds": false,
+      "kind": "lightgbm",
+      "groups": [
+        "elo",
+        "form",
+        "schedule",
+        "xg"
+      ],
+      "params": {},
+      "n_features": 87,
+      "n_trials": 40,
+      "best_params": {
+        "learning_rate": 0.012074560685517688,
+        "num_leaves": 4,
+        "min_child_samples": 20,
+        "subsample": 0.8680372034950835,
+        "colsample_bytree": 0.37693126239858965,
+        "reg_lambda": 1.6991912116238501,
+        "reg_alpha": 2.17247504715379,
+        "n_estimators": 362
+      }
+    }
+  },
+  "betting": {
+    "realistic": {
+      "scenario": "avg",
+      "threshold": 0.02,
+      "n_bets": 4163,
+      "hit_rate": 0.30963247657938986,
+      "roi_flat": -0.09104251741532549,
+      "roi_ci_low": -0.14159055969252946,
+      "roi_ci_high": -0.03786097766034112,
+      "max_drawdown_flat": 399.50999999999965,
+      "clv_mean": -0.053028224253211194,
+      "clv_n": 4162,
+      "roi_kelly": -0.04119745956591627,
+      "final_bankroll_kelly": 0.0071129885901651466,
+      "max_drawdown_kelly": 1.6963323320302723
+    },
+    "optimistic": {
+      "scenario": "max",
+      "threshold": 0.02,
+      "n_bets": 5116,
+      "hit_rate": 0.30238467552775605,
+      "roi_flat": -0.07962470680218921,
+      "roi_ci_low": -0.12843403049257232,
+      "roi_ci_high": -0.03245103596559817,
+      "max_drawdown_flat": 428.96000000000004,
+      "clv_mean": -0.0017175188211699427,
+      "clv_n": 5115,
+      "roi_kelly": -0.03283899413034601,
+      "final_bankroll_kelly": 0.006480797348766765,
+      "max_drawdown_kelly": 1.7374001640459926
+    }
+  },
+  "metrics_by_league": {
+    "D1": {
+      "log_loss": 0.9914656807040867,
+      "brier": 0.591104654797213,
+      "rps": 0.2008714929314253,
+      "ece": 0.023328998109126208,
+      "accuracy": 0.5087145969498911,
+      "n": 918
+    },
+    "E0": {
+      "log_loss": 0.95923656722459,
+      "brier": 0.5687511504055225,
+      "rps": 0.19598916324185944,
+      "ece": 0.03294650644092399,
+      "accuracy": 0.5508771929824562,
+      "n": 1140
+    },
+    "F1": {
+      "log_loss": 0.9974327178956378,
+      "brier": 0.5944118746016133,
+      "rps": 0.206734329416103,
+      "ece": 0.00988226402875716,
+      "accuracy": 0.5241935483870968,
+      "n": 992
+    },
+    "I1": {
+      "log_loss": 0.9827730791320878,
+      "brier": 0.5861480076120859,
+      "rps": 0.19219218289565074,
+      "ece": 0.021717189810138114,
+      "accuracy": 0.5368421052631579,
+      "n": 1140
+    },
+    "SP1": {
+      "log_loss": 0.9668941896011325,
+      "brier": 0.5743819780882322,
+      "rps": 0.19327895570159873,
+      "ece": 0.04031703220581409,
+      "accuracy": 0.5552631578947368,
+      "n": 1140
+    }
+  }
+}
