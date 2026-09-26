@@ -69,7 +69,7 @@ Instrucciones para el agente:
   - Commit: `feat(features): rolling form and xg`
 - [x] **T015** `ml/features/schedule.py` y `ml/features/market.py` (solo cuotas pre-cierre).
   - Commit: `feat(features): schedule and market features`
-- [ ] **T016** `ml/features/pipeline.py` que arma todo según `features.yaml` + **tests anti-fuga** completos de `plan.md` §7.
+- [x] **T016** `ml/features/pipeline.py` que arma todo según `features.yaml` + **tests anti-fuga** completos de `plan.md` §7.
   - Hecho cuando: tests anti-fuga en verde; cobertura de `ml/features/` ≥ 80 %.
   - Commit: `feat(features): feature pipeline with leakage tests`
 - [ ] **T017** `ml/validation.py` con los folds F1–F3 y la separación final. Tests de no solapamiento.
