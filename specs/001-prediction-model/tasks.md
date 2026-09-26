@@ -77,7 +77,7 @@ Instrucciones para el agente:
 
 ## Fase 4 — Infraestructura de modelado
 
-- [ ] **T018** `ml/models/baselines.py` (frecuencias, mercado `avg`, mercado `psc`).
+- [x] **T018** `ml/models/baselines.py` (frecuencias, mercado `avg`, mercado `psc`).
 - [ ] **T019** `ml/models/poisson.py` y `ml/models/dixon_coles.py` (MLE con `scipy.optimize`, decaimiento temporal, re-ajuste cada 7 días dentro del fold, matriz de goles para O/U). Tests con datos sintéticos donde se conocen los parámetros verdaderos.
 - [ ] **T020** `ml/models/sklearn_models.py` (wrapper genérico con selección de features por grupos), calibración y `ensemble.py` (blend y stacking).
 - [ ] **T021** `ml/betting.py` (simulación de `experiments.md` §5, bootstrap, drawdown, CLV) + `ml/plots.py` (calibración y ROI acumulado).

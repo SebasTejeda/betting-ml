@@ -42,3 +42,4 @@ Bitácora del agente. Una línea por tarea: `AAAA-MM-DD · TXXX · qué se hizo 
 - 2026-09-26 · T015 · schedule.py (descanso, jornada, congestión 14 días) y market.py (Shin/proporcional sobre avg|ps|b365 pre-cierre; rechaza fuentes de cierre) · tests en verde
 - 2026-09-26 · T016 · ml/features/pipeline.py (5 grupos, 91 features sobre datos reales en ~1 s) + tests anti-fuga: resultados futuros/mismo día no alteran features ≤ d, cuotas de cierre no afectan, patrones prohibidos, holdout solo en módulos permitidos, orden de entrada irrelevante · cobertura ml/features 100 %
 - 2026-09-26 · T017 · ml/validation.py: folds F1–F3 (valid 2022-23/2023-24/2024-25), split final y validación interna (última temporada del train) · tests de no solapamiento y orden temporal
+- 2026-09-26 · T018 · ml/models/baselines.py: FrequencyBaseline por liga y MarketBaseline(avg|psc|…, Shin|proporcional) con respaldo a frecuencias y cobertura reportada · tests en verde
