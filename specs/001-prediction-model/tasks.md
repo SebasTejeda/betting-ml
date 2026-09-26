@@ -63,7 +63,7 @@ Instrucciones para el agente:
 
 ## Fase 3 — Features y validación
 
-- [ ] **T013** `ml/features/elo.py` (según `plan.md` §4). Test: el Elo de un partido no cambia si se altera su propio resultado.
+- [x] **T013** `ml/features/elo.py` (según `plan.md` §4). Test: el Elo de un partido no cambia si se altera su propio resultado.
   - Commit: `feat(features): elo ratings`
 - [ ] **T014** `ml/features/form.py` y `ml/features/xg.py` (ventanas y EWMA, con prior de liga).
   - Commit: `feat(features): rolling form and xg`
