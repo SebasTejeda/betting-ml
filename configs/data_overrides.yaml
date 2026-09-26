@@ -1,0 +1,8 @@
+# Correcciones manuales y documentadas de los datos (checkpoint T012).
+# Nunca se editan los CSV crudos: estas reglas se aplican en build_dataset.
+null_closing_odds:
+  - match_id: I1-2024-04-25-udinese-roma
+    reason: >-
+      Partido suspendido el 2024-04-14 y reanudado el 2024-04-25. Las cuotas de cierre de
+      football-data son de juego en vivo (empate a 1.72) y contaminarían el baseline de cierre y
+      el CLV.

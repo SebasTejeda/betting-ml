@@ -102,7 +102,21 @@ def decode_csv(content: bytes) -> str:
 
 def _read_frame(content: bytes) -> pd.DataFrame:
     text = decode_csv(content)
-    frame = pd.read_csv(io.StringIO(text), dtype=str, on_bad_lines="skip", skipinitialspace=True)
+    bad_lines: list[list[str]] = []
+
+    def _on_bad_line(line: list[str]) -> None:
+        bad_lines.append(line)
+        return None
+
+    frame = pd.read_csv(
+        io.StringIO(text),
+        dtype=str,
+        on_bad_lines=_on_bad_line,
+        engine="python",
+        skipinitialspace=True,
+    )
+    if bad_lines:
+        logger.warning("Skipped %d malformed CSV lines: %s", len(bad_lines), bad_lines[:3])
     frame.columns = [str(c).strip().lstrip("﻿") for c in frame.columns]
     frame = frame.loc[:, ~frame.columns.str.startswith("Unnamed")]
     frame = frame.apply(lambda s: s.str.strip() if s.dtype == object else s)
@@ -126,6 +140,8 @@ def _kickoff_utc(dates: pd.Series, times: pd.Series | None) -> tuple[pd.Series, 
     clock = times.where(~imputed, DEFAULT_KICKOFF).astype(str)
     local = pd.to_datetime(dates.dt.strftime("%Y-%m-%d") + " " + clock, format="%Y-%m-%d %H:%M")
     aware = local.dt.tz_localize(SOURCE_TIMEZONE, ambiguous="NaT", nonexistent="shift_forward")
+    if aware.isna().any():
+        raise ValueError(f"ambiguous UK kickoff times: {local[aware.isna()].tolist()[:5]}")
     return aware.dt.tz_convert("UTC"), imputed
 
 

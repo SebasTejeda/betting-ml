@@ -4,12 +4,18 @@ Understat's league pages no longer embed `datesData` in the HTML; the page's own
 `league.min.js` fetches ``/getLeagueData/{league}/{year}`` (JSON with ``teams``, ``players``
 and ``dates``). We call that endpoint directly (see decisions.md), cache the raw JSON as-is
 and keep a polite delay between requests.
+
+Understat's ``datetime`` is NOT reliably UTC (sometimes UK local time, sometimes placeholder
+times after midnight). It is only used to derive a date for the ± 1 day join; the canonical
+kickoff time always comes from football-data.
 """
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -114,6 +120,13 @@ class UnderstatSource:
             raise ValueError(f"unexpected Understat payload for {code} {year}")
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(response.content)
+        meta = {
+            "url": url,
+            "downloaded_at": datetime.now(UTC).isoformat(timespec="seconds"),
+            "sha256": hashlib.sha256(response.content).hexdigest(),
+            "bytes": len(response.content),
+        }
+        path.with_suffix(".meta.json").write_text(json.dumps(meta, indent=2), encoding="utf-8")
         return path
 
     def fetch_season(self, league: str, season: str) -> pd.DataFrame:

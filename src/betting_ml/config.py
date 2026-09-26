@@ -145,6 +145,17 @@ class TeamAliases(BaseModel):
     teams: dict[str, dict[str, dict[SourceName, list[str]]]]
 
 
+class ClosingOddsOverride(BaseModel):
+    match_id: str
+    reason: str
+
+
+class DataOverrides(BaseModel):
+    """Manual, documented data corrections (configs/data_overrides.yaml)."""
+
+    null_closing_odds: list[ClosingOddsOverride] = Field(default_factory=list)
+
+
 def validate_season(season: str) -> str:
     start, _, end = season.partition("-")
     if len(start) != 4 or len(end) != 2 or (int(start) + 1) % 100 != int(end):
@@ -176,6 +187,13 @@ def load_team_aliases(path: Path | None = None) -> TeamAliases:
         for league, entries in teams.items()
     }
     return TeamAliases.model_validate({"teams": normalized})
+
+
+def load_data_overrides(path: Path | None = None) -> DataOverrides:
+    target = path or CONFIGS_DIR / "data_overrides.yaml"
+    if not target.exists():
+        return DataOverrides()
+    return DataOverrides.model_validate(_read_yaml(target))
 
 
 @lru_cache(maxsize=1)

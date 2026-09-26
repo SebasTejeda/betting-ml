@@ -15,6 +15,7 @@ from betting_ml.config import (
     LeaguesFile,
     Settings,
     get_settings,
+    load_data_overrides,
     load_features,
     load_leagues,
     load_team_aliases,
@@ -67,4 +68,5 @@ class Container:
             resolver=self.team_names,
             repository=self.repository,
             report_path=self.settings.reports_path / "data_quality.md",
+            overrides=load_data_overrides(self.settings.configs_dir / "data_overrides.yaml"),
         )
