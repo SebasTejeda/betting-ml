@@ -59,7 +59,7 @@ Instrucciones para el agente:
 - [x] **T011** EDA breve en `notebooks/01_eda.ipynb`: % local/empate/visita por liga, margen promedio por casa, goles vs xG, evolución del Elo de 3 equipos. Resume hallazgos en 5–8 bullets en `PROGRESS.md`.
   - Commit: `docs(eda): exploratory analysis`
 
-- [ ] 🔍 **T012** Checkpoint de revisión de datos con `ml-reviewer` (foco: calidad, emparejamiento, zona horaria, duplicados).
+- [x] 🔍 **T012** Checkpoint de revisión de datos con `ml-reviewer` (foco: calidad, emparejamiento, zona horaria, duplicados).
 
 ## Fase 3 — Features y validación
 
