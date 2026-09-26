@@ -70,12 +70,14 @@ def test_toy_experiment_end_to_end(runner: tuple[RunExperiment, FileExperimentSt
     preds = store.load_predictions("E99")
     assert set(preds["season"]) == {"2019-20", "2020-21", "2021-22"}
     np.testing.assert_allclose(preds[["p_home", "p_draw", "p_away"]].sum(axis=1), 1.0)
-    # Re-running the same id replaces the row and keeps the conclusion.
+    # Re-running the same id replaces the row, archives the old one and clears the conclusion.
     store.set_conclusion("E99", "ok")
     use_case.run(config)
     csv = store.read_rows()
     assert csv["exp_id"].tolist() == ["E99"]
-    assert csv.loc[0, "conclusion"] == "ok"
+    assert pd.isna(csv.loc[0, "conclusion"]) or csv.loc[0, "conclusion"] == ""
+    history = pd.read_csv(store.history_path)
+    assert history["conclusion"].tolist() == ["ok"]
 
 
 def test_variants_and_baselines(runner: tuple[RunExperiment, FileExperimentStore]) -> None:

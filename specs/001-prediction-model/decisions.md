@@ -51,3 +51,13 @@ Decisiones tomadas durante la implementación que no estaban en la spec o que la
   - El xG de respaldo de football-data (solo 2026-27, 1 partido hoy) viene de otro proveedor (≈ 0.19 xG menos por local que Understat): queda marcado en `xg_source` y se vigila en la API; no se usa en entrenamiento.
   - Las filas mal formadas del CSV se cuentan y se avisan (antes se descartaban en silencio); una hora UK ambigua ahora es error.
   - Understat también guarda `.meta.json` con fecha de descarga y sha256.
+
+## 2026-09-26 — Correcciones tras el checkpoint de fuga y validación (T025)
+- Contexto: `ml-reviewer` aprobó con observaciones (sin fuga, sin bloqueantes; métricas recalculadas de forma independiente y coincidentes).
+- Decisiones:
+  - **Umbral de apuestas:** se elige sobre las predicciones agrupadas de F1–F3 (experiments.md §5) entre {0.02, 0.05, 0.08, 0.10}, exigiendo **≥ 100 apuestas**; si ningún umbral llega, se usa 0.10 (el más conservador); empates → el umbral mayor. Como el ROI de validación se mide sobre las mismas predicciones con las que se eligió el umbral, es **optimista**: el informe lo dice y la única medida honesta del ROI es el holdout.
+  - **Re-ejecución de un experimento** (mismo ID tras un bug): la fila anterior pasa a `reports/experiments_history.csv` y la nueva empieza sin conclusión (se vuelve a escribir).
+  - **`git_commit`** marca `-dirty` también con archivos nuevos o modificados en `src/`, `configs/` o `pyproject.toml`.
+  - **Modelos de goles:** un equipo sin partidos en la liga en los últimos 365 días (ascendido o que vuelve tras años) usa la fuerza de "ascendido" (media de los 3 más débiles activos), coherente con el Elo. El arranque en caliente del optimizador se reinicia en cada llamada de predicción.
+  - **Prior de liga en features:** el nº de partidos previos cuenta solo valores no nulos de cada estadística.
+  - **Hiperparámetro C de la logística:** en E05/E06 se fijó a priori (C=0.05). En adelante, cuando se ajuste, será con la validación interna (última temporada del train), igual que ξ.

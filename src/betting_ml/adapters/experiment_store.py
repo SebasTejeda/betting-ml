@@ -57,14 +57,22 @@ class FileExperimentStore:
             self.csv_path, dtype={"conclusion": str}, keep_default_na=False, na_values=[""]
         )
 
+    @property
+    def history_path(self) -> Path:
+        return self.reports_dir / "experiments_history.csv"
+
     def upsert_row(self, row: dict[str, Any]) -> None:
         """Insert or replace (same exp_id: a re-run after a bug fix, experiments.md §1.6).
-        An existing conclusion is kept unless the new row brings one."""
+
+        The replaced row is appended to experiments_history.csv (nothing is lost) and the new
+        row starts without conclusion, since the old one may no longer apply."""
         rows = self.read_rows()
         previous = rows[rows["exp_id"] == row["exp_id"]]
-        if not row.get("conclusion") and len(previous):
-            old = previous.iloc[0]["conclusion"]
-            row = {**row, "conclusion": "" if pd.isna(old) else old}
+        if len(previous):
+            header = not self.history_path.exists()
+            previous[CSV_COLUMNS].to_csv(
+                self.history_path, mode="a", header=header, index=False, lineterminator="\n"
+            )
         rows = rows[rows["exp_id"] != row["exp_id"]]
         new = pd.DataFrame([{c: row.get(c, "") for c in CSV_COLUMNS}])
         rows = new if rows.empty else pd.concat([rows, new], ignore_index=True)

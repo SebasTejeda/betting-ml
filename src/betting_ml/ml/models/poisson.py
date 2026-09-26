@@ -24,6 +24,8 @@ GoalTarget = Literal["goals", "xg"]
 RHO_BOUNDS = (-0.25, 0.25)
 MIN_WEIGHT = 1e-3
 PROMOTED_POOL = 3
+# Teams without a league match in this window are treated as promoted.
+ACTIVE_DAYS = 365
 
 
 @dataclass
@@ -42,10 +44,22 @@ class GoalParams:
         return float(self.attack[idx]), float(self.defence[idx])
 
     def rates(
-        self, home: list[str], away: list[str], fallback: tuple[float, float]
+        self,
+        home: list[str],
+        away: list[str],
+        fallback: tuple[float, float],
+        active: set[str] | None = None,
     ) -> tuple[np.ndarray, np.ndarray]:
-        ah, dh = np.array([self.team_strength(t, fallback) for t in home]).T
-        aa, da = np.array([self.team_strength(t, fallback) for t in away]).T
+        """Scoring rates. Teams outside ``active`` (not seen in the league recently, e.g.
+        promoted or returning after years away) use the ``fallback`` strength."""
+
+        def strength(team: str) -> tuple[float, float]:
+            if active is not None and team not in active:
+                return fallback
+            return self.team_strength(team, fallback)
+
+        ah, dh = np.array([strength(t) for t in home]).T
+        aa, da = np.array([strength(t) for t in away]).T
         lam = np.exp(self.mu + self.gamma + ah - da)
         mu = np.exp(self.mu + aa - dh)
         return lam, mu
@@ -253,6 +267,7 @@ class GoalModel(BaseProbabilisticModel):
         return mat / mat.sum(axis=(1, 2), keepdims=True)
 
     def predict_goal_matrix(self, matches: pd.DataFrame) -> np.ndarray:
+        self._warm = {}  # warm starts only within this call, always from earlier blocks
         out = np.zeros((len(matches), self.max_goals + 1, self.max_goals + 1))
         position = pd.Series(np.arange(len(matches)), index=matches.index)
         new_rows = self._history_rows(matches)
@@ -275,12 +290,11 @@ class GoalModel(BaseProbabilisticModel):
                             f"no history to fit goal model for {league} before {start}"
                         )
                     params = self.fit_params(past, start, str(league))
-                    recent = past[past["date"] >= start - pd.Timedelta(days=365)]
-                    fallback = self.promoted_strength(
-                        params, set(recent["home_team"]) | set(recent["away_team"])
-                    )
+                    recent = past[past["date"] >= start - pd.Timedelta(days=ACTIVE_DAYS)]
+                    active = set(recent["home_team"]) | set(recent["away_team"])
+                    fallback = self.promoted_strength(params, active)
                     lam, mu = params.rates(
-                        list(block["home_team"]), list(block["away_team"]), fallback
+                        list(block["home_team"]), list(block["away_team"]), fallback, active
                     )
                     out[position[block.index].to_numpy()] = self.score_matrix(lam, mu, params.rho)
                     self.last_params[str(league)] = params

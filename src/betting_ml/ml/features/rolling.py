@@ -76,7 +76,8 @@ def rolling_block(
     keys = ["team", "is_home"] if by_venue else ["team"]
     groups = [long[k] for k in keys]
     shifted = long.groupby(keys)[list(cols)].shift(1)
-    n_prev = long.groupby(keys).cumcount()
+    # Number of previous matches with a value (NaN stats, e.g. missing xG, do not count).
+    n_prev = shifted.notna().groupby(groups).cumsum()
     prior = league_prior(long, cols, by_venue)
     kind = "venue_" if by_venue else ""
     out: dict[str, pd.Series] = {}
@@ -85,14 +86,14 @@ def rolling_block(
         rolled = rolled.reset_index(level=list(range(len(keys))), drop=True).sort_index()
         for col in cols:
             out[f"{col}|{kind}last{window}"] = _shrink(
-                rolled[col], n_prev, prior[col], config.min_matches_for_prior
+                rolled[col], n_prev[col], prior[col], config.min_matches_for_prior
             )
     if ewm:
         smoothed = shifted.groupby(groups).ewm(alpha=config.ewma_alpha, ignore_na=True).mean()
         smoothed = smoothed.reset_index(level=list(range(len(keys))), drop=True).sort_index()
         for col in cols:
             out[f"{col}|{kind}ewm"] = _shrink(
-                smoothed[col], n_prev, prior[col], config.min_matches_for_prior
+                smoothed[col], n_prev[col], prior[col], config.min_matches_for_prior
             )
     return pd.DataFrame(out, index=long.index)
 

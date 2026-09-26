@@ -131,6 +131,25 @@ def test_holdout_file_only_referenced_by_allowed_modules() -> None:
     assert offenders == []
 
 
+def test_allow_holdout_only_in_permitted_modules() -> None:
+    allowed = {"evaluate_holdout.py", "container.py", "parquet_repository.py"}
+    offenders = [
+        path.name
+        for path in (PROJECT_ROOT / "src").rglob("*.py")
+        if path.name not in allowed and "allow_holdout" in path.read_text(encoding="utf-8")
+    ]
+    assert offenders == []
+
+
+def test_repository_blocks_holdout_by_default(tmp_path) -> None:  # type: ignore[no-untyped-def]
+    from betting_ml.adapters.parquet_repository import HoldoutAccessError, ParquetMatchRepository
+
+    repo = ParquetMatchRepository(tmp_path)
+    repo.save("holdout", pd.DataFrame({"a": [1]}))
+    with pytest.raises(HoldoutAccessError):
+        repo.load("holdout")
+
+
 def test_pipeline_rejects_unknown_group(matches: pd.DataFrame, pipeline: FeaturePipeline) -> None:
     with pytest.raises(ValueError, match="unknown"):
         pipeline.transform(matches, groups=["elo", "vibes"])
