@@ -56,7 +56,7 @@ Instrucciones para el agente:
   - Hecho cuando: `make data` corre de punta a punta con datos reales; emparejamiento xG ≥ 98 %; sin duplicados; reporte generado.
   - Commit: `feat(data): dataset build pipeline and quality report`
 
-- [ ] **T011** EDA breve en `notebooks/01_eda.ipynb`: % local/empate/visita por liga, margen promedio por casa, goles vs xG, evolución del Elo de 3 equipos. Resume hallazgos en 5–8 bullets en `PROGRESS.md`.
+- [x] **T011** EDA breve en `notebooks/01_eda.ipynb`: % local/empate/visita por liga, margen promedio por casa, goles vs xG, evolución del Elo de 3 equipos. Resume hallazgos en 5–8 bullets en `PROGRESS.md`.
   - Commit: `docs(eda): exploratory analysis`
 
 - [ ] 🔍 **T012** Checkpoint de revisión de datos con `ml-reviewer` (foco: calidad, emparejamiento, zona horaria, duplicados).

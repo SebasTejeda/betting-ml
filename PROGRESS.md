@@ -23,3 +23,14 @@ Bitácora del agente. Una línea por tarea: `AAAA-MM-DD · TXXX · qué se hizo 
 - 2026-09-26 · T008 · Adaptador Understat vía endpoint JSON getLeagueData (sin soccerdata; ver decisions.md), pausa 3 s, caché · test con JSON real recortado
 - 2026-09-26 · T009 · TeamNameResolver + team_aliases.yaml completo (171 equipos, 5 ligas, 2014-15…2026-27; canónico = nombre football-data) · 100 % de ambas fuentes mapeado; test sobre datos crudos falla si aparece uno nuevo
 - 2026-09-26 · T010 · build_dataset + make data de punta a punta con datos reales: 19 837 partidos de entrenamiento, 1 752 holdout, 250 en curso; xG emparejado 99.98 % (4 partidos reprogramados sin emparejar); 0 duplicados; reports/data_quality.md
+- 2026-09-26 · T011 · notebooks/01_eda.ipynb ejecutado (resultados por liga, margen por casa, goles vs xG, Elo de 3 equipos) · hallazgos abajo
+
+### Hallazgos del EDA (T011)
+
+- Local gana ~44–45 %, empate ~23–26 %, visita ~29–32 %; LaLiga tiene la mayor ventaja local y la Serie A la menor (y más empates).
+- 2020-21 (sin público): victoria local ~40 % y visitante ~35 %. La ventaja de local varía en el tiempo.
+- Margen medio: Pinnacle ~2.5 % (cierre) / 2.7 % (pre-cierre), promedio del mercado 4.8 %, Bet365 5.1 %. La mejor cuota entre casas tiene margen ≈ 0 %.
+- xG medio ≈ goles medios en todas las ligas (sesgo < 0.05 goles/partido): Understat está bien calibrado; la Bundesliga es la más goleadora.
+- Relación goles–xG fuerte pero ruidosa: xG debería estimar la fuerza con menos ruido que los goles.
+- El Elo exploratorio refleja los ciclos conocidos (auge del Liverpool 2018-20, dominio del City, caída del Leicester tras 2016).
+- Log loss del mercado promedio pre-cierre (Shin) en 2014-25 ≈ 0.966: vara realista a batir.
