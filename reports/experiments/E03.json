@@ -1,0 +1,205 @@
+{
+  "exp_id": "E03",
+  "config": {
+    "id": "E03",
+    "name": "Poisson independiente (Maher) con decaimiento temporal",
+    "hypothesis": "Modelar los goles con fuerzas de ataque y defensa por equipo (Poisson independiente, ξ = 0.0019 por día, re-ajuste semanal dentro del fold) captura la fuerza ofensiva/defensiva mejor que Elo.",
+    "uses_odds": false,
+    "model": {
+      "type": "poisson",
+      "xi": 0.0019,
+      "target": "goals",
+      "refit_days": 7
+    },
+    "variants": null,
+    "feature_overrides": {},
+    "notes": null
+  },
+  "spec": {
+    "type": "poisson",
+    "xi": 0.0019,
+    "target": "goals",
+    "refit_days": 7
+  },
+  "folds": {
+    "F1": {
+      "train": [
+        "2014-15",
+        "2015-16",
+        "2016-17",
+        "2017-18",
+        "2018-19",
+        "2019-20",
+        "2020-21",
+        "2021-22"
+      ],
+      "valid": "2022-23"
+    },
+    "F2": {
+      "train": [
+        "2014-15",
+        "2015-16",
+        "2016-17",
+        "2017-18",
+        "2018-19",
+        "2019-20",
+        "2020-21",
+        "2021-22",
+        "2022-23"
+      ],
+      "valid": "2023-24"
+    },
+    "F3": {
+      "train": [
+        "2014-15",
+        "2015-16",
+        "2016-17",
+        "2017-18",
+        "2018-19",
+        "2019-20",
+        "2020-21",
+        "2021-22",
+        "2022-23",
+        "2023-24"
+      ],
+      "valid": "2024-25"
+    }
+  },
+  "fold_metrics": {
+    "F1": {
+      "log_loss": 0.9964832478197523,
+      "brier": 0.5940268143089699,
+      "rps": 0.20573609098434348,
+      "ece": 0.01071750303858662,
+      "accuracy": 0.5235487404162102,
+      "n": 1826
+    },
+    "F2": {
+      "log_loss": 0.9773668872744127,
+      "brier": 0.5821450431060027,
+      "rps": 0.19447811221323597,
+      "ece": 0.009102632902117753,
+      "accuracy": 0.5331050228310502,
+      "n": 1752
+    },
+    "F3": {
+      "log_loss": 0.9851434010994328,
+      "brier": 0.5870597815964362,
+      "rps": 0.2008579739395545,
+      "ece": 0.02510595236398271,
+      "accuracy": 0.5234018264840182,
+      "n": 1752
+    }
+  },
+  "mean_metrics": {
+    "log_loss": 0.9863311787311991,
+    "brier": 0.5877438796704696,
+    "rps": 0.20035739237904462,
+    "ece": 0.014975362768229028,
+    "accuracy": 0.5266851965770929,
+    "n": 1776.6666666666667
+  },
+  "models": {
+    "F1": {
+      "name": "poisson_goals_xi0.0019",
+      "uses_odds": false,
+      "xi": 0.0019,
+      "dixon_coles": false,
+      "target": "goals",
+      "refit_days": 7,
+      "l2": 0.5
+    },
+    "F2": {
+      "name": "poisson_goals_xi0.0019",
+      "uses_odds": false,
+      "xi": 0.0019,
+      "dixon_coles": false,
+      "target": "goals",
+      "refit_days": 7,
+      "l2": 0.5
+    },
+    "F3": {
+      "name": "poisson_goals_xi0.0019",
+      "uses_odds": false,
+      "xi": 0.0019,
+      "dixon_coles": false,
+      "target": "goals",
+      "refit_days": 7,
+      "l2": 0.5
+    }
+  },
+  "betting": {
+    "realistic": {
+      "scenario": "avg",
+      "threshold": 0.02,
+      "n_bets": 4196,
+      "hit_rate": 0.28789323164918973,
+      "roi_flat": -0.15609628217349858,
+      "roi_ci_low": -0.20457495233555767,
+      "roi_ci_high": -0.10689245710200192,
+      "max_drawdown_flat": 670.6400000000002,
+      "clv_mean": -0.06992043199490919,
+      "clv_n": 4195,
+      "roi_kelly": -0.1670850465736259,
+      "final_bankroll_kelly": 7.767382810290737e-05,
+      "max_drawdown_kelly": 1.0299760182633337
+    },
+    "optimistic": {
+      "scenario": "max",
+      "threshold": 0.02,
+      "n_bets": 5081,
+      "hit_rate": 0.3007282031096241,
+      "roi_flat": -0.08343239519779572,
+      "roi_ci_low": -0.130347323361543,
+      "roi_ci_high": -0.034826953355638804,
+      "max_drawdown_flat": 457.28999999999945,
+      "clv_mean": -0.017253708617379182,
+      "clv_n": 5080,
+      "roi_kelly": -0.1107443691122448,
+      "final_bankroll_kelly": 0.0001627241850396894,
+      "max_drawdown_kelly": 1.086645677128085
+    }
+  },
+  "metrics_by_league": {
+    "D1": {
+      "log_loss": 1.0041714567529554,
+      "brier": 0.600176641695362,
+      "rps": 0.20436742596889362,
+      "ece": 0.0422144248522731,
+      "accuracy": 0.5076252723311547,
+      "n": 918
+    },
+    "E0": {
+      "log_loss": 0.972138814684716,
+      "brier": 0.5778611337849631,
+      "rps": 0.20125367964481566,
+      "ece": 0.012704756661263607,
+      "accuracy": 0.543859649122807,
+      "n": 1140
+    },
+    "F1": {
+      "log_loss": 0.9974362953535947,
+      "brier": 0.5949110490972496,
+      "rps": 0.20780017492064923,
+      "ece": 0.019618374932956116,
+      "accuracy": 0.5211693548387096,
+      "n": 992
+    },
+    "I1": {
+      "log_loss": 0.9862643516362326,
+      "brier": 0.5887007482683713,
+      "rps": 0.19400829549695198,
+      "ece": 0.025415479041240308,
+      "accuracy": 0.5219298245614035,
+      "n": 1140
+    },
+    "SP1": {
+      "log_loss": 0.9772198454859511,
+      "brier": 0.580829256565997,
+      "rps": 0.1964536867146988,
+      "ece": 0.026873039438232858,
+      "accuracy": 0.5342105263157895,
+      "n": 1140
+    }
+  }
+}

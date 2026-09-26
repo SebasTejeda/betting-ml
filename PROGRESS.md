@@ -49,3 +49,4 @@ Bitácora del agente. Una línea por tarea: `AAAA-MM-DD · TXXX · qué se hizo 
 - 2026-09-26 · T022 · joblib_registry, experiment_store (CSV upsert por id, JSON de detalle, predicciones), factory de modelos desde YAML (incl. ξ elegido en validación interna), caso de uso run_experiment + CLI exp/conclude + make exp ID=… · experimento de juguete end-to-end con tests/fixtures/toy_matches.csv
 - 2026-09-26 · T023 · E01 líneas base en F1–F3: frecuencias 1.0726, mercado Avg (Shin) 0.9651, Avg proporcional 0.9657, Pinnacle cierre 0.9622 · metas en la tabla de arriba
 - 2026-09-26 · E02 · Logística multinomial solo Elo · val ll 0.9840 (F1 0.9898, F2 0.9759, F3 0.9864), ECE 0.018; mejor hasta ahora sin cuotas. Regla de parada: sin activar.
+- 2026-09-26 · E03 · Poisson (Maher) ξ=0.0019, re-ajuste semanal · val ll 0.9863; no mejora a E02 (0.9840). Regla de parada: 1 experimento sin mejora > 0.002.

@@ -1,0 +1,11 @@
+id: E03
+name: Poisson independiente (Maher) con decaimiento temporal
+hypothesis: >-
+  Modelar los goles con fuerzas de ataque y defensa por equipo (Poisson independiente, ξ = 0.0019
+  por día, re-ajuste semanal dentro del fold) captura la fuerza ofensiva/defensiva mejor que Elo.
+uses_odds: false
+model:
+  type: poisson
+  xi: 0.0019
+  target: goals
+  refit_days: 7

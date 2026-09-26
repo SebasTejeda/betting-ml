@@ -1,0 +1,12 @@
+id: E04
+name: Dixon-Coles con decaimiento ξ elegido en validación interna
+hypothesis: >-
+  Corregir la dependencia de los marcadores bajos (ρ de Dixon-Coles) mejora la predicción de
+  empates respecto al Poisson independiente. ξ se elige dentro de {0.0005, 0.001, 0.0019, 0.003}
+  con la última temporada de entrenamiento de cada fold (nunca con la validación).
+uses_odds: false
+model:
+  type: dixon_coles
+  xi_grid: [0.0005, 0.001, 0.0019, 0.003]
+  target: goals
+  refit_days: 7
