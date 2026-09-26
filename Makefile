@@ -19,7 +19,7 @@ test:
 	$(RUN) pytest
 
 data:
-	@echo "pendiente"
+	$(CLI) data
 
 baselines:
 	@echo "pendiente"

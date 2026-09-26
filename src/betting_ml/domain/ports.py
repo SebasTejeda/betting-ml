@@ -38,6 +38,17 @@ class FixtureSource(Protocol):
 
 
 @runtime_checkable
+class TeamNameNormalizer(Protocol):
+    """Maps source-specific team names to canonical names (error if unknown)."""
+
+    def canonicalize(self, frame: pd.DataFrame, source: Any) -> pd.DataFrame: ...
+
+    def lookup(self, league: str, name: str) -> str | None: ...
+
+    def teams(self, league: str) -> list[str]: ...
+
+
+@runtime_checkable
 class MatchRepository(Protocol):
     """Persistence of processed datasets (matches / holdout / current)."""
 

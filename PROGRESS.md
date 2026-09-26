@@ -22,3 +22,4 @@ Bitácora del agente. Una línea por tarea: `AAAA-MM-DD · TXXX · qué se hizo 
 - 2026-09-26 · T007 · Adaptador football-data: descarga con caché + metadatos (fecha, sha256), decodificación utf-8/cp1252/latin-1, BbAv/BbMx→avg/max, hora UK→UTC (15:00 imputada si falta) · tests con CSV 2014-15, 2024-25 y 2026-27
 - 2026-09-26 · T008 · Adaptador Understat vía endpoint JSON getLeagueData (sin soccerdata; ver decisions.md), pausa 3 s, caché · test con JSON real recortado
 - 2026-09-26 · T009 · TeamNameResolver + team_aliases.yaml completo (171 equipos, 5 ligas, 2014-15…2026-27; canónico = nombre football-data) · 100 % de ambas fuentes mapeado; test sobre datos crudos falla si aparece uno nuevo
+- 2026-09-26 · T010 · build_dataset + make data de punta a punta con datos reales: 19 837 partidos de entrenamiento, 1 752 holdout, 250 en curso; xG emparejado 99.98 % (4 partidos reprogramados sin emparejar); 0 duplicados; reports/data_quality.md

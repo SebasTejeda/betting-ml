@@ -52,7 +52,7 @@ Instrucciones para el agente:
   - Hecho cuando: 100 % de los equipos de ambas fuentes mapeados; test que falla si aparece uno nuevo sin mapear.
   - Commit: `feat(data): team name normalization`
 
-- [ ] **T010** Caso de uso `build_dataset`: limpieza, validaciones, emparejamiento con xG, separación `matches / holdout / current`, `reports/data_quality.md`. Conecta en `cli.py` y `make data`.
+- [x] **T010** Caso de uso `build_dataset`: limpieza, validaciones, emparejamiento con xG, separación `matches / holdout / current`, `reports/data_quality.md`. Conecta en `cli.py` y `make data`.
   - Hecho cuando: `make data` corre de punta a punta con datos reales; emparejamiento xG ≥ 98 %; sin duplicados; reporte generado.
   - Commit: `feat(data): dataset build pipeline and quality report`
 
