@@ -1,0 +1,32 @@
+# Parámetros por defecto de las features (plan.md §4). Los experimentos pueden sobreescribirlos.
+elo:
+  initial_rating: 1500.0
+  k: 20.0
+  home_advantage: 60.0          # puntos Elo sumados al local al calcular la expectativa
+  margin_multiplier: true       # multiplicador por diferencia de goles (estilo World Football Elo)
+  season_regression: 0.3333     # regresión a la media de la liga entre temporadas
+
+form:
+  windows: [6]
+  ewma_alpha: 0.1
+  min_matches_for_prior: 3      # con menos partidos se mezcla con el prior de la liga
+
+xg:
+  windows: [6]
+  ewma_alpha: 0.1
+  min_matches_for_prior: 3
+
+schedule:
+  congestion_days: 14
+
+market:
+  source: avg                   # solo cuotas pre-cierre: avg | ps | b365
+  method: shin                  # shin | proportional
+
+# Grupos de features: nombre -> prefijos/columnas que produce el pipeline.
+groups:
+  elo: ["elo_home", "elo_away", "elo_diff", "elo_p_home"]
+  form: ["form_"]
+  schedule: ["sched_"]
+  xg: ["xg_"]
+  market: ["mkt_"]

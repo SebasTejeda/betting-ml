@@ -66,6 +66,7 @@ ignore = ["N803", "N806", "RUF001", "RUF002", "RUF003"]
 
 [tool.mypy]
 ignore_missing_imports = true
+plugins = ["pydantic.mypy"]
 check_untyped_defs = false
 disallow_untyped_defs = false
 warn_unused_ignores = false

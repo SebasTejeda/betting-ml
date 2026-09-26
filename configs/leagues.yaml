@@ -1,0 +1,34 @@
+# Ligas soportadas y temporadas. Agregar una liga = agregar un bloque aquí (sin tocar código).
+# Temporadas en formato "YYYY-YY" (año de inicio - dos dígitos del año final).
+seasons:
+  train: ["2014-15", "2015-16", "2016-17", "2017-18", "2018-19", "2019-20",
+          "2020-21", "2021-22", "2022-23", "2023-24", "2024-25"]
+  holdout: "2025-26"
+  current: "2026-27"
+
+leagues:
+  - code: E0
+    name: Premier League
+    country: England
+    football_data: E0
+    understat: EPL
+  - code: SP1
+    name: LaLiga
+    country: Spain
+    football_data: SP1
+    understat: La_liga
+  - code: D1
+    name: Bundesliga
+    country: Germany
+    football_data: D1
+    understat: Bundesliga
+  - code: I1
+    name: Serie A
+    country: Italy
+    football_data: I1
+    understat: Serie_A
+  - code: F1
+    name: Ligue 1
+    country: France
+    football_data: F1
+    understat: Ligue_1

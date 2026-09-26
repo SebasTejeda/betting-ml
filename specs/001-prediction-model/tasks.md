@@ -20,7 +20,7 @@ Instrucciones para el agente:
   - `.github/workflows/ci.yml` según `plan.md` §10.
   - Commit: `ci: lint and test workflow`
 
-- [ ] **T003** Configuración
+- [x] **T003** Configuración
   - `config.py` (Settings con pydantic-settings), `configs/leagues.yaml` (5 ligas, códigos football-data y Understat, temporadas), `configs/features.yaml` (parámetros por defecto), `configs/team_aliases.yaml` vacío con el formato documentado.
   - Hecho cuando: test que carga los tres YAML y valida su esquema.
   - Commit: `feat(config): settings and yaml configs`
