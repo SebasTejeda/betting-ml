@@ -33,7 +33,6 @@ dev = [
     "pytest-cov>=5.0",
     "pre-commit>=3.7",
     "httpx>=0.27",
-    "pandas-stubs",
     "types-PyYAML",
     "types-requests",
     "nbformat>=5.10",

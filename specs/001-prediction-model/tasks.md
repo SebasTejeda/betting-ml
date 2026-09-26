@@ -40,7 +40,7 @@ Instrucciones para el agente:
 
 ## Fase 2 — Datos
 
-- [ ] **T007** Adaptador football-data: descarga con caché, lectura robusta (encoding), normalización al esquema canónico (`plan.md` §3.2), incluido el mapeo `BbAv*/BbMx*` → `avg_*/max_*`.
+- [x] **T007** Adaptador football-data: descarga con caché, lectura robusta (encoding), normalización al esquema canónico (`plan.md` §3.2), incluido el mapeo `BbAv*/BbMx*` → `avg_*/max_*`.
   - Hecho cuando: tests con CSV de ejemplo de una temporada antigua y una nueva en `tests/fixtures/`.
   - Commit: `feat(adapters): football-data source`
 

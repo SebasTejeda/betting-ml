@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import math
+import re
+import unicodedata
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from enum import StrEnum
@@ -140,3 +142,15 @@ class Prediction:
     model_version: str
     kickoff_utc: datetime | None = None
     value_bets: list[ValueBet] = field(default_factory=list)
+
+
+def slugify(text: str) -> str:
+    """Lowercase ASCII slug: 'Nott'm Forest' -> 'nottm-forest'."""
+    normalized = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode()
+    normalized = re.sub(r"['’`.]", "", normalized.lower())
+    return re.sub(r"[^a-z0-9]+", "-", normalized).strip("-")
+
+
+def make_match_id(league: str, match_date: date, home_team: str, away_team: str) -> str:
+    """Stable id: ``{league}-{YYYY-MM-DD}-{home}-{away}`` (see contracts/api.md)."""
+    return f"{league}-{match_date.isoformat()}-{slugify(home_team)}-{slugify(away_team)}"
