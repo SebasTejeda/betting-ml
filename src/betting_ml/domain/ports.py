@@ -76,6 +76,10 @@ class ProbabilisticModel(Protocol):
         """Optional (n, G, G) score matrix, used for Over/Under."""
         ...
 
+    def describe(self) -> dict[str, object]:
+        """Name, parameters and fitted hyper-parameters (for reports)."""
+        ...
+
 
 @runtime_checkable
 class ModelRegistry(Protocol):
@@ -86,6 +90,20 @@ class ModelRegistry(Protocol):
     def load(self, version: str) -> tuple[Any, dict[str, Any]]: ...
 
     def list_versions(self) -> list[str]: ...
+
+
+@runtime_checkable
+class ExperimentStore(Protocol):
+    """Experiment results: CSV row, details, figures and fold predictions."""
+
+    @property
+    def figures_dir(self) -> Any: ...
+
+    def upsert_row(self, row: dict[str, Any]) -> None: ...
+
+    def save_details(self, exp_id: str, details: dict[str, Any]) -> Any: ...
+
+    def save_predictions(self, exp_id: str, predictions: pd.DataFrame) -> Any: ...
 
 
 @runtime_checkable

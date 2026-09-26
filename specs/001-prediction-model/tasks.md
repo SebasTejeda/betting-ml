@@ -81,7 +81,7 @@ Instrucciones para el agente:
 - [x] **T019** `ml/models/poisson.py` y `ml/models/dixon_coles.py` (MLE con `scipy.optimize`, decaimiento temporal, re-ajuste cada 7 días dentro del fold, matriz de goles para O/U). Tests con datos sintéticos donde se conocen los parámetros verdaderos.
 - [x] **T020** `ml/models/sklearn_models.py` (wrapper genérico con selección de features por grupos), calibración y `ensemble.py` (blend y stacking).
 - [x] **T021** `ml/betting.py` (simulación de `experiments.md` §5, bootstrap, drawdown, CLV) + `ml/plots.py` (calibración y ROI acumulado).
-- [ ] **T022** `adapters/joblib_registry.py` y caso de uso `run_experiment` + `make exp ID=...` que lee `configs/experiments/{ID}_*.yaml`, corre F1–F3, guarda figuras, agrega la fila a `experiments.csv` e incluye el hash del commit.
+- [x] **T022** `adapters/joblib_registry.py` y caso de uso `run_experiment` + `make exp ID=...` que lee `configs/experiments/{ID}_*.yaml`, corre F1–F3, guarda figuras, agrega la fila a `experiments.csv` e incluye el hash del commit.
   - Hecho cuando: un experimento de juguete corre end-to-end con datos de `tests/fixtures`.
   - Commits: uno por tarea (`feat(models): ...`, `feat(betting): ...`, `feat(app): experiment runner`).
 

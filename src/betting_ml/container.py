@@ -4,12 +4,16 @@ from __future__ import annotations
 
 from functools import cached_property
 
+from betting_ml.adapters.experiment_store import FileExperimentStore
 from betting_ml.adapters.football_data import FootballDataSource
+from betting_ml.adapters.git_info import current_commit
 from betting_ml.adapters.http import HttpClient
+from betting_ml.adapters.joblib_registry import JoblibModelRegistry
 from betting_ml.adapters.parquet_repository import ParquetMatchRepository
 from betting_ml.adapters.team_names import TeamNameResolver
 from betting_ml.adapters.understat import UnderstatSource
 from betting_ml.application.build_dataset import BuildDataset
+from betting_ml.application.run_experiment import RunExperiment
 from betting_ml.config import (
     FeaturesFile,
     LeaguesFile,
@@ -69,4 +73,23 @@ class Container:
             repository=self.repository,
             report_path=self.settings.reports_path / "data_quality.md",
             overrides=load_data_overrides(self.settings.configs_dir / "data_overrides.yaml"),
+        )
+
+    @cached_property
+    def experiment_store(self) -> FileExperimentStore:
+        return FileExperimentStore(
+            self.settings.reports_path, self.settings.data_path / "interim" / "predictions"
+        )
+
+    @cached_property
+    def registry(self) -> JoblibModelRegistry:
+        return JoblibModelRegistry(self.settings.models_path)
+
+    def run_experiment(self) -> RunExperiment:
+        return RunExperiment(
+            repository=self.repository,
+            store=self.experiment_store,
+            leagues=self.leagues,
+            features=self.features,
+            git_commit=current_commit,
         )

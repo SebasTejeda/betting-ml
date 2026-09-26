@@ -156,6 +156,27 @@ class DataOverrides(BaseModel):
     null_closing_odds: list[ClosingOddsOverride] = Field(default_factory=list)
 
 
+class ExperimentConfig(BaseModel):
+    """configs/experiments/{ID}_{name}.yaml (experiments.md §1)."""
+
+    id: str = Field(pattern=r"^E\d{2}$")
+    name: str
+    hypothesis: str
+    uses_odds: bool
+    model: dict[str, Any] | None = None
+    variants: dict[str, dict[str, Any]] | None = None
+    feature_overrides: dict[str, Any] = Field(default_factory=dict)
+    notes: str | None = None
+
+    def model_specs(self) -> dict[str, dict[str, Any]]:
+        """Row id -> model spec. Single-model experiments use the experiment id."""
+        if self.variants:
+            return {f"{self.id}-{key}": spec for key, spec in self.variants.items()}
+        if self.model is None:
+            raise ValueError(f"{self.id}: define `model` or `variants`")
+        return {self.id: self.model}
+
+
 def validate_season(season: str) -> str:
     start, _, end = season.partition("-")
     if len(start) != 4 or len(end) != 2 or (int(start) + 1) % 100 != int(end):
@@ -194,6 +215,25 @@ def load_data_overrides(path: Path | None = None) -> DataOverrides:
     if not target.exists():
         return DataOverrides()
     return DataOverrides.model_validate(_read_yaml(target))
+
+
+def load_experiment(exp_id: str, directory: Path | None = None) -> ExperimentConfig:
+    folder = directory or CONFIGS_DIR / "experiments"
+    matches = sorted(folder.glob(f"{exp_id}_*.yaml"))
+    if len(matches) != 1:
+        raise FileNotFoundError(f"expected exactly one {exp_id}_*.yaml in {folder}, got {matches}")
+    return ExperimentConfig.model_validate(_read_yaml(matches[0]))
+
+
+def with_overrides(features: FeaturesFile, overrides: dict[str, Any]) -> FeaturesFile:
+    """Deep-merge experiment-specific feature parameters over features.yaml."""
+    merged = features.model_dump()
+    for key, value in overrides.items():
+        if isinstance(value, dict) and isinstance(merged.get(key), dict):
+            merged[key] = {**merged[key], **value}
+        else:
+            merged[key] = value
+    return FeaturesFile.model_validate(merged)
 
 
 @lru_cache(maxsize=1)

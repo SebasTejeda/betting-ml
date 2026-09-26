@@ -22,10 +22,10 @@ data:
 	$(CLI) data
 
 baselines:
-	@echo "pendiente"
+	$(CLI) exp E01
 
 exp:
-	@echo "pendiente"
+	$(CLI) exp $(ID)
 
 select:
 	@echo "pendiente"
