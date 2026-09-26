@@ -1,0 +1,12 @@
+id: E05
+name: Logística con Elo + forma + calendario
+hypothesis: >-
+  La forma reciente (goles, puntos, tiros y tiros al arco: últimos 6 y EWMA, general y por
+  condición) y el calendario (descanso, jornada, congestión) aportan información sobre el Elo.
+uses_odds: false
+model:
+  type: sklearn
+  kind: logistic
+  groups: [elo, form, schedule]
+  params:
+    C: 0.05

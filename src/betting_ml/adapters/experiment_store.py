@@ -83,7 +83,9 @@ class FileExperimentStore:
         path = self.reports_dir / "experiments" / f"{exp_id}.json"
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(
-            json.dumps(details, indent=2, ensure_ascii=False, default=str) + "\n", encoding="utf-8"
+            json.dumps(details, indent=2, ensure_ascii=False, default=str) + "\n",
+            encoding="utf-8",
+            newline="\n",
         )
         return path
 
