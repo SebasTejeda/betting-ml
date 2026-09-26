@@ -51,3 +51,4 @@ Bitácora del agente. Una línea por tarea: `AAAA-MM-DD · TXXX · qué se hizo 
 - 2026-09-26 · E02 · Logística multinomial solo Elo · val ll 0.9840 (F1 0.9898, F2 0.9759, F3 0.9864), ECE 0.018; mejor hasta ahora sin cuotas. Regla de parada: sin activar.
 - 2026-09-26 · E03 · Poisson (Maher) ξ=0.0019, re-ajuste semanal · val ll 0.9863; no mejora a E02 (0.9840). Regla de parada: 1 experimento sin mejora > 0.002.
 - 2026-09-26 · E04 · Dixon-Coles, ξ elegido en validación interna (0.001/0.0019/0.0019) · val ll 0.9859; no mejora a E02. Regla de parada: 2 seguidos sin mejora.
+- 2026-09-26 · E05 · Logística Elo + forma + calendario (C=0.05 a priori) · val ll 0.9802 (mejora 0.0038 sobre E02). Contador de parada reiniciado.

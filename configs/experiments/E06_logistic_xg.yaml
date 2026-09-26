@@ -1,0 +1,12 @@
+id: E06
+name: Logística con Elo + forma + calendario + xG
+hypothesis: >-
+  El xG (a favor, en contra, diferencia y "suerte" = goles − xG; últimos 6 y EWMA) es la señal
+  más predictiva disponible y mejora a E05.
+uses_odds: false
+model:
+  type: sklearn
+  kind: logistic
+  groups: [elo, form, schedule, xg]
+  params:
+    C: 0.05

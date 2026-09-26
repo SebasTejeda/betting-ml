@@ -1,0 +1,232 @@
+{
+  "exp_id": "E05",
+  "config": {
+    "id": "E05",
+    "name": "Logística con Elo + forma + calendario",
+    "hypothesis": "La forma reciente (goles, puntos, tiros y tiros al arco: últimos 6 y EWMA, general y por condición) y el calendario (descanso, jornada, congestión) aportan información sobre el Elo.",
+    "uses_odds": false,
+    "model": {
+      "type": "sklearn",
+      "kind": "logistic",
+      "groups": [
+        "elo",
+        "form",
+        "schedule"
+      ],
+      "params": {
+        "C": 0.05
+      }
+    },
+    "variants": null,
+    "feature_overrides": {},
+    "notes": null
+  },
+  "spec": {
+    "type": "sklearn",
+    "kind": "logistic",
+    "groups": [
+      "elo",
+      "form",
+      "schedule"
+    ],
+    "params": {
+      "C": 0.05
+    }
+  },
+  "folds": {
+    "F1": {
+      "train": [
+        "2014-15",
+        "2015-16",
+        "2016-17",
+        "2017-18",
+        "2018-19",
+        "2019-20",
+        "2020-21",
+        "2021-22"
+      ],
+      "valid": "2022-23"
+    },
+    "F2": {
+      "train": [
+        "2014-15",
+        "2015-16",
+        "2016-17",
+        "2017-18",
+        "2018-19",
+        "2019-20",
+        "2020-21",
+        "2021-22",
+        "2022-23"
+      ],
+      "valid": "2023-24"
+    },
+    "F3": {
+      "train": [
+        "2014-15",
+        "2015-16",
+        "2016-17",
+        "2017-18",
+        "2018-19",
+        "2019-20",
+        "2020-21",
+        "2021-22",
+        "2022-23",
+        "2023-24"
+      ],
+      "valid": "2024-25"
+    }
+  },
+  "fold_metrics": {
+    "F1": {
+      "log_loss": 0.9800281386537236,
+      "brier": 0.5838956623757241,
+      "rps": 0.20142341384142928,
+      "ece": 0.016507720610581207,
+      "accuracy": 0.531763417305586,
+      "n": 1826
+    },
+    "F2": {
+      "log_loss": 0.9774426457748643,
+      "brier": 0.5827984749066342,
+      "rps": 0.1944413687217715,
+      "ece": 0.01465658144596679,
+      "accuracy": 0.535958904109589,
+      "n": 1752
+    },
+    "F3": {
+      "log_loss": 0.9832498949587875,
+      "brier": 0.5867068532085189,
+      "rps": 0.19965860342886838,
+      "ece": 0.024496100635483124,
+      "accuracy": 0.5308219178082192,
+      "n": 1752
+    }
+  },
+  "mean_metrics": {
+    "log_loss": 0.9802402264624585,
+    "brier": 0.5844669968302924,
+    "rps": 0.19850779533068974,
+    "ece": 0.018553467564010374,
+    "accuracy": 0.5328480797411314,
+    "n": 1776.6666666666667
+  },
+  "models": {
+    "F1": {
+      "name": "logistic[elo+form+schedule]",
+      "uses_odds": false,
+      "kind": "logistic",
+      "groups": [
+        "elo",
+        "form",
+        "schedule"
+      ],
+      "params": {
+        "C": 0.05
+      },
+      "n_features": 61
+    },
+    "F2": {
+      "name": "logistic[elo+form+schedule]",
+      "uses_odds": false,
+      "kind": "logistic",
+      "groups": [
+        "elo",
+        "form",
+        "schedule"
+      ],
+      "params": {
+        "C": 0.05
+      },
+      "n_features": 61
+    },
+    "F3": {
+      "name": "logistic[elo+form+schedule]",
+      "uses_odds": false,
+      "kind": "logistic",
+      "groups": [
+        "elo",
+        "form",
+        "schedule"
+      ],
+      "params": {
+        "C": 0.05
+      },
+      "n_features": 61
+    }
+  },
+  "betting": {
+    "realistic": {
+      "scenario": "avg",
+      "threshold": 0.02,
+      "n_bets": 4324,
+      "hit_rate": 0.33788159111933397,
+      "roi_flat": -0.07265032377428307,
+      "roi_ci_low": -0.11629660037002774,
+      "roi_ci_high": -0.028295501850138776,
+      "max_drawdown_flat": 423.57,
+      "clv_mean": -0.04685931501902188,
+      "clv_n": 4324,
+      "roi_kelly": -0.03262311790946351,
+      "final_bankroll_kelly": 0.0038264805405135234,
+      "max_drawdown_kelly": 1.8182316507821086
+    },
+    "optimistic": {
+      "scenario": "max",
+      "threshold": 0.02,
+      "n_bets": 5132,
+      "hit_rate": 0.3376851130163679,
+      "roi_flat": -0.03652182385035074,
+      "roi_ci_low": -0.07871516952455182,
+      "roi_ci_high": 0.007053293063133214,
+      "max_drawdown_flat": 354.19000000000005,
+      "clv_mean": 0.00014180172491372819,
+      "clv_n": 5131,
+      "roi_kelly": -0.013771923419665185,
+      "final_bankroll_kelly": 0.018145620702084128,
+      "max_drawdown_kelly": 5.222608967486872
+    }
+  },
+  "metrics_by_league": {
+    "D1": {
+      "log_loss": 0.9931613633424924,
+      "brier": 0.5936261942148938,
+      "rps": 0.20236665659988562,
+      "ece": 0.032114860597939054,
+      "accuracy": 0.5163398692810458,
+      "n": 918
+    },
+    "E0": {
+      "log_loss": 0.960266937532994,
+      "brier": 0.5705982517546073,
+      "rps": 0.19717375943643364,
+      "ece": 0.020965583078037295,
+      "accuracy": 0.5482456140350878,
+      "n": 1140
+    },
+    "F1": {
+      "log_loss": 0.9940991975064561,
+      "brier": 0.5924432217731013,
+      "rps": 0.2058607376370403,
+      "ece": 0.012999030687300782,
+      "accuracy": 0.5191532258064516,
+      "n": 992
+    },
+    "I1": {
+      "log_loss": 0.9820176921067919,
+      "brier": 0.5875802637882217,
+      "rps": 0.1927556382517421,
+      "ece": 0.034974005781794666,
+      "accuracy": 0.5307017543859649,
+      "n": 1140
+    },
+    "SP1": {
+      "log_loss": 0.9759576309499025,
+      "brier": 0.5808691090779005,
+      "rps": 0.1962774991431681,
+      "ece": 0.029944719122633877,
+      "accuracy": 0.5447368421052632,
+      "n": 1140
+    }
+  }
+}
