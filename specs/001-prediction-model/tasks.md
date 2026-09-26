@@ -34,7 +34,7 @@ Instrucciones para el agente:
   - Hecho cuando: tests de `plan.md` §7 en verde y cobertura del módulo ≥ 90 %.
   - Commit: `feat(domain): odds math with shin normalization`
 
-- [ ] **T006** Métricas: `domain/metrics.py` (log loss, Brier multiclase, RPS, ECE, accuracy).
+- [x] **T006** Métricas: `domain/metrics.py` (log loss, Brier multiclase, RPS, ECE, accuracy).
   - Hecho cuando: coinciden con `sklearn` donde aplique (tolerancia 1e-9).
   - Commit: `feat(domain): evaluation metrics`
 
