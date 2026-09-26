@@ -16,7 +16,7 @@ Instrucciones para el agente:
   - Hecho cuando: `make setup && make lint && make test` corren sin error (con 1 test trivial).
   - Commit: `chore: project skeleton with tooling`
 
-- [ ] **T002** CI
+- [x] **T002** CI
   - `.github/workflows/ci.yml` según `plan.md` §10.
   - Commit: `ci: lint and test workflow`
 

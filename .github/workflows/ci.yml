@@ -1,0 +1,26 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Instalar dependencias
+        run: uv sync --extra dev
+      - name: Ruff (lint)
+        run: uv run ruff check src tests
+      - name: Ruff (formato)
+        run: uv run ruff format --check src tests
+      - name: Pytest (sin red, con tests/fixtures)
+        run: uv run pytest -m "not network"
