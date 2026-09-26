@@ -67,7 +67,7 @@ Instrucciones para el agente:
   - Commit: `feat(features): elo ratings`
 - [x] **T014** `ml/features/form.py` y `ml/features/xg.py` (ventanas y EWMA, con prior de liga).
   - Commit: `feat(features): rolling form and xg`
-- [ ] **T015** `ml/features/schedule.py` y `ml/features/market.py` (solo cuotas pre-cierre).
+- [x] **T015** `ml/features/schedule.py` y `ml/features/market.py` (solo cuotas pre-cierre).
   - Commit: `feat(features): schedule and market features`
 - [ ] **T016** `ml/features/pipeline.py` que arma todo según `features.yaml` + **tests anti-fuga** completos de `plan.md` §7.
   - Hecho cuando: tests anti-fuga en verde; cobertura de `ml/features/` ≥ 80 %.
