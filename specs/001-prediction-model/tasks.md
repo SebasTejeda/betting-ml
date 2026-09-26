@@ -65,7 +65,7 @@ Instrucciones para el agente:
 
 - [x] **T013** `ml/features/elo.py` (según `plan.md` §4). Test: el Elo de un partido no cambia si se altera su propio resultado.
   - Commit: `feat(features): elo ratings`
-- [ ] **T014** `ml/features/form.py` y `ml/features/xg.py` (ventanas y EWMA, con prior de liga).
+- [x] **T014** `ml/features/form.py` y `ml/features/xg.py` (ventanas y EWMA, con prior de liga).
   - Commit: `feat(features): rolling form and xg`
 - [ ] **T015** `ml/features/schedule.py` y `ml/features/market.py` (solo cuotas pre-cierre).
   - Commit: `feat(features): schedule and market features`
