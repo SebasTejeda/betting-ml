@@ -1,0 +1,201 @@
+{
+  "exp_id": "E01-freq",
+  "config": {
+    "id": "E01",
+    "name": "Líneas base",
+    "hypothesis": "Las frecuencias por liga fijan el piso; el mercado pre-cierre (Avg, sin margen por Shin) es el techo realista y Pinnacle al cierre el techo \"sharp\". Se registra también la normalización proporcional como alternativa (US2).",
+    "uses_odds": true,
+    "model": null,
+    "variants": {
+      "freq": {
+        "type": "frequencies"
+      },
+      "avg": {
+        "type": "market",
+        "source": "avg",
+        "method": "shin"
+      },
+      "avg_prop": {
+        "type": "market",
+        "source": "avg",
+        "method": "proportional"
+      },
+      "psc": {
+        "type": "market",
+        "source": "psc",
+        "method": "shin"
+      }
+    },
+    "feature_overrides": {},
+    "notes": null
+  },
+  "spec": {
+    "type": "frequencies"
+  },
+  "folds": {
+    "F1": {
+      "train": [
+        "2014-15",
+        "2015-16",
+        "2016-17",
+        "2017-18",
+        "2018-19",
+        "2019-20",
+        "2020-21",
+        "2021-22"
+      ],
+      "valid": "2022-23"
+    },
+    "F2": {
+      "train": [
+        "2014-15",
+        "2015-16",
+        "2016-17",
+        "2017-18",
+        "2018-19",
+        "2019-20",
+        "2020-21",
+        "2021-22",
+        "2022-23"
+      ],
+      "valid": "2023-24"
+    },
+    "F3": {
+      "train": [
+        "2014-15",
+        "2015-16",
+        "2016-17",
+        "2017-18",
+        "2018-19",
+        "2019-20",
+        "2020-21",
+        "2021-22",
+        "2022-23",
+        "2023-24"
+      ],
+      "valid": "2024-25"
+    }
+  },
+  "fold_metrics": {
+    "F1": {
+      "log_loss": 1.0630287921431067,
+      "brier": 0.642177443046202,
+      "rps": 0.22916150294934512,
+      "ece": 0.013708667140957143,
+      "accuracy": 0.45728368017524645,
+      "n": 1826
+    },
+    "F2": {
+      "log_loss": 1.0763475102729014,
+      "brier": 0.6514809436032198,
+      "rps": 0.2285927827844981,
+      "ece": 0.014308100173210547,
+      "accuracy": 0.4309360730593607,
+      "n": 1752
+    },
+    "F3": {
+      "log_loss": 1.0784856489514931,
+      "brier": 0.653421464440679,
+      "rps": 0.23292320314583187,
+      "ece": 0.023856085655802273,
+      "accuracy": 0.4200913242009132,
+      "n": 1752
+    }
+  },
+  "mean_metrics": {
+    "log_loss": 1.0726206504558338,
+    "brier": 0.6490266170300335,
+    "rps": 0.23022582962655838,
+    "ece": 0.01729095098998999,
+    "accuracy": 0.43610369247850683,
+    "n": 1776.6666666666667
+  },
+  "models": {
+    "F1": {
+      "name": "frequencies",
+      "uses_odds": false
+    },
+    "F2": {
+      "name": "frequencies",
+      "uses_odds": false
+    },
+    "F3": {
+      "name": "frequencies",
+      "uses_odds": false
+    }
+  },
+  "betting": {
+    "realistic": {
+      "scenario": "avg",
+      "threshold": 0.02,
+      "n_bets": 5116,
+      "hit_rate": 0.21129788897576232,
+      "roi_flat": -0.16148749022673964,
+      "roi_ci_low": -0.21562412040656762,
+      "roi_ci_high": -0.10754754691164974,
+      "max_drawdown_flat": 842.4700000000003,
+      "clv_mean": -0.0805827006900359,
+      "clv_n": 5115,
+      "roi_kelly": -0.20001806284182966,
+      "final_bankroll_kelly": 8.131561477101495e-09,
+      "max_drawdown_kelly": 0.9999999939711838
+    },
+    "optimistic": {
+      "scenario": "max",
+      "threshold": 0.02,
+      "n_bets": 5288,
+      "hit_rate": 0.2157715582450832,
+      "roi_flat": -0.10436270801815434,
+      "roi_ci_low": -0.15820102118003024,
+      "roi_ci_high": -0.05116012670196678,
+      "max_drawdown_flat": 570.4199999999995,
+      "clv_mean": -0.020149811727380035,
+      "clv_n": 5287,
+      "roi_kelly": -0.10934534948958834,
+      "final_bankroll_kelly": 5.656443301344064e-07,
+      "max_drawdown_kelly": 0.999999597221166
+    }
+  },
+  "metrics_by_league": {
+    "D1": {
+      "log_loss": 1.0753117104873746,
+      "brier": 0.65089954339209,
+      "rps": 0.23045845318552083,
+      "ece": 0.018960300169450606,
+      "accuracy": 0.4324618736383442,
+      "n": 918
+    },
+    "E0": {
+      "log_loss": 1.0619954363203,
+      "brier": 0.6422102271852879,
+      "rps": 0.23258015006219862,
+      "ece": 0.0037207602339181522,
+      "accuracy": 0.45087719298245615,
+      "n": 1140
+    },
+    "F1": {
+      "log_loss": 1.0733533501599706,
+      "brier": 0.6499268245167957,
+      "rps": 0.23433809320138463,
+      "ece": 0.011297003400244754,
+      "accuracy": 0.42943548387096775,
+      "n": 992
+    },
+    "I1": {
+      "log_loss": 1.0860067760906231,
+      "brier": 0.6578375357303672,
+      "rps": 0.22762255275483623,
+      "ece": 0.014773391812865522,
+      "accuracy": 0.4131578947368421,
+      "n": 1140
+    },
+    "SP1": {
+      "log_loss": 1.0664325207718408,
+      "brier": 0.6442959556287975,
+      "rps": 0.22663998424907092,
+      "ece": 0.0005433723196881513,
+      "accuracy": 0.4543859649122807,
+      "n": 1140
+    }
+  }
+}

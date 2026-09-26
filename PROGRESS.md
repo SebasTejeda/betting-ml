@@ -6,9 +6,9 @@ Bitácora del agente. Una línea por tarea: `AAAA-MM-DD · TXXX · qué se hizo 
 
 | Referencia | Val log loss (F1–F3) |
 |---|---|
-| Frecuencias por liga | — |
-| Mercado `Avg` pre-cierre (meta "Bueno" + 0.005) | — |
-| Pinnacle al cierre (meta "Excelente") | — |
+| Frecuencias por liga | 1.0726 |
+| Mercado `Avg` pre-cierre, Shin (meta "Bueno" ≤ 0.9701) | 0.9651 |
+| Pinnacle al cierre, Shin (meta "Excelente" < 0.9622) | 0.9622 |
 
 ## Hallazgos
 
@@ -47,3 +47,4 @@ Bitácora del agente. Una línea por tarea: `AAAA-MM-DD · TXXX · qué se hizo 
 - 2026-09-26 · T020 · sklearn_models.py (logística/XGBoost/LightGBM por grupos de features; LightGBM+Optuna en validación interna), calibration.py (temperature scaling, isotónica OvR) y ensemble.py (blend con pesos en validación interna, stacking logístico) · tests en verde
 - 2026-09-26 · T021 · ml/betting.py (EV > umbral, 1 apuesta/partido, escenarios avg/max, stake plano y Kelly 25 % tope 2 %, bootstrap 2000, drawdown, CLV vs Pinnacle cierre sin margen, elección de umbral en F1–F3) + ml/plots.py (calibración, ROI acumulado) · tests en verde
 - 2026-09-26 · T022 · joblib_registry, experiment_store (CSV upsert por id, JSON de detalle, predicciones), factory de modelos desde YAML (incl. ξ elegido en validación interna), caso de uso run_experiment + CLI exp/conclude + make exp ID=… · experimento de juguete end-to-end con tests/fixtures/toy_matches.csv
+- 2026-09-26 · T023 · E01 líneas base en F1–F3: frecuencias 1.0726, mercado Avg (Shin) 0.9651, Avg proporcional 0.9657, Pinnacle cierre 0.9622 · metas en la tabla de arriba

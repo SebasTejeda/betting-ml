@@ -1,0 +1,22 @@
+id: E01
+name: Líneas base
+hypothesis: >-
+  Las frecuencias por liga fijan el piso; el mercado pre-cierre (Avg, sin margen por Shin) es el
+  techo realista y Pinnacle al cierre el techo "sharp". Se registra también la normalización
+  proporcional como alternativa (US2).
+uses_odds: true
+variants:
+  freq:
+    type: frequencies
+  avg:
+    type: market
+    source: avg
+    method: shin
+  avg_prop:
+    type: market
+    source: avg
+    method: proportional
+  psc:
+    type: market
+    source: psc
+    method: shin
