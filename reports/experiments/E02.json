@@ -1,0 +1,210 @@
+{
+  "exp_id": "E02",
+  "config": {
+    "id": "E02",
+    "name": "Logística multinomial con Elo",
+    "hypothesis": "Un Elo bien calibrado (por liga, con ventaja local, multiplicador por margen y regresión entre temporadas) ya supera claramente a las frecuencias por liga.",
+    "uses_odds": false,
+    "model": {
+      "type": "sklearn",
+      "kind": "logistic",
+      "groups": [
+        "elo"
+      ]
+    },
+    "variants": null,
+    "feature_overrides": {},
+    "notes": null
+  },
+  "spec": {
+    "type": "sklearn",
+    "kind": "logistic",
+    "groups": [
+      "elo"
+    ]
+  },
+  "folds": {
+    "F1": {
+      "train": [
+        "2014-15",
+        "2015-16",
+        "2016-17",
+        "2017-18",
+        "2018-19",
+        "2019-20",
+        "2020-21",
+        "2021-22"
+      ],
+      "valid": "2022-23"
+    },
+    "F2": {
+      "train": [
+        "2014-15",
+        "2015-16",
+        "2016-17",
+        "2017-18",
+        "2018-19",
+        "2019-20",
+        "2020-21",
+        "2021-22",
+        "2022-23"
+      ],
+      "valid": "2023-24"
+    },
+    "F3": {
+      "train": [
+        "2014-15",
+        "2015-16",
+        "2016-17",
+        "2017-18",
+        "2018-19",
+        "2019-20",
+        "2020-21",
+        "2021-22",
+        "2022-23",
+        "2023-24"
+      ],
+      "valid": "2024-25"
+    }
+  },
+  "fold_metrics": {
+    "F1": {
+      "log_loss": 0.9897592212735258,
+      "brier": 0.589815035565614,
+      "rps": 0.2036796586297946,
+      "ece": 0.018165843831258317,
+      "accuracy": 0.5339539978094195,
+      "n": 1826
+    },
+    "F2": {
+      "log_loss": 0.9758520491666792,
+      "brier": 0.5819397486173588,
+      "rps": 0.19443138234379032,
+      "ece": 0.017259849405312052,
+      "accuracy": 0.5296803652968036,
+      "n": 1752
+    },
+    "F3": {
+      "log_loss": 0.986370232943991,
+      "brier": 0.588093544831304,
+      "rps": 0.20069359096783201,
+      "ece": 0.01751135966562591,
+      "accuracy": 0.533675799086758,
+      "n": 1752
+    }
+  },
+  "mean_metrics": {
+    "log_loss": 0.9839938344613985,
+    "brier": 0.5866161096714256,
+    "rps": 0.19960154398047228,
+    "ece": 0.01764568430073209,
+    "accuracy": 0.5324367207309938,
+    "n": 1776.6666666666667
+  },
+  "models": {
+    "F1": {
+      "name": "logistic[elo]",
+      "uses_odds": false,
+      "kind": "logistic",
+      "groups": [
+        "elo"
+      ],
+      "params": {},
+      "n_features": 4
+    },
+    "F2": {
+      "name": "logistic[elo]",
+      "uses_odds": false,
+      "kind": "logistic",
+      "groups": [
+        "elo"
+      ],
+      "params": {},
+      "n_features": 4
+    },
+    "F3": {
+      "name": "logistic[elo]",
+      "uses_odds": false,
+      "kind": "logistic",
+      "groups": [
+        "elo"
+      ],
+      "params": {},
+      "n_features": 4
+    }
+  },
+  "betting": {
+    "realistic": {
+      "scenario": "avg",
+      "threshold": 0.08,
+      "n_bets": 2759,
+      "hit_rate": 0.28597317868793043,
+      "roi_flat": -0.10084088437839799,
+      "roi_ci_low": -0.16420976803189566,
+      "roi_ci_high": -0.034658934396520506,
+      "max_drawdown_flat": 290.90000000000026,
+      "clv_mean": -0.0652761274378291,
+      "clv_n": 2758,
+      "roi_kelly": -0.06896763629463995,
+      "final_bankroll_kelly": 0.005396402896020297,
+      "max_drawdown_kelly": 1.2303748530027594
+    },
+    "optimistic": {
+      "scenario": "max",
+      "threshold": 0.08,
+      "n_bets": 3817,
+      "hit_rate": 0.2834686926905947,
+      "roi_flat": -0.09322504584752424,
+      "roi_ci_low": -0.14533200157191511,
+      "roi_ci_high": -0.03931228713649467,
+      "max_drawdown_flat": 371.64999999999964,
+      "clv_mean": -0.01147234600077937,
+      "clv_n": 3816,
+      "roi_kelly": -0.06611861308457677,
+      "final_bankroll_kelly": 0.004156031527930686,
+      "max_drawdown_kelly": 0.9987231434849781
+    }
+  },
+  "metrics_by_league": {
+    "D1": {
+      "log_loss": 0.999065587513695,
+      "brier": 0.5977726379360271,
+      "rps": 0.20403140484148863,
+      "ece": 0.021562821724253563,
+      "accuracy": 0.5054466230936819,
+      "n": 918
+    },
+    "E0": {
+      "log_loss": 0.9638451274985876,
+      "brier": 0.5730588944195835,
+      "rps": 0.19812486505516325,
+      "ece": 0.017035886978823557,
+      "accuracy": 0.5491228070175439,
+      "n": 1140
+    },
+    "F1": {
+      "log_loss": 0.9980000073095731,
+      "brier": 0.5945716992721877,
+      "rps": 0.20702373259483264,
+      "ece": 0.03368367163664401,
+      "accuracy": 0.5262096774193549,
+      "n": 992
+    },
+    "I1": {
+      "log_loss": 0.9864029562554678,
+      "brier": 0.5897417027117319,
+      "rps": 0.19415991691532675,
+      "ece": 0.022362178741599837,
+      "accuracy": 0.5289473684210526,
+      "n": 1140
+    },
+    "SP1": {
+      "log_loss": 0.9777831089781234,
+      "brier": 0.5813486816069174,
+      "rps": 0.19675875971495452,
+      "ece": 0.03573211562406813,
+      "accuracy": 0.5464912280701755,
+      "n": 1140
+    }
+  }
+}

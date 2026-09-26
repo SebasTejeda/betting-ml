@@ -1,0 +1,10 @@
+id: E02
+name: Logística multinomial con Elo
+hypothesis: >-
+  Un Elo bien calibrado (por liga, con ventaja local, multiplicador por margen y regresión entre
+  temporadas) ya supera claramente a las frecuencias por liga.
+uses_odds: false
+model:
+  type: sklearn
+  kind: logistic
+  groups: [elo]

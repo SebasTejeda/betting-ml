@@ -69,7 +69,7 @@ class FileExperimentStore:
         new = pd.DataFrame([{c: row.get(c, "") for c in CSV_COLUMNS}])
         rows = new if rows.empty else pd.concat([rows, new], ignore_index=True)
         self.reports_dir.mkdir(parents=True, exist_ok=True)
-        rows[CSV_COLUMNS].to_csv(self.csv_path, index=False)
+        rows[CSV_COLUMNS].to_csv(self.csv_path, index=False, lineterminator="\n")
 
     def set_conclusion(self, exp_id: str, conclusion: str) -> None:
         rows = self.read_rows()
@@ -77,13 +77,13 @@ class FileExperimentStore:
             raise KeyError(exp_id)
         rows["conclusion"] = rows["conclusion"].astype(object)
         rows.loc[rows["exp_id"] == exp_id, "conclusion"] = conclusion
-        rows[CSV_COLUMNS].to_csv(self.csv_path, index=False)
+        rows[CSV_COLUMNS].to_csv(self.csv_path, index=False, lineterminator="\n")
 
     def save_details(self, exp_id: str, details: dict[str, Any]) -> Path:
         path = self.reports_dir / "experiments" / f"{exp_id}.json"
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(
-            json.dumps(details, indent=2, ensure_ascii=False, default=str), encoding="utf-8"
+            json.dumps(details, indent=2, ensure_ascii=False, default=str) + "\n", encoding="utf-8"
         )
         return path
 
