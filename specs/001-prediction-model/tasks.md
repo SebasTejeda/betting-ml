@@ -88,7 +88,7 @@ Instrucciones para el agente:
 ## Fase 5 — Experimentos
 
 - [x] **T023** E01 (líneas base). Anota en `PROGRESS.md` el log loss del mercado `Avg` y de Pinnacle al cierre: son las metas del nivel "Bueno" y "Excelente".
-- [ ] **T024** E02 → E06, uno por uno, según `experiments.md`. Después de cada uno, lee la tabla y ajusta la hipótesis del siguiente si hace falta (registrándolo).
+- [x] **T024** E02 → E06, uno por uno, según `experiments.md`. Después de cada uno, lee la tabla y ajusta la hipótesis del siguiente si hace falta (registrándolo).
 - [ ] 🔍 **T025** Checkpoint con `ml-reviewer` tras E06 (foco: fuga de información, validación, métricas creíbles). Si un resultado parece "demasiado bueno" (log loss menor que Pinnacle al cierre sin usar cuotas), **se asume bug** hasta demostrar lo contrario.
 - [ ] **T026** E07 → E15 (o hasta la regla de parada). E14 y E15: elige hipótesis según lo aprendido y justifícala.
 - [ ] **T027** `make select`: aplica la regla de `experiments.md` §4 y escribe `models/champion.json`.
