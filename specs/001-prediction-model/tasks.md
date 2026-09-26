@@ -72,7 +72,7 @@ Instrucciones para el agente:
 - [x] **T016** `ml/features/pipeline.py` que arma todo según `features.yaml` + **tests anti-fuga** completos de `plan.md` §7.
   - Hecho cuando: tests anti-fuga en verde; cobertura de `ml/features/` ≥ 80 %.
   - Commit: `feat(features): feature pipeline with leakage tests`
-- [ ] **T017** `ml/validation.py` con los folds F1–F3 y la separación final. Tests de no solapamiento.
+- [x] **T017** `ml/validation.py` con los folds F1–F3 y la separación final. Tests de no solapamiento.
   - Commit: `feat(ml): walk-forward validation`
 
 ## Fase 4 — Infraestructura de modelado
