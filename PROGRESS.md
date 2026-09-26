@@ -16,3 +16,4 @@ Bitácora del agente. Una línea por tarea: `AAAA-MM-DD · TXXX · qué se hizo 
 - 2026-09-26 · T001 · Esqueleto hexagonal, pyproject (uv), Makefile, ruff/mypy/pytest/pre-commit · lint y test en verde (make no disponible en Windows → recetas vía uv, ver decisions.md)
 - 2026-09-26 · T002 · Workflow de GitHub Actions (uv, ruff check/format, pytest sin red; Python 3.11 y 3.12) · listo
 - 2026-09-26 · T003 · Settings (pydantic-settings) + leagues/features/team_aliases YAML con validación de esquema · 10 tests en verde
+- 2026-09-26 · T004 · Entidades (Match, Fixture, OddsTriple, Probabilities, Prediction, ValueBet) y puertos Protocol · tests en verde
