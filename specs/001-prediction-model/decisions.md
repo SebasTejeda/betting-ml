@@ -27,3 +27,14 @@ Decisiones tomadas durante la implementación que no estaban en la spec o que la
 - Decisión: `requires-python = ">=3.11"`; `mypy` sin `python_version` fijo (usa el intérprete activo) porque los stubs de numpy usan sintaxis 3.12+.
 - Motivo: todas las dependencias (xgboost, lightgbm, pyarrow…) tienen wheels para 3.14.
 - Impacto: CI prueba en 3.11 y 3.12.
+
+## 2026-09-26 — Método de acceso a Understat
+- Contexto: las páginas de liga de Understat ya no incrustan `datesData` en el HTML (JSON embebido). El propio `js/league.min.js` de la página pide los datos por AJAX a `/getLeagueData/{liga}/{año}`.
+- Decisión: el adaptador `adapters/understat.py` llama directamente a ese endpoint JSON (cabeceras `X-Requested-With` y `Referer`), con pausa ≥ 3 s entre peticiones, reintentos y caché del JSON crudo tal cual en `data/raw/understat/{liga}/{año}.json`. No se usa `soccerdata`.
+- Motivo: es la misma fuente que consume la web, devuelve JSON limpio (id, equipos, goles, xG, fecha-hora en UTC) y evita una dependencia pesada.
+- Impacto: si Understat cambia el endpoint, solo cambia este adaptador (puerto `XgDataSource`). Alternativa documentada: `soccerdata.Understat`.
+
+## 2026-09-26 — Hallazgos de football-data al inspeccionar los CSV reales
+- Temporadas 2014-15 a 2018-19 no tienen columna `Time`: la hora de inicio se imputa a 15:00 (hora del Reino Unido) y se marca `kickoff_time_imputed=True`. La fecha es la correcta, que es lo que importa para el orden temporal.
+- 2025-26 (holdout) solo tiene cuotas de Pinnacle (`PSH/PSCH`) en ~55 % de los partidos; 2026-27 no las tiene. La línea base "Pinnacle al cierre" del holdout se calcula sobre el subconjunto con `PSC*` y se reporta el tamaño; como referencia de cierre completa se reporta también `AvgC*`.
+- 2026-27 trae `HxG/AxG` en football-data: se guardan como `fd_home_xg/fd_away_xg` (respaldo si Understat falla para la temporada en curso).

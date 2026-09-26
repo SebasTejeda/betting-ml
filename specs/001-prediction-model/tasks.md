@@ -44,7 +44,7 @@ Instrucciones para el agente:
   - Hecho cuando: tests con CSV de ejemplo de una temporada antigua y una nueva en `tests/fixtures/`.
   - Commit: `feat(adapters): football-data source`
 
-- [ ] **T008** Adaptador Understat: xG por partido, con pausa entre peticiones y caché. Inspecciona primero la página real para ver cómo expone los datos hoy; si el scraping directo no funciona, usa `soccerdata`. Documenta en `decisions.md` qué método quedó.
+- [x] **T008** Adaptador Understat: xG por partido, con pausa entre peticiones y caché. Inspecciona primero la página real para ver cómo expone los datos hoy; si el scraping directo no funciona, usa `soccerdata`. Documenta en `decisions.md` qué método quedó.
   - Hecho cuando: test de parseo con JSON de ejemplo guardado en `tests/fixtures/`.
   - Commit: `feat(adapters): understat xg source`
 

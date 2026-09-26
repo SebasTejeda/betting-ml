@@ -20,3 +20,4 @@ Bitácora del agente. Una línea por tarea: `AAAA-MM-DD · TXXX · qué se hizo 
 - 2026-09-26 · T005 · domain/odds.py: implícitas, overround, proporcional, Shin vectorizado (bisección), cuota justa, EV, Kelly 25% con tope 2% · cobertura 100%
 - 2026-09-26 · T006 · domain/metrics.py: log loss, Brier multiclase (0–2), RPS, ECE top-label 10 bins, accuracy · coinciden con sklearn (tol 1e-9)
 - 2026-09-26 · T007 · Adaptador football-data: descarga con caché + metadatos (fecha, sha256), decodificación utf-8/cp1252/latin-1, BbAv/BbMx→avg/max, hora UK→UTC (15:00 imputada si falta) · tests con CSV 2014-15, 2024-25 y 2026-27
+- 2026-09-26 · T008 · Adaptador Understat vía endpoint JSON getLeagueData (sin soccerdata; ver decisions.md), pausa 3 s, caché · test con JSON real recortado
