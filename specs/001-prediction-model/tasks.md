@@ -30,7 +30,7 @@ Instrucciones para el agente:
 - [x] **T004** Entidades y puertos: `domain/entities.py`, `domain/ports.py` (según `plan.md` §6).
   - Commit: `feat(domain): entities and ports`
 
-- [ ] **T005** Matemática de cuotas: `domain/odds.py` (implícitas, overround, normalización proporcional y de Shin, cuota justa, EV, Kelly fraccional con tope).
+- [x] **T005** Matemática de cuotas: `domain/odds.py` (implícitas, overround, normalización proporcional y de Shin, cuota justa, EV, Kelly fraccional con tope).
   - Hecho cuando: tests de `plan.md` §7 en verde y cobertura del módulo ≥ 90 %.
   - Commit: `feat(domain): odds math with shin normalization`
 
