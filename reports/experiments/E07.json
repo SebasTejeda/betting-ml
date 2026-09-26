@@ -1,0 +1,262 @@
+{
+  "exp_id": "E07",
+  "config": {
+    "id": "E07",
+    "name": "XGBoost con features de E06",
+    "hypothesis": "Relaciones no lineales entre Elo, forma, calendario y xG (árboles poco profundos, 300 árboles, learning rate 0.03, parámetros fijados a priori) mejoran sobre la logística de E06.",
+    "uses_odds": false,
+    "model": {
+      "type": "sklearn",
+      "kind": "xgboost",
+      "groups": [
+        "elo",
+        "form",
+        "schedule",
+        "xg"
+      ],
+      "params": {
+        "n_estimators": 300,
+        "learning_rate": 0.03,
+        "max_depth": 3,
+        "min_child_weight": 5,
+        "subsample": 0.8,
+        "colsample_bytree": 0.8
+      }
+    },
+    "variants": null,
+    "feature_overrides": {},
+    "notes": null
+  },
+  "spec": {
+    "type": "sklearn",
+    "kind": "xgboost",
+    "groups": [
+      "elo",
+      "form",
+      "schedule",
+      "xg"
+    ],
+    "params": {
+      "n_estimators": 300,
+      "learning_rate": 0.03,
+      "max_depth": 3,
+      "min_child_weight": 5,
+      "subsample": 0.8,
+      "colsample_bytree": 0.8
+    }
+  },
+  "folds": {
+    "F1": {
+      "train": [
+        "2014-15",
+        "2015-16",
+        "2016-17",
+        "2017-18",
+        "2018-19",
+        "2019-20",
+        "2020-21",
+        "2021-22"
+      ],
+      "valid": "2022-23"
+    },
+    "F2": {
+      "train": [
+        "2014-15",
+        "2015-16",
+        "2016-17",
+        "2017-18",
+        "2018-19",
+        "2019-20",
+        "2020-21",
+        "2021-22",
+        "2022-23"
+      ],
+      "valid": "2023-24"
+    },
+    "F3": {
+      "train": [
+        "2014-15",
+        "2015-16",
+        "2016-17",
+        "2017-18",
+        "2018-19",
+        "2019-20",
+        "2020-21",
+        "2021-22",
+        "2022-23",
+        "2023-24"
+      ],
+      "valid": "2024-25"
+    }
+  },
+  "fold_metrics": {
+    "F1": {
+      "log_loss": 0.9835208501216769,
+      "brier": 0.5853796052127009,
+      "rps": 0.20121328144640813,
+      "ece": 0.02068326166707614,
+      "accuracy": 0.5306681270536692,
+      "n": 1826
+    },
+    "F2": {
+      "log_loss": 0.9743798310487527,
+      "brier": 0.5795846049735865,
+      "rps": 0.1932580674865874,
+      "ece": 0.022438240819755144,
+      "accuracy": 0.5405251141552512,
+      "n": 1752
+    },
+    "F3": {
+      "log_loss": 0.9805266893517235,
+      "brier": 0.5846364946830328,
+      "rps": 0.19853238873844217,
+      "ece": 0.024380459977351762,
+      "accuracy": 0.5371004566210046,
+      "n": 1752
+    }
+  },
+  "mean_metrics": {
+    "log_loss": 0.9794757901740511,
+    "brier": 0.5832002349564401,
+    "rps": 0.1976679125571459,
+    "ece": 0.022500654154727684,
+    "accuracy": 0.5360978992766418,
+    "n": 1776.6666666666667
+  },
+  "models": {
+    "F1": {
+      "name": "xgboost[elo+form+schedule+xg]",
+      "uses_odds": false,
+      "kind": "xgboost",
+      "groups": [
+        "elo",
+        "form",
+        "schedule",
+        "xg"
+      ],
+      "params": {
+        "n_estimators": 300,
+        "learning_rate": 0.03,
+        "max_depth": 3,
+        "min_child_weight": 5,
+        "subsample": 0.8,
+        "colsample_bytree": 0.8
+      },
+      "n_features": 87
+    },
+    "F2": {
+      "name": "xgboost[elo+form+schedule+xg]",
+      "uses_odds": false,
+      "kind": "xgboost",
+      "groups": [
+        "elo",
+        "form",
+        "schedule",
+        "xg"
+      ],
+      "params": {
+        "n_estimators": 300,
+        "learning_rate": 0.03,
+        "max_depth": 3,
+        "min_child_weight": 5,
+        "subsample": 0.8,
+        "colsample_bytree": 0.8
+      },
+      "n_features": 87
+    },
+    "F3": {
+      "name": "xgboost[elo+form+schedule+xg]",
+      "uses_odds": false,
+      "kind": "xgboost",
+      "groups": [
+        "elo",
+        "form",
+        "schedule",
+        "xg"
+      ],
+      "params": {
+        "n_estimators": 300,
+        "learning_rate": 0.03,
+        "max_depth": 3,
+        "min_child_weight": 5,
+        "subsample": 0.8,
+        "colsample_bytree": 0.8
+      },
+      "n_features": 87
+    }
+  },
+  "betting": {
+    "realistic": {
+      "scenario": "avg",
+      "threshold": 0.1,
+      "n_bets": 2291,
+      "hit_rate": 0.300742034046268,
+      "roi_flat": -0.07200785683107813,
+      "roi_ci_low": -0.14295711479703188,
+      "roi_ci_high": 0.0008990615451767402,
+      "max_drawdown_flat": 238.55000000000015,
+      "clv_mean": -0.05405019590156288,
+      "clv_n": 2291,
+      "roi_kelly": -0.035075283289990475,
+      "final_bankroll_kelly": 0.07264303830463541,
+      "max_drawdown_kelly": 2.1602124530456996
+    },
+    "optimistic": {
+      "scenario": "max",
+      "threshold": 0.1,
+      "n_bets": 3331,
+      "hit_rate": 0.29960972680876613,
+      "roi_flat": -0.04633743620534376,
+      "roi_ci_low": -0.10755996697688382,
+      "roi_ci_high": 0.01532550285199638,
+      "max_drawdown_flat": 255.99999999999997,
+      "clv_mean": 0.0031487414958762485,
+      "clv_n": 3330,
+      "roi_kelly": -0.022155805185398027,
+      "final_bankroll_kelly": 0.07049058262151722,
+      "max_drawdown_kelly": 3.3427656347619865
+    }
+  },
+  "metrics_by_league": {
+    "D1": {
+      "log_loss": 0.9937016072891335,
+      "brier": 0.5927167665335048,
+      "rps": 0.2015558309301043,
+      "ece": 0.029124175240876956,
+      "accuracy": 0.5087145969498911,
+      "n": 918
+    },
+    "E0": {
+      "log_loss": 0.9594228983473748,
+      "brier": 0.5692589393178059,
+      "rps": 0.19595576166331427,
+      "ece": 0.03131345333233951,
+      "accuracy": 0.5578947368421052,
+      "n": 1140
+    },
+    "F1": {
+      "log_loss": 0.9958847842386962,
+      "brier": 0.5942582735366999,
+      "rps": 0.20671557486371048,
+      "ece": 0.025300497182133924,
+      "accuracy": 0.5241935483870968,
+      "n": 992
+    },
+    "I1": {
+      "log_loss": 0.9841170765617954,
+      "brier": 0.5873345289743559,
+      "rps": 0.19268597098764756,
+      "ece": 0.02307550648066997,
+      "accuracy": 0.5307017543859649,
+      "n": 1140
+    },
+    "SP1": {
+      "log_loss": 0.9694157396589046,
+      "brier": 0.5758629586294395,
+      "rps": 0.1935882920584737,
+      "ece": 0.028047691085710348,
+      "accuracy": 0.5517543859649123,
+      "n": 1140
+    }
+  }
+}

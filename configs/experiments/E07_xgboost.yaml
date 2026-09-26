@@ -1,0 +1,17 @@
+id: E07
+name: XGBoost con features de E06
+hypothesis: >-
+  Relaciones no lineales entre Elo, forma, calendario y xG (árboles poco profundos, 300 árboles,
+  learning rate 0.03, parámetros fijados a priori) mejoran sobre la logística de E06.
+uses_odds: false
+model:
+  type: sklearn
+  kind: xgboost
+  groups: [elo, form, schedule, xg]
+  params:
+    n_estimators: 300
+    learning_rate: 0.03
+    max_depth: 3
+    min_child_weight: 5
+    subsample: 0.8
+    colsample_bytree: 0.8
