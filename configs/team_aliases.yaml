@@ -7,4 +7,225 @@
 #         understat: [alias, ...]       # nombres tal como aparecen en Understat
 # Si el nombre en una fuente es idéntico al canónico, basta con listar el equipo con `{}`.
 # Todo equipo que no resuelva a un canónico es un ERROR (spec §3).
-teams: {}
+teams:
+  E0:
+    Arsenal: {}
+    Aston Villa: {}
+    Bournemouth: {}
+    Brentford: {}
+    Brighton: {}
+    Burnley: {}
+    Cardiff: {}
+    Chelsea: {}
+    Coventry: {}
+    Crystal Palace: {}
+    Everton: {}
+    Fulham: {}
+    Huddersfield: {}
+    Hull: {}
+    Ipswich: {}
+    Leeds: {}
+    Leicester: {}
+    Liverpool: {}
+    Luton: {}
+    Man City:
+      understat: ['Manchester City']
+    Man United:
+      understat: ['Manchester United']
+    Middlesbrough: {}
+    Newcastle:
+      understat: ['Newcastle United']
+    Norwich: {}
+    "Nott'm Forest":
+      understat: ['Nottingham Forest']
+    QPR:
+      understat: ['Queens Park Rangers']
+    Sheffield United: {}
+    Southampton: {}
+    Stoke: {}
+    Sunderland: {}
+    Swansea: {}
+    Tottenham: {}
+    Watford: {}
+    West Brom:
+      understat: ['West Bromwich Albion']
+    West Ham: {}
+    Wolves:
+      understat: ['Wolverhampton Wanderers']
+  SP1:
+    Alaves: {}
+    Almeria: {}
+    Ath Bilbao:
+      understat: ['Athletic Club']
+    Ath Madrid:
+      understat: ['Atletico Madrid']
+    Barcelona: {}
+    Betis:
+      understat: ['Real Betis']
+    Cadiz: {}
+    Celta:
+      understat: ['Celta Vigo']
+    Cordoba: {}
+    Eibar: {}
+    Elche: {}
+    Espanol:
+      understat: ['Espanyol']
+    Getafe: {}
+    Girona: {}
+    Granada: {}
+    Huesca:
+      understat: ['SD Huesca']
+    La Coruna:
+      understat: ['Deportivo La Coruna']
+    Las Palmas: {}
+    Leganes: {}
+    Levante: {}
+    Malaga: {}
+    Mallorca: {}
+    Osasuna: {}
+    Oviedo:
+      understat: ['Real Oviedo']
+    Real Madrid: {}
+    Santander:
+      understat: ['Racing Santander']
+    Sevilla: {}
+    Sociedad:
+      understat: ['Real Sociedad']
+    Sp Gijon:
+      understat: ['Sporting Gijon']
+    Valencia: {}
+    Valladolid:
+      understat: ['Real Valladolid']
+    Vallecano:
+      understat: ['Rayo Vallecano']
+    Villarreal: {}
+  D1:
+    Augsburg: {}
+    Bayern Munich: {}
+    Bielefeld:
+      understat: ['Arminia Bielefeld']
+    Bochum: {}
+    Darmstadt: {}
+    Dortmund:
+      understat: ['Borussia Dortmund']
+    Ein Frankfurt:
+      understat: ['Eintracht Frankfurt']
+    Elversberg: {}
+    FC Koln:
+      understat: ['FC Cologne']
+    Fortuna Dusseldorf:
+      understat: ['Fortuna Duesseldorf']
+    Freiburg: {}
+    Greuther Furth:
+      understat: ['Greuther Fuerth']
+    Hamburg:
+      understat: ['Hamburger SV']
+    Hannover:
+      understat: ['Hannover 96']
+    Heidenheim:
+      understat: ['FC Heidenheim']
+    Hertha:
+      understat: ['Hertha Berlin']
+    Hoffenheim: {}
+    Holstein Kiel: {}
+    Ingolstadt: {}
+    Leverkusen:
+      understat: ['Bayer Leverkusen']
+    "M'gladbach":
+      understat: ['Borussia M.Gladbach']
+    Mainz:
+      understat: ['Mainz 05']
+    Nurnberg:
+      understat: ['Nuernberg']
+    Paderborn: {}
+    RB Leipzig:
+      understat: ['RasenBallsport Leipzig']
+    Schalke 04: {}
+    St Pauli:
+      understat: ['St. Pauli']
+    Stuttgart:
+      understat: ['VfB Stuttgart']
+    Union Berlin: {}
+    Werder Bremen: {}
+    Wolfsburg: {}
+  I1:
+    Atalanta: {}
+    Benevento: {}
+    Bologna: {}
+    Brescia: {}
+    Cagliari: {}
+    Carpi: {}
+    Cesena: {}
+    Chievo: {}
+    Como: {}
+    Cremonese: {}
+    Crotone: {}
+    Empoli: {}
+    Fiorentina: {}
+    Frosinone: {}
+    Genoa: {}
+    Inter: {}
+    Juventus: {}
+    Lazio: {}
+    Lecce: {}
+    Milan:
+      understat: ['AC Milan']
+    Monza: {}
+    Napoli: {}
+    Palermo: {}
+    Parma:
+      understat: ['Parma', 'Parma Calcio 1913']
+    Pescara: {}
+    Pisa: {}
+    Roma: {}
+    Salernitana: {}
+    Sampdoria: {}
+    Sassuolo: {}
+    Spal:
+      understat: ['SPAL 2013']
+    Spezia: {}
+    Torino: {}
+    Udinese: {}
+    Venezia: {}
+    Verona: {}
+  F1:
+    Ajaccio: {}
+    Ajaccio GFCO:
+      understat: ['GFC Ajaccio']
+    Amiens: {}
+    Angers: {}
+    Auxerre: {}
+    Bastia:
+      understat: ['SC Bastia']
+    Bordeaux: {}
+    Brest: {}
+    Caen: {}
+    Clermont:
+      understat: ['Clermont Foot']
+    Dijon: {}
+    Evian Thonon Gaillard: {}
+    Guingamp: {}
+    Le Havre: {}
+    Le Mans: {}
+    Lens: {}
+    Lille: {}
+    Lorient: {}
+    Lyon: {}
+    Marseille: {}
+    Metz: {}
+    Monaco: {}
+    Montpellier: {}
+    Nancy: {}
+    Nantes: {}
+    Nice: {}
+    Nimes: {}
+    Paris FC: {}
+    Paris SG:
+      understat: ['Paris Saint Germain']
+    Reims: {}
+    Rennes: {}
+    St Etienne:
+      understat: ['Saint-Etienne']
+    Strasbourg: {}
+    Toulouse: {}
+    Troyes: {}

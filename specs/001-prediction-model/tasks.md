@@ -48,7 +48,7 @@ Instrucciones para el agente:
   - Hecho cuando: test de parseo con JSON de ejemplo guardado en `tests/fixtures/`.
   - Commit: `feat(adapters): understat xg source`
 
-- [ ] **T009** Nombres de equipos: `adapters/team_names.py` + completar `team_aliases.yaml` para las 5 ligas y todas las temporadas (descarga los datos para descubrir todos los nombres).
+- [x] **T009** Nombres de equipos: `adapters/team_names.py` + completar `team_aliases.yaml` para las 5 ligas y todas las temporadas (descarga los datos para descubrir todos los nombres).
   - Hecho cuando: 100 % de los equipos de ambas fuentes mapeados; test que falla si aparece uno nuevo sin mapear.
   - Commit: `feat(data): team name normalization`
 
