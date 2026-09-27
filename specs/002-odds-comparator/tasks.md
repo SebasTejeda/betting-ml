@@ -34,7 +34,7 @@ Mismas reglas de ejecución que la spec 001: en orden, una tarea a la vez, `lint
 - [x] **T007** `make backtest-002-final` (una sola vez, lock `HOLDOUT_002_USED.lock`) + `reports/REPORT_002_backtest.md` con el nivel de la spec §5 y la conclusión **seguir / seguir con cambios / no seguir**.
   - Commit: `exp(002): final backtest — <conclusión>`
 
-- [ ] **T008** 🚦 **Puerta.** Si ninguna variante tuvo CLV medio > 0 en validación: detener aquí, escribir el resumen en `PROGRESS.md` y avisar al dueño. Si pasa, continuar. Registrar la decisión en `decisions.md`.
+- [x] **T008** 🚦 **Puerta.** Si ninguna variante tuvo CLV medio > 0 en validación: detener aquí, escribir el resumen en `PROGRESS.md` y avisar al dueño. Si pasa, continuar. Registrar la decisión en `decisions.md`.
 
 ## Fase 2 — Datos en vivo y persistencia
 

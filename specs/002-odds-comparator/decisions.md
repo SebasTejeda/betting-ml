@@ -60,3 +60,18 @@ Formato:
   - Las comprobaciones previas de las predicciones del holdout se hacen **antes** de reclamar el lock.
 - **Lectura honesta de la puerta T008** (validación): pasa en lo formal (CLV medio > 0), pero el escenario `max` no es apostable. La evidencia realista es débil: `b365|none` tiene CLV +0.9 % con un IC que incluye el 0 (+2.9 % en 2022-23, −0.02 % en 2023-24 y −0.4 % en 2024-25). Las variantes con filtro de modelo tienen un IC por encima de 0, pero con ~47 apuestas y sin corregir por comparaciones múltiples.
 - (2ª revisión T006, antes de ver el test) "Seguir con cambios" exige además que **el test por sí solo** tenga CLV medio > 0 con ≥ 5 apuestas con CLV en esa variante Bet365. Sin esto, las variantes con filtro (≈ 47 apuestas en validación, ≈ 8 esperadas en el test) llegaban a "seguir con cambios" más de la mitad de las veces aunque el test no tuviera ventaja. Aun con esta condición, con un test sin ventaja "seguir con cambios" saldría por azar en ~45–50 % de los casos por variante (simulación del revisor): con ~8 apuestas de test ninguna regla puede confirmar nada. Por eso, si la conclusión es "seguir con cambios", la confirmación real es la regla de la spec §5, que se eleva a **condición explícita**: CLV medio > 0 en las primeras 100 apuestas en papel antes de apostar dinero real. El check del nivel Mínimo usa solo variantes Bet365 (no `max`). Antes del lock se verifica que la validación recalculada coincide con el JSON guardado y que las predicciones del holdout tienen las 1 752 filas.
+
+## 2026-09-27 — 🚦 Puerta T008: pasa en lo formal; se pausa para que el dueño confirme los cambios
+- Regla (tasks.md T008): detener si ninguna variante tuvo CLV medio > 0 en validación. **Pasa**: Bet365 sin filtro tuvo +0.9 %, y con los filtros E12 y E06, +3.4 % y +2.9 %.
+- Resultado del test único (2025-26):
+  - La estrategia principal, **Bet365 sin filtro, falló**: 27 apuestas, CLV −3.7 % (IC [−8.0 %, +0.3 %]), ROI −10 %.
+  - **Bet365 con filtro del campeón E12** dio CLV +1.1 % con solo 8 apuestas. Sumando validación y test: 57 apuestas, CLV +3.0 % (IC [+0.4 %, +6.0 %]).
+  - Bet365 con filtro E06: CLV −0.8 % en el test.
+  - Placebos (sin selección) negativos en todas las fuentes. `max`: CLV +2.5 %, pero ROI −52 % (no apostable).
+  - Conclusión pre-registrada: **seguir con cambios**. Con un test sin ventaja habría salido así por azar en ~45 % de los casos: la evidencia es débil y descansa sobre todo en la validación.
+- Cambios propuestos para las fases siguientes (pendientes de confirmación del dueño):
+  1. **Señal de valor = cuota blanda accesible con EV > 1 % sobre Pinnacle *y* modelo de acuerdo** (`p_modelo ≥ p_justa`). "Valor" sin acuerdo del modelo se muestra solo como referencia, no como recomendación.
+  2. **Tope de EV**: un EV > 5 % frente a Pinnacle pre-cierre se marca "revisar" (en validación, esos casos tuvieron CLV negativo: suele ser Pinnacle el precio desactualizado), no "valor".
+  3. **Periodo de prueba obligatorio**: el panel muestra el progreso hacia 100 apuestas en papel con CLV medio > 0 (spec §5). Opción a decidir: bloquear el registro de apuestas `real` hasta cumplirlo.
+  4. El frontend muestra siempre que la evidencia del backtest es débil (enlace a `REPORT_002_backtest.md`).
+- Estado: T008 cerrada con la puerta superada. La ejecución automática se detiene aquí antes de T009 (catálogo de casas, persistencia, llamadas reales a The Odds API y frontend), para que el dueño confirme o ajuste estos cambios.
