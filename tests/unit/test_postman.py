@@ -3,16 +3,6 @@ import json
 from betting_ml.api.main import create_app
 from betting_ml.config import PROJECT_ROOT
 
-# Spec-002 routes join the collection in T018.
-SPEC_002_PENDING = (
-    "/api/v1/odds",
-    "/api/v1/bookmakers",
-    "/api/v1/comparator",
-    "/api/v1/calculator",
-    "/api/v1/bets",
-    "/api/v1/settings",
-    "/api/v1/backtest",
-)
 COLLECTION = PROJECT_ROOT / "postman" / "betting-ml.postman_collection.json"
 
 
@@ -31,12 +21,16 @@ def test_collection_covers_every_endpoint() -> None:
         (r["request"]["method"], "/" + "/".join(r["request"]["url"]["path"])) for r in requests
     }
     routes = {
-        (method.upper(), path.replace("{code}", "E0"))
+        (
+            method.upper(),
+            path.replace("{code}", "E0")
+            .replace("{match_id}", "{{matchId}}")
+            .replace("{bet_id}", "{{betId}}"),
+        )
         for path, ops in create_app().openapi()["paths"].items()
         for method in ops
-        if not path.startswith(SPEC_002_PENDING)
     }
-    assert len(routes) >= 9
+    assert len(routes) >= 24  # 10 of spec 001 + 14 of spec 002
     assert routes <= covered
     assert all(r["event"] and r["event"][0]["listen"] == "test" for r in requests)
     statuses = " ".join(" ".join(r["event"][0]["script"]["exec"]) for r in requests)

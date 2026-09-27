@@ -16,6 +16,18 @@
     {
       "key": "adminApiKey",
       "value": "cambia-esto"
+    },
+    {
+      "key": "appApiKey",
+      "value": "cambia-esto"
+    },
+    {
+      "key": "matchId",
+      "value": ""
+    },
+    {
+      "key": "betId",
+      "value": ""
     }
   ],
   "item": [
@@ -723,6 +735,1024 @@
             },
             "description": ""
           }
+        }
+      ]
+    },
+    {
+      "name": "Spec 002 — Comparador y diario",
+      "description": "Comparador de mejor cuota, calculadora, diario de apuestas y límites. Las escrituras usan X-API-Key = {{appApiKey}} (APP_API_KEY de .env). La señal de valor es EXPERIMENTAL — solo papel.",
+      "item": [
+        {
+          "name": "Cuotas",
+          "item": [
+            {
+              "name": "GET casas",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status 200\", function () { pm.response.to.have.status(200); });",
+                      "pm.test(\"hay una referencia\", function () { pm.expect(pm.response.json().some(function (b) { return b.role === \"reference\"; })).to.be.true; });"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/bookmakers",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "bookmakers"
+                  ]
+                },
+                "description": ""
+              }
+            },
+            {
+              "name": "GET presupuesto de créditos",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status 200\", function () { pm.response.to.have.status(200); });",
+                      "pm.test(\"campos\", function () { pm.expect(pm.response.json()).to.have.property(\"min_reserve\"); });"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/odds/budget",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "odds",
+                    "budget"
+                  ]
+                },
+                "description": ""
+              }
+            },
+            {
+              "name": "POST refrescar cuotas de E0 (≈2 créditos)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"202 o 429\", function () { pm.expect(pm.response.code).to.be.oneOf([202, 429]); });"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "X-API-Key",
+                    "value": "{{appApiKey}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/odds/refresh?league=E0",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "odds",
+                    "refresh"
+                  ],
+                  "query": [
+                    {
+                      "key": "league",
+                      "value": "E0"
+                    }
+                  ]
+                },
+                "description": "CONSUME CRÉDITOS de The Odds API (~2 por liga). Úsalo con moderación."
+              }
+            },
+            {
+              "name": "POST refrescar sin clave (401)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status 401\", function () { pm.response.to.have.status(401); });",
+                      "pm.test(\"formato de error uniforme\", function () { const e = pm.response.json().error; pm.expect(e).to.have.keys(\"code\", \"message\", \"details\"); });"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/odds/refresh",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "odds",
+                    "refresh"
+                  ]
+                },
+                "description": ""
+              }
+            }
+          ]
+        },
+        {
+          "name": "Comparador",
+          "item": [
+            {
+              "name": "GET comparador de una fecha",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status 200\", function () { pm.response.to.have.status(200); });",
+                      "pm.test(\"guarda un partido\", function () { const m = pm.response.json().matches; if (m.length) { pm.collectionVariables.set(\"matchId\", m[0].match_id); } });",
+                      "pm.test(\"señal marcada como experimental\", function () { pm.response.json().matches.forEach(function (m) { if (m.experimental_signal) { pm.expect(m.experimental_signal.label).to.include(\"EXPERIMENTAL\"); } }); });"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/comparator?date={{date}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "comparator"
+                  ],
+                  "query": [
+                    {
+                      "key": "date",
+                      "value": "{{date}}"
+                    }
+                  ]
+                },
+                "description": ""
+              }
+            },
+            {
+              "name": "GET comparador con todas las casas",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status 200\", function () { pm.response.to.have.status(200); });"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/comparator?date={{date}}&accessible_only=false",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "comparator"
+                  ],
+                  "query": [
+                    {
+                      "key": "date",
+                      "value": "{{date}}"
+                    },
+                    {
+                      "key": "accessible_only",
+                      "value": "false"
+                    }
+                  ]
+                },
+                "description": ""
+              }
+            },
+            {
+              "name": "GET detalle de partido",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"200 o 404\", function () { pm.expect(pm.response.code).to.be.oneOf([200, 404]); });"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/comparator/{{matchId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "comparator",
+                    "{{matchId}}"
+                  ]
+                },
+                "description": ""
+              }
+            },
+            {
+              "name": "GET partido inexistente (404)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status 404\", function () { pm.response.to.have.status(404); });",
+                      "pm.test(\"formato de error uniforme\", function () { const e = pm.response.json().error; pm.expect(e).to.have.keys(\"code\", \"message\", \"details\"); });"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/comparator/E0-2030-01-01-a-b",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "comparator",
+                    "E0-2030-01-01-a-b"
+                  ]
+                },
+                "description": ""
+              }
+            },
+            {
+              "name": "GET fecha mal formada (422)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status 422\", function () { pm.response.to.have.status(422); });",
+                      "pm.test(\"formato de error uniforme\", function () { const e = pm.response.json().error; pm.expect(e).to.have.keys(\"code\", \"message\", \"details\"); });"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/comparator?date=10-10-2026",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "comparator"
+                  ],
+                  "query": [
+                    {
+                      "key": "date",
+                      "value": "10-10-2026"
+                    }
+                  ]
+                },
+                "description": ""
+              }
+            }
+          ]
+        },
+        {
+          "name": "Calculadora",
+          "item": [
+            {
+              "name": "POST evaluar cuota manual",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"200 o 404/422\", function () { pm.expect(pm.response.code).to.be.oneOf([200, 404, 422]); });"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "X-API-Key",
+                    "value": "{{appApiKey}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/calculator",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "calculator"
+                  ]
+                },
+                "description": "",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"match_id\": \"{{matchId}}\",\n  \"outcome\": \"away\",\n  \"bookmaker\": \"teapuesto\",\n  \"odds\": 4.4\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "name": "POST casa inexistente (404)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"404\", function () { pm.expect(pm.response.code).to.be.oneOf([404]); });"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "X-API-Key",
+                    "value": "{{appApiKey}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/calculator",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "calculator"
+                  ]
+                },
+                "description": "",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"match_id\": \"{{matchId}}\",\n  \"outcome\": \"away\",\n  \"bookmaker\": \"casa-pirata\",\n  \"odds\": 4.4\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Diario de apuestas",
+          "item": [
+            {
+              "name": "POST apuesta en papel",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status 201\", function () { pm.response.to.have.status(201); });",
+                      "pm.collectionVariables.set(\"betId\", pm.response.json().id);"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "X-API-Key",
+                    "value": "{{appApiKey}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/bets",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "bets"
+                  ]
+                },
+                "description": "",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"match_id\": \"{{matchId}}\",\n  \"outcome\": \"away\",\n  \"bookmaker\": \"teapuesto\",\n  \"odds\": 4.4,\n  \"stake\": 5.0,\n  \"kind\": \"paper\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "name": "POST apuesta real de la señal sin evidencia (409)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"409 o 403\", function () { pm.expect(pm.response.code).to.be.oneOf([409, 403]); });",
+                      "pm.test(\"formato de error uniforme\", function () { const e = pm.response.json().error; pm.expect(e).to.have.keys(\"code\", \"message\", \"details\"); });"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "X-API-Key",
+                    "value": "{{appApiKey}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/bets",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "bets"
+                  ]
+                },
+                "description": "",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"match_id\": \"{{matchId}}\",\n  \"outcome\": \"away\",\n  \"bookmaker\": \"teapuesto\",\n  \"odds\": 4.4,\n  \"stake\": 5.0,\n  \"kind\": \"real\",\n  \"from_experimental_signal\": true\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "name": "POST stake inválido (422)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status 422\", function () { pm.response.to.have.status(422); });",
+                      "pm.test(\"formato de error uniforme\", function () { const e = pm.response.json().error; pm.expect(e).to.have.keys(\"code\", \"message\", \"details\"); });"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "X-API-Key",
+                    "value": "{{appApiKey}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/bets",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "bets"
+                  ]
+                },
+                "description": "",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"match_id\": \"{{matchId}}\",\n  \"outcome\": \"away\",\n  \"bookmaker\": \"teapuesto\",\n  \"odds\": 4.4,\n  \"stake\": 0,\n  \"kind\": \"paper\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "name": "POST apuesta sin clave (401)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status 401\", function () { pm.response.to.have.status(401); });",
+                      "pm.test(\"formato de error uniforme\", function () { const e = pm.response.json().error; pm.expect(e).to.have.keys(\"code\", \"message\", \"details\"); });"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/bets",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "bets"
+                  ]
+                },
+                "description": "",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"match_id\": \"{{matchId}}\",\n  \"outcome\": \"away\",\n  \"bookmaker\": \"teapuesto\",\n  \"odds\": 4.4,\n  \"stake\": 5.0,\n  \"kind\": \"paper\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "name": "GET apuestas en papel",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status 200\", function () { pm.response.to.have.status(200); });"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/bets?kind=paper",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "bets"
+                  ],
+                  "query": [
+                    {
+                      "key": "kind",
+                      "value": "paper"
+                    }
+                  ]
+                },
+                "description": ""
+              }
+            },
+            {
+              "name": "PATCH nota",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status 200\", function () { pm.response.to.have.status(200); });"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "X-API-Key",
+                    "value": "{{appApiKey}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/bets/{{betId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "bets",
+                    "{{betId}}"
+                  ]
+                },
+                "description": "",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"note\": \"desde Postman\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "name": "DELETE apuesta pendiente",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status 204\", function () { pm.response.to.have.status(204); });"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "X-API-Key",
+                    "value": "{{appApiKey}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/bets/{{betId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "bets",
+                    "{{betId}}"
+                  ]
+                },
+                "description": ""
+              }
+            },
+            {
+              "name": "DELETE apuesta inexistente (404)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status 404\", function () { pm.response.to.have.status(404); });",
+                      "pm.test(\"formato de error uniforme\", function () { const e = pm.response.json().error; pm.expect(e).to.have.keys(\"code\", \"message\", \"details\"); });"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "X-API-Key",
+                    "value": "{{appApiKey}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/bets/999999",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "bets",
+                    "999999"
+                  ]
+                },
+                "description": ""
+              }
+            },
+            {
+              "name": "POST liquidar pendientes",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status 200\", function () { pm.response.to.have.status(200); });"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "X-API-Key",
+                    "value": "{{appApiKey}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/bets/settle",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "bets",
+                    "settle"
+                  ]
+                },
+                "description": ""
+              }
+            },
+            {
+              "name": "GET resumen (real)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status 200\", function () { pm.response.to.have.status(200); });",
+                      "pm.test(\"progreso de la señal\", function () { pm.expect(pm.response.json().experimental_signal.target).to.eql(100); });"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/bets/summary",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "bets",
+                    "summary"
+                  ]
+                },
+                "description": ""
+              }
+            }
+          ]
+        },
+        {
+          "name": "Ajustes y backtest",
+          "item": [
+            {
+              "name": "GET ajustes",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status 200\", function () { pm.response.to.have.status(200); });"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/settings",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "settings"
+                  ]
+                },
+                "description": ""
+              }
+            },
+            {
+              "name": "PUT ajustes",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status 200\", function () { pm.response.to.have.status(200); });"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "X-API-Key",
+                    "value": "{{appApiKey}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/settings",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "settings"
+                  ]
+                },
+                "description": "",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"bankroll_initial\": 500.0,\n  \"currency\": \"PEN\",\n  \"monthly_loss_limit\": 100.0,\n  \"max_stake_pct\": 0.02,\n  \"kelly_fraction\": 0.25,\n  \"min_edge\": 0.02\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "name": "PUT ajustes inválidos (422)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status 422\", function () { pm.response.to.have.status(422); });",
+                      "pm.test(\"formato de error uniforme\", function () { const e = pm.response.json().error; pm.expect(e).to.have.keys(\"code\", \"message\", \"details\"); });"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "X-API-Key",
+                    "value": "{{appApiKey}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/settings",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "settings"
+                  ]
+                },
+                "description": "",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"bankroll_initial\": 500.0\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "name": "GET backtest Pinnacle",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"200 o 404\", function () { pm.expect(pm.response.code).to.be.oneOf([200, 404]); });"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/backtest/pinnacle",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "backtest",
+                    "pinnacle"
+                  ]
+                },
+                "description": ""
+              }
+            }
+          ]
         }
       ]
     }

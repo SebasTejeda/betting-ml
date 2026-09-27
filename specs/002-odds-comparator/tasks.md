@@ -56,7 +56,7 @@ Mismas reglas de ejecución que la spec 001: en orden, una tarea a la vez, `lint
 - [x] **T015** `settle_bets` con CLV y `make settle`.
 - [x] **T016** Routers nuevos según `contracts/api.md`, con `X-API-Key` en escrituras y errores uniformes.
 - [x] **T017** Tests de API de todos los endpoints nuevos (incluidos 403/409/429).
-- [ ] **T018** Actualizar la colección de Postman con una carpeta "Spec 002".
+- [x] **T018** Actualizar la colección de Postman con una carpeta "Spec 002".
   - Commits: uno por tarea.
 
 - [ ] 🔍 **T019** Checkpoint `ml-reviewer` del backend (límites no evitables, dinero en `Decimal`, créditos, contrato).
