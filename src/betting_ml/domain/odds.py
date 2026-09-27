@@ -13,10 +13,12 @@ import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
 FloatArray = NDArray[np.float64]
-NormalizationMethod = Literal["shin", "proportional"]
+NormalizationMethod = Literal["shin", "proportional", "power"]
 
 _SHIN_MAX_Z = 0.5
 _SHIN_ITERATIONS = 80
+_POWER_MAX_K = 5.0
+_POWER_ITERATIONS = 100
 
 
 def _as_2d(odds: ArrayLike) -> tuple[FloatArray, bool]:
@@ -102,9 +104,44 @@ def normalize_shin(odds: ArrayLike) -> FloatArray:
     return _restore(probs, single)
 
 
+def normalize_power(odds: ArrayLike) -> FloatArray:
+    """Power method: ``p_i = (1 / o_i) ** k`` with ``k`` such that the probabilities sum to 1.
+
+    With a positive margin ``k > 1``, which shrinks longshots more than favourites."""
+    arr, single = _as_2d(odds)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        implied = 1.0 / arr
+    n = arr.shape[0]
+    lo = np.full(n, 1.0 / _POWER_MAX_K)
+    hi = np.full(n, _POWER_MAX_K)
+    for _ in range(_POWER_ITERATIONS):
+        mid = (lo + hi) / 2.0
+        total = (implied ** mid[:, None]).sum(axis=1)
+        # sum(implied ** k) decreases with k (implied < 1).
+        go_up = total > 1.0
+        lo = np.where(go_up, mid, lo)
+        hi = np.where(go_up, hi, mid)
+    k = (lo + hi) / 2.0
+    with np.errstate(invalid="ignore"):
+        probs = implied ** k[:, None]
+        probs = probs / probs.sum(axis=1, keepdims=True)
+    probs[~np.isfinite(implied).all(axis=1)] = np.nan
+    return _restore(probs, single)
+
+
+def exchange_net_odds(odds: ArrayLike, commission: float = 0.05) -> FloatArray:
+    """Exchange odds net of the commission charged on winnings: ``1 + (o - 1)(1 - c)``."""
+    if not 0 <= commission < 1:
+        raise ValueError("commission must be in [0, 1)")
+    arr = np.asarray(odds, dtype=float)
+    return 1.0 + (arr - 1.0) * (1.0 - commission)
+
+
 def normalize(odds: ArrayLike, method: NormalizationMethod = "shin") -> FloatArray:
     if method == "shin":
         return normalize_shin(odds)
+    if method == "power":
+        return normalize_power(odds)
     if method == "proportional":
         return normalize_proportional(odds)
     raise ValueError(f"unknown normalization method {method!r}")

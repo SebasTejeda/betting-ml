@@ -95,3 +95,4 @@ Spec activa: [`specs/002-odds-comparator/`](specs/002-odds-comparator/). Una lí
 - 2026-09-27 · T001 · Spec 002 integrada: constitución IX–XI, CLAUDE.md con spec activa y reglas nuevas, /next y /status leen la spec activa, sección en PROGRESS, ml-reviewer con bloque de la spec 002
 - 2026-09-27 · T002 · No era bug: el 26/09 las 5 ligas no tenían partidos (parón; fixtures.csv solo con E2/E3/EC/SC1/SP2, confirmado con el calendario de Understat). Test de regresión con extracto real (dd/mm, UK→UTC, filtro Lima)
 - 2026-09-27 · T003 · README: línea sobre la regla de parada aplicada por familia con enlace a decisions.md
+- 2026-09-27 · T004 · domain: método de potencia y comisión de exchange en odds.py; value.py (probabilidades justas, EV, veredicto valor/justo/evitar, Kelly en Decimal con tope, referencia Pinnacle → Betfair Exchange → None); clv.py · tests a mano y de propiedad (suman 1; stake ≥ 0 y ≤ tope)

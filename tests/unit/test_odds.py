@@ -83,7 +83,7 @@ def test_normalize_dispatch() -> None:
     np.testing.assert_allclose(normalize(ODDS, "proportional"), normalize_proportional(ODDS))
     np.testing.assert_allclose(normalize(ODDS), normalize_shin(ODDS))
     with pytest.raises(ValueError):
-        normalize(ODDS, "power")  # type: ignore[arg-type]
+        normalize(ODDS, "logit")  # type: ignore[arg-type]
 
 
 def test_invalid_shape() -> None:
