@@ -343,7 +343,10 @@ class PredictMatches:
         fixture = Fixture(
             make_match_id(league, day, home, away), league, kickoff, home, away, odds, odds
         )
-        return self._predict([fixture], min_edge)[0]
+        prediction = self._predict([fixture], min_edge)[0]
+        if prediction.market is not None:
+            prediction.market.source = "request"
+        return prediction
 
     def team_ratings(self, league: str) -> dict[str, float]:
         self.check_league(league)

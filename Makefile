@@ -40,7 +40,7 @@ train-prod:
 	$(CLI) train-prod
 
 serve:
-	@echo "pendiente"
+	$(CLI) serve --host 0.0.0.0 --port 8000
 
 track:
 	$(CLI) track

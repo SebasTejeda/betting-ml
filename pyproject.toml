@@ -60,6 +60,9 @@ extend-exclude = ["notebooks"]
 select = ["E", "F", "W", "I", "B", "UP", "N", "SIM", "RUF"]
 ignore = ["E501", "N803", "N806", "RUF001", "RUF002", "RUF003"]
 
+[tool.ruff.lint.flake8-bugbear]
+extend-immutable-calls = ["fastapi.Depends", "fastapi.Query", "fastapi.Header", "fastapi.params.Depends", "fastapi.params.Query"]
+
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["N802"]
 

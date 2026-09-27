@@ -3,8 +3,12 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
+from dataclasses import dataclass
 from functools import cached_property
 from pathlib import Path
+
+import pandas as pd
 
 from betting_ml.adapters.experiment_store import FileExperimentStore
 from betting_ml.adapters.fixtures import FootballDataFixtures
@@ -17,6 +21,7 @@ from betting_ml.adapters.team_names import TeamNameResolver
 from betting_ml.adapters.tracking_store import ParquetTrackingStore
 from betting_ml.adapters.understat import UnderstatSource
 from betting_ml.application.build_dataset import BuildDataset
+from betting_ml.application.catalog import RefreshData
 from betting_ml.application.evaluate_holdout import EvaluateHoldout
 from betting_ml.application.generate_report import GenerateReport
 from betting_ml.application.predict_matches import PredictMatches
@@ -34,6 +39,18 @@ from betting_ml.config import (
     load_leagues,
     load_team_aliases,
 )
+
+
+@dataclass
+class ApiServices:
+    """What the API needs (injected into FastAPI's app.state)."""
+
+    predictor: PredictMatches
+    tracking: TrackPredictions
+    leagues: LeaguesFile
+    read_experiments: Callable[[], pd.DataFrame]
+    admin_api_key: str
+    refresher: RefreshData
 
 
 class Container:
@@ -184,4 +201,27 @@ class Container:
             features=self.features,
             timezone=self.settings.timezone,
             on_predictions=self.tracking.record,
+        )
+
+    def _refresh_fixtures(self) -> int:
+        return len(self.fixtures.fetch_fixtures(force_refresh=True))
+
+    def _rebuild_current_season(self) -> None:
+        """Re-download the current season, rebuild the datasets and the serving history."""
+        self.build_dataset().run()
+        trainer = self.train_production()
+        trainer.repository.save("history", trainer.history())
+
+    def api_services(self) -> ApiServices:
+        return ApiServices(
+            predictor=self.predictor,
+            tracking=self.tracking,
+            leagues=self.leagues,
+            read_experiments=self.experiment_store.read_rows,
+            admin_api_key=self.settings.admin_api_key,
+            refresher=RefreshData(
+                refresh_fixtures=self._refresh_fixtures,
+                rebuild=self._rebuild_current_season,
+                on_done=self.predictor.reset,
+            ),
         )

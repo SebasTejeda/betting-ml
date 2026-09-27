@@ -140,5 +140,13 @@ def track() -> None:
     typer.echo(f"Resumen: {tracking.summary().to_dict()}")
 
 
+@app.command()
+def serve(host: str = "127.0.0.1", port: int = 8000, reload: bool = False) -> None:
+    """Levanta la API REST (Swagger en /docs)."""
+    import uvicorn
+
+    uvicorn.run("betting_ml.api.main:app", host=host, port=port, reload=reload)
+
+
 if __name__ == "__main__":  # pragma: no cover
     app()
