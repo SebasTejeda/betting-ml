@@ -245,6 +245,12 @@ class PredictMatches:
             self._cache[key] = frame
         return self._cache[key]
 
+    def predict_fixtures(
+        self, fixtures: Sequence[Fixture], min_edge: float = DEFAULT_MIN_EDGE
+    ) -> list[MatchPrediction]:
+        """Model opinion for arbitrary fixtures (used by the spec-002 comparator)."""
+        return self._predict(fixtures, min_edge)
+
     def _predict(self, fixtures: Sequence[Fixture], min_edge: float) -> list[MatchPrediction]:
         if not fixtures:
             return []

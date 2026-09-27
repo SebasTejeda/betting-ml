@@ -33,6 +33,7 @@ from betting_ml.adapters.understat import UnderstatSource
 from betting_ml.application.backtest_pinnacle import BacktestPinnacle
 from betting_ml.application.build_dataset import BuildDataset
 from betting_ml.application.catalog import RefreshData
+from betting_ml.application.compare_matches import CompareMatches, EvaluateManualOdds
 from betting_ml.application.evaluate_holdout import EvaluateHoldout
 from betting_ml.application.generate_report import GenerateReport
 from betting_ml.application.predict_matches import PredictMatches
@@ -301,3 +302,24 @@ class Container:
             mapper=self.map_odds_events,
             min_reserve=self.settings.odds_min_credits_reserve,
         )
+
+    def model_opinion(self, fixtures: Any) -> dict[str, Any]:
+        """Spec-001 model probabilities as a second opinion for the comparator."""
+        return {
+            p.match_id: (p.probabilities, p.model_version)
+            for p in self.predictor.predict_fixtures(fixtures)
+        }
+
+    @cached_property
+    def compare_matches(self) -> CompareMatches:
+        return CompareMatches(
+            repository=self.odds_repository,
+            bookmakers=self.bookmakers,
+            settings=self.settings_repository,
+            model_opinion=self.model_opinion,
+            timezone=self.settings.timezone,
+        )
+
+    @cached_property
+    def evaluate_manual_odds(self) -> EvaluateManualOdds:
+        return EvaluateManualOdds(self.compare_matches)
