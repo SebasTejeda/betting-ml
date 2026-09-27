@@ -1,0 +1,16 @@
+.git
+.venv
+.env
+.pytest_cache
+.ruff_cache
+.mypy_cache
+.coverage
+**/__pycache__
+data
+models
+reports
+notebooks
+tests
+postman
+specs
+.claude
