@@ -59,6 +59,20 @@ from betting_ml.config import (
 
 
 @dataclass
+class JournalServices:
+    """Spec-002 use cases used by the API."""
+
+    refresh_odds: RefreshOdds
+    compare: CompareMatches
+    calculator: EvaluateManualOdds
+    bets: ManageBets
+    settle: SettleBets
+    bookmakers: BookmakersFile
+    app_api_key: str
+    reports_path: Path
+
+
+@dataclass
 class ApiServices:
     """What the API needs (injected into FastAPI's app.state)."""
 
@@ -68,6 +82,7 @@ class ApiServices:
     read_experiments: Callable[[], pd.DataFrame]
     admin_api_key: str
     refresher: RefreshData
+    journal: JournalServices | None = None
 
 
 class Container:
@@ -241,6 +256,16 @@ class Container:
                 refresh_fixtures=self._refresh_fixtures,
                 rebuild=self._rebuild_current_season,
                 on_done=self.predictor.reset,
+            ),
+            journal=JournalServices(
+                refresh_odds=self.refresh_odds,
+                compare=self.compare_matches,
+                calculator=self.evaluate_manual_odds,
+                bets=self.manage_bets,
+                settle=self.settle_bets,
+                bookmakers=self.bookmakers,
+                app_api_key=self.settings.app_api_key,
+                reports_path=self.settings.reports_path,
             ),
         )
 

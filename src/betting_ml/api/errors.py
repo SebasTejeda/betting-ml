@@ -10,12 +10,25 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from betting_ml.adapters.the_odds_api import OddsApiError
+from betting_ml.application.compare_matches import (
+    BookmakerNotFoundError,
+    MatchNotFoundError,
+    NoReferenceError,
+)
+from betting_ml.application.manage_bets import (
+    BetNotFoundError,
+    BetNotPendingError,
+    LimitWarningError,
+    MonthlyLimitReachedError,
+)
 from betting_ml.application.predict_matches import (
     InvalidMatchError,
     ModelNotAvailableError,
     UnknownLeagueError,
     UnknownTeamError,
 )
+from betting_ml.application.refresh_odds import OddsBudgetLowError
 
 
 class ApiError(Exception):
@@ -58,6 +71,51 @@ def register_error_handlers(app: FastAPI) -> None:
     @app.exception_handler(ModelNotAvailableError)
     async def _model(_: Request, exc: ModelNotAvailableError) -> JSONResponse:
         return error_response(503, "MODEL_NOT_AVAILABLE", str(exc))
+
+    @app.exception_handler(OddsBudgetLowError)
+    async def _budget(_: Request, exc: OddsBudgetLowError) -> JSONResponse:
+        details = {"credits_remaining": exc.remaining, "min_reserve": exc.reserve}
+        return error_response(429, "ODDS_BUDGET_LOW", str(exc), details)
+
+    @app.exception_handler(OddsApiError)
+    async def _odds_api(_: Request, exc: OddsApiError) -> JSONResponse:
+        return error_response(502, "ODDS_API_ERROR", str(exc), {"status": exc.status})
+
+    @app.exception_handler(MonthlyLimitReachedError)
+    async def _monthly(_: Request, exc: MonthlyLimitReachedError) -> JSONResponse:
+        code = exc.check.code.value if exc.check.code else "MONTHLY_LIMIT_REACHED"
+        return error_response(
+            403, code, " ".join(exc.check.messages), {"messages": list(exc.check.messages)}
+        )
+
+    @app.exception_handler(LimitWarningError)
+    async def _warning(_: Request, exc: LimitWarningError) -> JSONResponse:
+        code = exc.check.code.value if exc.check.code else "LIMIT_WARNING"
+        details = {
+            "messages": list(exc.check.messages),
+            "hint": "Repite la petición con confirm: true",
+        }
+        return error_response(409, code, " ".join(exc.check.messages), details)
+
+    @app.exception_handler(BetNotFoundError)
+    async def _bet_missing(_: Request, exc: BetNotFoundError) -> JSONResponse:
+        return error_response(404, "BET_NOT_FOUND", str(exc), {"id": exc.bet_id})
+
+    @app.exception_handler(BetNotPendingError)
+    async def _bet_not_pending(_: Request, exc: BetNotPendingError) -> JSONResponse:
+        return error_response(409, "BET_NOT_PENDING", str(exc))
+
+    @app.exception_handler(MatchNotFoundError)
+    async def _match_missing(_: Request, exc: MatchNotFoundError) -> JSONResponse:
+        return error_response(404, "MATCH_NOT_FOUND", str(exc), {"match_id": exc.match_id})
+
+    @app.exception_handler(BookmakerNotFoundError)
+    async def _book_missing(_: Request, exc: BookmakerNotFoundError) -> JSONResponse:
+        return error_response(404, "BOOKMAKER_NOT_FOUND", str(exc), {"bookmaker": exc.key})
+
+    @app.exception_handler(NoReferenceError)
+    async def _no_reference(_: Request, exc: NoReferenceError) -> JSONResponse:
+        return error_response(422, "NO_REFERENCE", str(exc), {"match_id": exc.match_id})
 
     @app.exception_handler(RequestValidationError)
     async def _validation(_: Request, exc: RequestValidationError) -> JSONResponse:

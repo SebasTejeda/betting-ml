@@ -235,6 +235,11 @@ class ManageBets:
         )
         return self.bets.add(bet)
 
+    def search(
+        self, filters: BetFilters | None = None, page: int = 1, size: int = 50
+    ) -> tuple[list[Bet], int]:
+        return self.bets.search(filters, page, size)
+
     def get(self, bet_id: int) -> Bet:
         bet = self.bets.get(bet_id)
         if bet is None:
