@@ -27,3 +27,9 @@ Formato:
 - Decisión: usarlo también como test de la estrategia de referencia, con su propio lock.
 - Motivo: la estrategia no aprende parámetros del modelo; su único hiperparámetro (umbral) se fija en F1–F3.
 - Impacto: la variante con filtro del modelo sí hereda que el campeón se eligió sin ver 2025-26, así que sigue siendo válida.
+
+## 2026-09-27 — `/matches` vacío del sábado 26/09/2026 no era un bug (T002)
+- Contexto: spec §7 pedía verificar si el filtro de fecha de `/matches` fallaba.
+- Hallazgo: el `fixtures.csv` real descargado ese día (`data/raw/fixtures/fixtures_20260927T003301.csv`) solo contiene E2, E3, EC, SC1 y SP2. Las 5 ligas soportadas jugaron por última vez el 20/09 y el calendario de Understat (descargado el 26/09) no tiene partidos suyos entre el 25 y el 28/09 (parón entre jornadas). El parseo `dd/mm/yyyy`, la conversión hora UK → UTC y el filtro por fecha en `America/Lima` son correctos.
+- Decisión: no se cambia la lógica; se agrega un test de regresión con un extracto del CSV real (`tests/unit/test_fixtures_20260926.py`).
+- Impacto: la lógica de fechas de fixtures se puede reutilizar en la spec 002.
