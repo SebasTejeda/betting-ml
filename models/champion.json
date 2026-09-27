@@ -1,6 +1,6 @@
 {
-  "created_at": "2026-09-27T00:02:49+00:00",
-  "git_commit": "c498f99-dirty",
+  "created_at": "2026-09-27T00:17:13+00:00",
+  "git_commit": "b12e5f5",
   "rule": "experiments.md §4: candidatos con ECE < 0.03 y ningún fold peor que E02 por más de 0.01; gana el menor log loss medio F1–F3; un candidato más simple a menos de 0.001 gana (logística < Poisson/DC < blend < boosting < stacking). Solo métricas de validación; el holdout no se usa.",
   "champion": {
     "experiment_id": "E12",
