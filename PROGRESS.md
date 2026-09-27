@@ -71,3 +71,4 @@ Bitácora del agente. Una línea por tarea: `AAAA-MM-DD · TXXX · qué se hizo 
 - 2026-09-26 · T035 · tests de API con TestClient (12 tests: todos los endpoints, 401/404/422/503, lista vacía con mensaje, suma de probabilidades = 1, CORS localhost, refresh en segundo plano)
 - 2026-09-26 · T036 · postman/betting-ml.postman_collection.json: 18 requests (todos los endpoints, casos inválidos 401/404/422, lista vacía), variable baseUrl y tests (status, suma de probabilidades ≈ 1, formato de error) · test que verifica cobertura de rutas
 - 2026-09-26 · T037 · Dockerfile (python:3.12-slim, uv --frozen, usuario no root, healthcheck) + .dockerignore + make docker · Docker no instalado aquí: validado con test estático, build pendiente (decisions.md)
+- 2026-09-26 · T038 · README final: resultados (nivel Bueno, no concluyente; peor que el mercado), arquitectura hexagonal en texto, instalación, comandos make/uv, Postman, limitaciones y aviso de juego responsable
