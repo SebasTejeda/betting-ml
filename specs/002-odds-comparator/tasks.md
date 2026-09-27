@@ -55,7 +55,7 @@ Mismas reglas de ejecución que la spec 001: en orden, una tarea a la vez, `lint
 - [x] **T014** `domain/limits.py` + `manage_bets` (US5, US6) con tests exhaustivos de límites (incluido el cambio de mes en hora de Lima y la regla de subir el límite), `from_experimental_signal` y la confirmación 409 `EXPERIMENTAL_SIGNAL_UNPROVEN` para apuestas reales de la señal sin evidencia; contador de progreso 100 apuestas en papel.
 - [x] **T015** `settle_bets` con CLV y `make settle`.
 - [x] **T016** Routers nuevos según `contracts/api.md`, con `X-API-Key` en escrituras y errores uniformes.
-- [ ] **T017** Tests de API de todos los endpoints nuevos (incluidos 403/409/429).
+- [x] **T017** Tests de API de todos los endpoints nuevos (incluidos 403/409/429).
 - [ ] **T018** Actualizar la colección de Postman con una carpeta "Spec 002".
   - Commits: uno por tarea.
 

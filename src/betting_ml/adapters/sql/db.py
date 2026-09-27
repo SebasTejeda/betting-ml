@@ -6,6 +6,7 @@ from pathlib import Path
 
 from sqlalchemy import Engine, create_engine, event
 from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.pool import StaticPool
 
 from betting_ml.config import PROJECT_ROOT
 
@@ -25,7 +26,14 @@ def resolve_url(url: str) -> str:
 
 
 def make_engine(url: str) -> Engine:
-    engine = create_engine(resolve_url(url), future=True)
+    resolved = resolve_url(url)
+    kwargs: dict[str, object] = {}
+    if resolved.startswith("sqlite"):
+        # FastAPI runs endpoints in a thread pool; an in-memory DB must be one shared connection.
+        kwargs["connect_args"] = {"check_same_thread": False}
+        if resolved == "sqlite:///:memory:":
+            kwargs["poolclass"] = StaticPool
+    engine = create_engine(resolved, future=True, **kwargs)  # type: ignore[arg-type]
     if engine.dialect.name == "sqlite":
 
         @event.listens_for(engine, "connect")
