@@ -119,5 +119,15 @@ def report() -> None:
     typer.echo(f"Informe escrito en {Container().generate_report().run()}")
 
 
+@app.command("train-prod")
+def train_prod(verbose: bool = False) -> None:
+    """Re-entrena campeón y campeón sin cuotas con todos los datos disponibles."""
+    from betting_ml.container import Container
+
+    _setup_logging(verbose)
+    versions = Container().train_production().run()
+    typer.echo(f"Modelos de producción: {versions}")
+
+
 if __name__ == "__main__":  # pragma: no cover
     app()

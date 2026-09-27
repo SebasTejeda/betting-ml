@@ -163,3 +163,50 @@ def test_report_is_generated_from_results(use_case: EvaluateHoldout, tmp_path: P
     ):
         assert section in text
     assert "No se corrieron" in text
+
+
+def test_train_production_after_holdout(use_case: EvaluateHoldout, tmp_path: Path) -> None:
+    from betting_ml.adapters.joblib_registry import JoblibModelRegistry
+    from betting_ml.application.train_production import (
+        HoldoutNotEvaluatedError,
+        TrainProduction,
+        production_spec,
+    )
+
+    registry = JoblibModelRegistry(tmp_path / "models")
+    champion = json.loads(use_case.champion_path.read_text(encoding="utf-8"))
+    for key in ("champion", "champion_no_odds"):
+        champion[key].update(
+            {"model": "m", "uses_odds": key == "champion", "validation_metrics": {}}
+        )
+    use_case.champion_path.write_text(json.dumps(champion), encoding="utf-8")
+    trainer = TrainProduction(
+        repository=use_case.repository,
+        registry=registry,
+        leagues=use_case.leagues,
+        features=use_case.features,
+        champion_path=use_case.champion_path,
+        reports_dir=use_case.reports_dir,
+        production_path=tmp_path / "models" / "production.json",
+        git_commit=lambda: "abc",
+    )
+    with pytest.raises(HoldoutNotEvaluatedError):
+        trainer.run()
+    use_case.run()
+    versions = trainer.run()
+    assert versions["champion"].startswith("E12-logistic-")
+    _, meta = registry.load(versions["champion"])
+    assert meta["trained_on"] == "2017-18..2022-23"
+    assert meta["success_level"] in ("No alcanzado", "Mínimo", "Bueno", "Excelente")
+    assert use_case.repository.exists("history")
+    assert len(meta["features"]) > 0
+    tuned = production_spec(
+        {"type": "optuna_lightgbm", "groups": ["elo"]}, {"best_params": {"num_leaves": 7}}
+    )
+    assert tuned == {
+        "type": "sklearn",
+        "kind": "lightgbm",
+        "groups": ["elo"],
+        "params": {"num_leaves": 7},
+    }
+    assert production_spec({"type": "frequencies"}, None) == {"type": "frequencies"}

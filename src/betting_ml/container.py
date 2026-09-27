@@ -18,6 +18,7 @@ from betting_ml.application.evaluate_holdout import EvaluateHoldout
 from betting_ml.application.generate_report import GenerateReport
 from betting_ml.application.run_experiment import RunExperiment
 from betting_ml.application.select_champion import SelectChampion
+from betting_ml.application.train_production import TrainProduction
 from betting_ml.config import (
     FeaturesFile,
     LeaguesFile,
@@ -124,3 +125,20 @@ class Container:
 
     def generate_report(self) -> GenerateReport:
         return GenerateReport(self.settings.reports_path, self.champion_path)
+
+    @property
+    def production_path(self) -> Path:
+        return self.settings.models_path / "production.json"
+
+    def train_production(self) -> TrainProduction:
+        """Production training includes the holdout season, only after its one-time evaluation."""
+        return TrainProduction(
+            repository=ParquetMatchRepository(self.settings.processed_path, allow_holdout=True),
+            registry=self.registry,
+            leagues=self.leagues,
+            features=self.features,
+            champion_path=self.champion_path,
+            reports_dir=self.settings.reports_path,
+            production_path=self.production_path,
+            git_commit=current_commit,
+        )

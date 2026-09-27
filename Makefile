@@ -37,7 +37,7 @@ report:
 	$(CLI) report
 
 train-prod:
-	@echo "pendiente"
+	$(CLI) train-prod
 
 serve:
 	@echo "pendiente"
