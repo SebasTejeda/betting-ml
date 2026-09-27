@@ -15,6 +15,7 @@ from betting_ml.adapters.team_names import TeamNameResolver
 from betting_ml.adapters.understat import UnderstatSource
 from betting_ml.application.build_dataset import BuildDataset
 from betting_ml.application.evaluate_holdout import EvaluateHoldout
+from betting_ml.application.generate_report import GenerateReport
 from betting_ml.application.run_experiment import RunExperiment
 from betting_ml.application.select_champion import SelectChampion
 from betting_ml.config import (
@@ -120,3 +121,6 @@ class Container:
             reports_dir=self.settings.reports_path,
             git_commit=current_commit,
         )
+
+    def generate_report(self) -> GenerateReport:
+        return GenerateReport(self.settings.reports_path, self.champion_path)

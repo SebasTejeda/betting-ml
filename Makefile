@@ -34,7 +34,7 @@ holdout:
 	$(CLI) holdout
 
 report:
-	@echo "pendiente"
+	$(CLI) report
 
 train-prod:
 	@echo "pendiente"

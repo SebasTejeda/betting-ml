@@ -111,5 +111,13 @@ def holdout(verbose: bool = False, skip_if_done: bool = False) -> None:
     typer.echo(f"Nivel alcanzado: {report.level}")
 
 
+@app.command()
+def report() -> None:
+    """Genera reports/REPORT.md a partir de los resultados registrados."""
+    from betting_ml.container import Container
+
+    typer.echo(f"Informe escrito en {Container().generate_report().run()}")
+
+
 if __name__ == "__main__":  # pragma: no cover
     app()

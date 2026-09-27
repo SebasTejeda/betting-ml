@@ -119,3 +119,47 @@ def test_success_levels() -> None:
     )
     few = {**strategy, "n_bets": 100}
     assert success_level({**champ, "log_loss": 0.975}, 1.07, 0.98, 0.965, psc, few)[0] == "Mínimo"
+
+
+def test_report_is_generated_from_results(use_case: EvaluateHoldout, tmp_path: Path) -> None:
+    from betting_ml.application.generate_report import GenerateReport
+
+    use_case.run()
+    csv = (
+        "exp_id,name,hypothesis,model,feature_groups,uses_odds,val_ll_f1,val_ll_f2,val_ll_f3,"
+        "val_ll_mean,val_brier,val_rps,val_ece,val_acc,bet_threshold,n_bets,roi_flat,roi_ci_low,"
+        "roi_ci_high,clv_mean,runtime_s,git_commit,timestamp,conclusion\n"
+        "E02,x,h,logistic,elo,False,0.99,0.98,0.98,0.983,0.59,0.2,0.02,0.5,0.05,10,-0.1,-0.2,0.0,"
+        "-0.05,1,abc,t,ok\n"
+    )
+    (use_case.reports_dir / "experiments.csv").write_text(csv, encoding="utf-8")
+    entry = {
+        "experiment_id": "E12",
+        "model": "m",
+        "bet_threshold": 0.05,
+        "reason": "r",
+        "validation_metrics": {"log_loss": 0.97, "brier": 0.58, "ece": 0.02},
+    }
+    champion = tmp_path / "champ_full.json"
+    champion.write_text(
+        json.dumps(
+            {
+                "rule": "regla",
+                "champion": entry,
+                "champion_no_odds": {**entry, "experiment_id": "E06"},
+            }
+        ),
+        encoding="utf-8",
+    )
+    text = GenerateReport(use_case.reports_dir, champion).run().read_text(encoding="utf-8")
+    for section in (
+        "Resumen",
+        "Experimentos",
+        "holdout",
+        "Simulación de apuestas",
+        "por liga",
+        "Nivel alcanzado",
+        "Limitaciones",
+    ):
+        assert section in text
+    assert "No se corrieron" in text
