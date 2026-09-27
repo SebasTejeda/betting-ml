@@ -69,3 +69,21 @@ def _save(fig: plt.Figure, path: Path) -> Path:
     fig.savefig(path, dpi=110)
     plt.close(fig)
     return path
+
+
+def cumulative_plot(series: dict[str, list[float]], path: Path, title: str) -> Path:
+    """Cumulative flat-stake profit of several strategies on the same axes."""
+    fig, ax = plt.subplots(figsize=(7, 4))
+    for label, values in series.items():
+        if values:
+            ax.plot(
+                np.arange(1, len(values) + 1), values, label=f"{label} — {len(values)} apuestas"
+            )
+    ax.axhline(0, color="#adb5bd", lw=1)
+    ax.set_xlabel("Nº de apuesta (orden cronológico)")
+    ax.set_ylabel("Beneficio acumulado (unidades)")
+    ax.set_title(title)
+    if ax.get_legend_handles_labels()[0]:
+        ax.legend(loc="best", fontsize=8)
+    fig.tight_layout()
+    return _save(fig, path)

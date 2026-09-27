@@ -1,5 +1,5 @@
 # Comandos del proyecto (ver plan.md §8). Todos delegan en `uv run` y en la CLI `betting-ml`.
-.PHONY: setup lint test data baselines exp select holdout report train-prod serve track docker all
+.PHONY: backtest-002 setup lint test data baselines exp select holdout report train-prod serve track docker all
 
 UV ?= uv
 RUN = $(UV) run
@@ -56,3 +56,7 @@ all: data
 	$(CLI) select --skip-if-locked
 	$(CLI) holdout --skip-if-done
 	$(MAKE) report train-prod
+
+# ---- Spec 002
+backtest-002:
+	$(CLI) backtest-002

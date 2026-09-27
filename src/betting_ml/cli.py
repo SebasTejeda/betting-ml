@@ -169,5 +169,25 @@ def serve(host: str = "127.0.0.1", port: int = 8000, reload: bool = False) -> No
     uvicorn.run("betting_ml.api.main:app", host=host, port=port, reload=reload)
 
 
+@app.command("backtest-002")
+def backtest_002() -> None:
+    """Backtest de la estrategia de referencia Pinnacle en F1–F3 (spec 002, repetible)."""
+    from betting_ml.container import Container
+
+    payload = Container().backtest_pinnacle().run_validation()
+    for key, result in payload["results"].items():
+        typer.echo(
+            f"{key:<26} u={result['threshold']:<5} apuestas={result['n_bets']:<5} "
+            f"ROI={_fmt(result['roi_flat'])} [{_fmt(result['roi_ci_low'])}, {_fmt(result['roi_ci_high'])}] "
+            f"CLV={_fmt(result['clv_mean'])} [{_fmt(result['clv_ci_low'])}, {_fmt(result['clv_ci_high'])}]"
+        )
+    gate = payload["gate"]
+    typer.echo(f"Puerta (CLV medio > 0 en validación): {'PASA' if gate['passed'] else 'NO PASA'}")
+
+
+def _fmt(value: float | None) -> str:
+    return "  —  " if value is None else f"{100 * value:+.2f}%"
+
+
 if __name__ == "__main__":  # pragma: no cover
     app()

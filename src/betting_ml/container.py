@@ -20,6 +20,7 @@ from betting_ml.adapters.parquet_repository import ParquetMatchRepository
 from betting_ml.adapters.team_names import TeamNameResolver
 from betting_ml.adapters.tracking_store import ParquetTrackingStore
 from betting_ml.adapters.understat import UnderstatSource
+from betting_ml.application.backtest_pinnacle import BacktestPinnacle
 from betting_ml.application.build_dataset import BuildDataset
 from betting_ml.application.catalog import RefreshData
 from betting_ml.application.evaluate_holdout import EvaluateHoldout
@@ -225,4 +226,17 @@ class Container:
                 rebuild=self._rebuild_current_season,
                 on_done=self.predictor.reset,
             ),
+        )
+
+    def backtest_pinnacle(self, allow_holdout: bool = False) -> BacktestPinnacle:
+        """Spec 002 US1. The holdout is only opened for the one-time final test."""
+        return BacktestPinnacle(
+            repository=ParquetMatchRepository(
+                self.settings.processed_path, allow_holdout=allow_holdout
+            ),
+            leagues=self.leagues,
+            champion_path=self.champion_path,
+            load_predictions=self.experiment_store.load_predictions,
+            reports_dir=self.settings.reports_path,
+            git_commit=current_commit,
         )

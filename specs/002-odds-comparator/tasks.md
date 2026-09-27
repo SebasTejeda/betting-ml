@@ -25,7 +25,7 @@ Mismas reglas de ejecución que la spec 001: en orden, una tarea a la vez, `lint
 - [x] **T004** Dominio: método de potencia en `odds.py`, `value.py`, `clv.py` con tests (casos a mano; propiedad: las probabilidades justas suman 1; el stake nunca es negativo ni supera el tope).
   - Commit: `feat(domain): value, clv and power normalization`
 
-- [ ] **T005** `application/backtest_pinnacle.py` + `make backtest-002` (F1–F3): escenarios `max`, `b365`, `avg`; variantes con y sin filtro del modelo; elección del umbral; figuras en `reports/figures/002_*`.
+- [x] **T005** `application/backtest_pinnacle.py` + `make backtest-002` (F1–F3): escenarios `max`, `b365`, `avg`; variantes con y sin filtro del modelo; elección del umbral; figuras en `reports/figures/002_*`.
   - Hecho cuando: el escenario de control `avg` da CLV ≤ 0 aproximadamente (si no, investigar antes de seguir).
   - Commit: `feat(backtest): pinnacle reference strategy on validation folds`
 
