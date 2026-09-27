@@ -118,6 +118,55 @@ class TrackingStore(Protocol):
 
 
 @runtime_checkable
+class OddsRepository(Protocol):
+    """Odds snapshots and quotes (spec 002)."""
+
+    def save_snapshot(self, snapshot: Any) -> int: ...
+
+    def latest_quotes(
+        self,
+        match_ids: Any = None,
+        kickoff_from: Any = None,
+        kickoff_to: Any = None,
+        before: Any = None,
+    ) -> list[Any]: ...
+
+    def latest_snapshot(self, source: Any = ...) -> Any: ...
+
+    def snapshots_since(self, since: datetime, source: Any = ...) -> list[Any]: ...
+
+    def history(self, match_id: str, bookmaker: str) -> list[Any]: ...
+
+
+@runtime_checkable
+class BetRepository(Protocol):
+    """Betting journal (spec 002)."""
+
+    def add(self, bet: Any) -> Any: ...
+
+    def get(self, bet_id: int) -> Any: ...
+
+    def update(self, bet: Any) -> Any: ...
+
+    def delete(self, bet_id: int) -> bool: ...
+
+    def search(
+        self, filters: Any = None, page: int = 1, size: int = 50
+    ) -> tuple[list[Any], int]: ...
+
+    def all(self, filters: Any = None) -> list[Any]: ...
+
+
+@runtime_checkable
+class SettingsRepository(Protocol):
+    def get(self) -> Any: ...
+
+    def save(self, settings: Any, changes: Any = ()) -> None: ...
+
+    def history(self, field: str | None = None) -> list[Any]: ...
+
+
+@runtime_checkable
 class Clock(Protocol):
     def now(self) -> datetime: ...
 

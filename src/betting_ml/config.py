@@ -29,6 +29,15 @@ class Settings(BaseSettings):
     scrape_delay_seconds: float = 3.0
     admin_api_key: str = "cambia-esto"
     seed: int = 42
+    # --- spec 002
+    odds_api_key: str = ""
+    odds_api_regions: str = "eu,uk"
+    odds_min_credits_reserve: int = 50
+    odds_auto_refresh: bool = False
+    odds_auto_refresh_times: str = "10:00,16:00"
+    exchange_commission: float = 0.05
+    app_api_key: str = "cambia-esto"
+    database_url: str = "sqlite:///data/app.db"
 
     def resolve(self, path: Path) -> Path:
         return path if path.is_absolute() else PROJECT_ROOT / path

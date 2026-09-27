@@ -199,6 +199,16 @@ def backtest_002_final() -> None:
     typer.echo(f"Nivel: {payload['level']} — conclusión: {payload['conclusion']}")
 
 
+@app.command("db-upgrade")
+def db_upgrade() -> None:
+    """Aplica las migraciones de la base SQLite (spec 002)."""
+    from betting_ml.adapters.sql.db import upgrade
+    from betting_ml.config import get_settings
+
+    upgrade(get_settings().database_url)
+    typer.echo("Base de datos al día")
+
+
 @app.command("backtest-002-report")
 def backtest_002_report() -> None:
     """Regenera REPORT_002_backtest.md con el análisis de margen (no abre el holdout)."""

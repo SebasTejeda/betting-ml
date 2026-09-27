@@ -42,7 +42,7 @@ Mismas reglas de ejecución que la spec 001: en orden, una tarea a la vez, `lint
 
 - [x] **T009** `configs/bookmakers.yaml` con las casas de The Odds API (regiones `eu`, `uk`) y las peruanas de ingreso manual (Betsson, Te Apuesto, Inkabet, Doradobet, Apuesta Total, Betano, Coolbet; ajustar la lista). Marcar `accessible: true` solo para las que operan en Perú. Test de esquema.
   - Commit: `feat(config): bookmakers catalog`
-- [ ] **T010** SQLite + SQLAlchemy + Alembic: modelos, repositorios, migración inicial, `make db-upgrade`. Tests con base en memoria.
+- [x] **T010** SQLite + SQLAlchemy + Alembic: modelos, repositorios, migración inicial, `make db-upgrade`. Tests con base en memoria.
   - Commit: `feat(db): sqlite persistence with migrations`
 - [ ] **T011** Adaptador `the_odds_api.py`: verificar los `sport_key` reales (una llamada a `/v4/sports`, que no consume créditos), cliente con lectura de créditos, mapeo de equipos y eventos, grabar 1–2 respuestas reales como fixtures de test (sin la API key).
   - Commit: `feat(adapters): the odds api client`

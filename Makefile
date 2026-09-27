@@ -66,3 +66,6 @@ backtest-002-final:
 
 backtest-002-report:
 	$(CLI) backtest-002-report
+
+db-upgrade:
+	$(CLI) db-upgrade
