@@ -75,3 +75,8 @@ Formato:
   3. **Periodo de prueba obligatorio**: el panel muestra el progreso hacia 100 apuestas en papel con CLV medio > 0 (spec §5). Opción a decidir: bloquear el registro de apuestas `real` hasta cumplirlo.
   4. El frontend muestra siempre que la evidencia del backtest es débil (enlace a `REPORT_002_backtest.md`).
 - Estado: T008 cerrada con la puerta superada. La ejecución automática se detiene aquí antes de T009 (catálogo de casas, persistencia, llamadas reales a The Odds API y frontend), para que el dueño confirme o ajuste estos cambios.
+
+## 2026-09-27 — Fuente del CLV al liquidar apuestas (instrucción del dueño, para T015)
+- Decisión: `settle_bets` calcula el CLV con las cuotas de cierre de Pinnacle de football-data (`psc_odds_*`, Shin) cuando existan para el partido, y solo si faltan usa el último snapshot de Pinnacle de The Odds API anterior al inicio (Betfair Exchange neto de comisión como respaldo si tampoco hay Pinnacle). Cada apuesta guarda la fuente del CLV usada.
+- Motivo: el cierre de football-data es una referencia de cierre real y homogénea con el backtest; el snapshot de la API puede ser anterior al cierre.
+- Impacto: en 2026-27 football-data no publica Pinnacle, así que en la práctica la mayoría del CLV vendrá del snapshot de la API.
