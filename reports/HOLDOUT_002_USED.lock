@@ -1,0 +1,9 @@
+{
+  "status": "completed",
+  "timestamp": "2026-09-27T19:05:13+00:00",
+  "git_commit": "0b2bc68",
+  "level": "M\u00ednimo (backtest)",
+  "conclusion": "seguir con cambios",
+  "validation_json_sha256": "e7efa6aa9b1d45033593061adce64056c86e8bf55656d9a4a00c25a83c0b494c",
+  "holdout_predictions_sha256": "b265562baab0dc8dda859a0577fa8e629f07e21712e1c2f3aa06e2f84f005ded"
+}
