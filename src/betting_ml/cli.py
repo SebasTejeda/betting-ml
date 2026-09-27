@@ -199,6 +199,28 @@ def backtest_002_final() -> None:
     typer.echo(f"Nivel: {payload['level']} — conclusión: {payload['conclusion']}")
 
 
+@app.command()
+def odds(league: list[str] = typer.Option(None, help="Ligas (por defecto todas)")) -> None:
+    """Refresco manual de cuotas desde The Odds API (consume créditos: ~2 por liga)."""
+    from betting_ml.application.refresh_odds import OddsBudgetLowError
+    from betting_ml.container import Container
+
+    use_case = Container().refresh_odds
+    try:
+        result = use_case.refresh(league or None)
+    except OddsBudgetLowError as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(code=1) from exc
+    typer.echo(
+        f"snapshot={result.snapshot_id} ligas={result.leagues} eventos={result.events} "
+        f"créditos usados={result.credits_used} restantes={result.credits_remaining}"
+    )
+    if result.unmapped_teams:
+        typer.echo(
+            f"EQUIPOS SIN MAPEAR (agregar a team_aliases.yaml): {result.unmapped_teams}", err=True
+        )
+
+
 @app.command("db-upgrade")
 def db_upgrade() -> None:
     """Aplica las migraciones de la base SQLite (spec 002)."""

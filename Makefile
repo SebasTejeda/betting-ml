@@ -69,3 +69,6 @@ backtest-002-report:
 
 db-upgrade:
 	$(CLI) db-upgrade
+
+odds:
+	$(CLI) odds

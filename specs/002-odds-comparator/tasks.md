@@ -46,7 +46,7 @@ Mismas reglas de ejecución que la spec 001: en orden, una tarea a la vez, `lint
   - Commit: `feat(db): sqlite persistence with migrations`
 - [x] **T011** Adaptador `the_odds_api.py`: verificar los `sport_key` reales (una llamada a `/v4/sports`, que no consume créditos), cliente con lectura de créditos, mapeo de equipos y eventos, grabar 1–2 respuestas reales como fixtures de test (sin la API key).
   - Commit: `feat(adapters): the odds api client`
-- [ ] **T012** Caso de uso `refresh_odds` + control de presupuesto + scheduler opcional + `make odds`.
+- [x] **T012** Caso de uso `refresh_odds` + control de presupuesto + scheduler opcional + `make odds`.
   - Commit: `feat(app): odds refresh with credit budget`
 
 ## Fase 3 — Casos de uso y API

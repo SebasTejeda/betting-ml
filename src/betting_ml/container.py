@@ -7,8 +7,10 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from functools import cached_property
 from pathlib import Path
+from typing import Any
 
 import pandas as pd
+from sqlalchemy.orm import Session, sessionmaker
 
 from betting_ml.adapters.experiment_store import FileExperimentStore
 from betting_ml.adapters.fixtures import FootballDataFixtures
@@ -17,7 +19,15 @@ from betting_ml.adapters.git_info import current_commit
 from betting_ml.adapters.http import HttpClient
 from betting_ml.adapters.joblib_registry import JoblibModelRegistry
 from betting_ml.adapters.parquet_repository import ParquetMatchRepository
+from betting_ml.adapters.sql.db import make_engine, session_factory
+from betting_ml.adapters.sql.models import Base
+from betting_ml.adapters.sql.repositories import (
+    SqlBetRepository,
+    SqlOddsRepository,
+    SqlSettingsRepository,
+)
 from betting_ml.adapters.team_names import TeamNameResolver
+from betting_ml.adapters.the_odds_api import MappedOdds, TheOddsApiClient, map_events
 from betting_ml.adapters.tracking_store import ParquetTrackingStore
 from betting_ml.adapters.understat import UnderstatSource
 from betting_ml.application.backtest_pinnacle import BacktestPinnacle
@@ -26,15 +36,18 @@ from betting_ml.application.catalog import RefreshData
 from betting_ml.application.evaluate_holdout import EvaluateHoldout
 from betting_ml.application.generate_report import GenerateReport
 from betting_ml.application.predict_matches import PredictMatches
+from betting_ml.application.refresh_odds import RefreshOdds
 from betting_ml.application.run_experiment import RunExperiment
 from betting_ml.application.select_champion import SelectChampion
 from betting_ml.application.track_predictions import TrackPredictions
 from betting_ml.application.train_production import TrainProduction
 from betting_ml.config import (
+    BookmakersFile,
     FeaturesFile,
     LeaguesFile,
     Settings,
     get_settings,
+    load_bookmakers,
     load_data_overrides,
     load_features,
     load_leagues,
@@ -247,3 +260,44 @@ class Container:
     def backtest_pinnacle_final(self) -> BacktestPinnacle:
         """Only place where the spec-002 final test opens the holdout season."""
         return self.backtest_pinnacle(allow_holdout=True)
+
+    # ------------------------------------------------------------------ spec 002
+    @cached_property
+    def bookmakers(self) -> BookmakersFile:
+        return load_bookmakers(self.settings.configs_dir / "bookmakers.yaml")
+
+    @cached_property
+    def db_sessions(self) -> sessionmaker[Session]:
+        engine = make_engine(self.settings.database_url)
+        Base.metadata.create_all(engine)  # no-op when `make db-upgrade` already ran
+        return session_factory(engine)
+
+    @cached_property
+    def odds_repository(self) -> SqlOddsRepository:
+        repo = SqlOddsRepository(self.db_sessions)
+        repo.sync_bookmakers(self.bookmakers)
+        return repo
+
+    @cached_property
+    def bet_repository(self) -> SqlBetRepository:
+        return SqlBetRepository(self.db_sessions)
+
+    @cached_property
+    def settings_repository(self) -> SqlSettingsRepository:
+        return SqlSettingsRepository(self.db_sessions)
+
+    def odds_client(self) -> TheOddsApiClient:
+        return TheOddsApiClient(self.settings.odds_api_key, self.settings.odds_api_regions)
+
+    def map_odds_events(self, events: list[dict[str, Any]], league: str) -> MappedOdds:
+        return map_events(events, league, self.team_names, self.bookmakers.api_keys)
+
+    @cached_property
+    def refresh_odds(self) -> RefreshOdds:
+        return RefreshOdds(
+            client_factory=self.odds_client,
+            repository=self.odds_repository,
+            leagues=self.leagues,
+            mapper=self.map_odds_events,
+            min_reserve=self.settings.odds_min_credits_reserve,
+        )

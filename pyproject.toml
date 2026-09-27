@@ -26,6 +26,7 @@ dependencies = [
     "sqlalchemy>=2.0",
     "alembic>=1.13",
     "httpx>=0.27",
+    "apscheduler>=3.10,<4",
 ]
 
 [project.optional-dependencies]
@@ -64,7 +65,7 @@ select = ["E", "F", "W", "I", "B", "UP", "N", "SIM", "RUF"]
 ignore = ["E501", "N803", "N806", "RUF001", "RUF002", "RUF003"]
 
 [tool.ruff.lint.flake8-bugbear]
-extend-immutable-calls = ["fastapi.Depends", "fastapi.Query", "fastapi.Header", "fastapi.params.Depends", "fastapi.params.Query"]
+extend-immutable-calls = ["fastapi.Depends", "fastapi.Query", "fastapi.Header", "fastapi.params.Depends", "fastapi.params.Query", "typer.Option"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["N802"]
@@ -81,7 +82,7 @@ files = ["src/betting_ml"]
 testpaths = ["tests"]
 addopts = "-q --cov=betting_ml --cov-report=term-missing:skip-covered"
 markers = ["network: tests que requieren red (excluidos por defecto en CI)"]
-filterwarnings = ["ignore::DeprecationWarning", "ignore:Using `httpx` with `starlette.testclient`"]
+filterwarnings = ["ignore::DeprecationWarning", "ignore::ResourceWarning", "ignore::pytest.PytestUnraisableExceptionWarning", "ignore:Using `httpx` with `starlette.testclient`"]
 
 [tool.coverage.run]
 source = ["betting_ml"]
