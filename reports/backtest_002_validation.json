@@ -1,7 +1,7 @@
 {
   "stage": "validation",
-  "generated_at": "2026-09-27T09:50:43+00:00",
-  "git_commit": "f2ceb11-dirty",
+  "generated_at": "2026-09-27T18:57:17+00:00",
+  "git_commit": "a7a9d3d",
   "seasons": [
     "2022-23",
     "2023-24",
@@ -93,7 +93,8 @@
           "roi": -0.4369411764705882,
           "clv_mean": 0.04132919235172361
         }
-      }
+      },
+      "threshold_by_default": false
     },
     "max|champion": {
       "scenario": "max",
@@ -177,7 +178,8 @@
           "roi": -0.3890983606557377,
           "clv_mean": 0.038970979876039986
         }
-      }
+      },
+      "threshold_by_default": false
     },
     "max|champion_no_odds": {
       "scenario": "max",
@@ -261,7 +263,8 @@
           "roi": -0.2535064935064935,
           "clv_mean": 0.0548130498364013
         }
-      }
+      },
+      "threshold_by_default": false
     },
     "b365|none": {
       "scenario": "b365",
@@ -340,7 +343,8 @@
           "roi": 0.11825,
           "clv_mean": -0.004310037862729338
         }
-      }
+      },
+      "threshold_by_default": true
     },
     "b365|champion": {
       "scenario": "b365",
@@ -414,7 +418,8 @@
           "roi": -0.2222222222222222,
           "clv_mean": 0.030070569417487696
         }
-      }
+      },
+      "threshold_by_default": true
     },
     "b365|champion_no_odds": {
       "scenario": "b365",
@@ -488,7 +493,8 @@
           "roi": 0.8883333333333333,
           "clv_mean": 0.037095887565590235
         }
-      }
+      },
+      "threshold_by_default": true
     },
     "avg|none": {
       "scenario": "avg",
@@ -562,7 +568,8 @@
           "roi": -1.0,
           "clv_mean": -0.12767814762593557
         }
-      }
+      },
+      "threshold_by_default": true
     },
     "avg|champion": {
       "scenario": "avg",
@@ -621,7 +628,8 @@
           "roi": -1.0,
           "clv_mean": -0.010469484794818906
         }
-      }
+      },
+      "threshold_by_default": true
     },
     "avg|champion_no_odds": {
       "scenario": "avg",
@@ -660,7 +668,8 @@
           "roi": -1.0,
           "clv_mean": 0.008183937946449005
         }
-      }
+      },
+      "threshold_by_default": true
     }
   },
   "threshold_grid": {
@@ -909,12 +918,59 @@
       "b365|champion",
       "b365|champion_no_odds"
     ],
-    "passed": true
+    "passed": true,
+    "realistic_reading": {
+      "b365|none": {
+        "clv_mean": 0.009075522659317508,
+        "clv_ci_low": -0.011218307994917848,
+        "clv_ci_high": 0.03001031853072028,
+        "n_bets": 130
+      },
+      "b365|champion": {
+        "clv_mean": 0.03351885273002445,
+        "clv_ci_low": 0.0025166713137329466,
+        "clv_ci_high": 0.06526197019292802,
+        "n_bets": 49
+      },
+      "b365|champion_no_odds": {
+        "clv_mean": 0.029233970547153057,
+        "clv_ci_low": 0.003975348834608006,
+        "clv_ci_high": 0.05634194220710303,
+        "n_bets": 46
+      }
+    }
   },
   "control_avg": {
-    "avg|none": -0.1165579659189171,
-    "avg|champion": -0.09513082299163322,
-    "avg|champion_no_odds": 0.008183937946449005
+    "avg|none": {
+      "clv_mean": -0.1165579659189171,
+      "n_bets": 10
+    },
+    "avg|champion": {
+      "clv_mean": -0.09513082299163322,
+      "n_bets": 3
+    },
+    "avg|champion_no_odds": {
+      "clv_mean": 0.008183937946449005,
+      "n_bets": 1
+    }
+  },
+  "placebo": {
+    "max": {
+      "n": 15960,
+      "clv_mean": -0.005766179006281691
+    },
+    "b365": {
+      "n": 15987,
+      "clv_mean": -0.06139788546769698
+    },
+    "avg": {
+      "n": 15987,
+      "clv_mean": -0.052416215692863054
+    },
+    "max_longshots": {
+      "n": 3041,
+      "clv_mean": -0.01570700433502413
+    }
   },
   "figures": [
     "figures/002_validation_max_roi.png",
