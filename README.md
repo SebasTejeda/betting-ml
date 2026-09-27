@@ -20,6 +20,7 @@ Informe completo: [`reports/REPORT.md`](reports/REPORT.md).
 - **El resultado no es concluyente.** La diferencia con el mercado tiene un IC 95 % de [−0.0008, +0.0074], que contiene el umbral. En la práctica, **el modelo no le gana al mercado**: usar directamente las probabilidades del mercado es igual o mejor.
 - **Apuestas simuladas con el campeón** (cuota promedio, umbral fijado en validación): 692 apuestas, ROI −5.7 % con IC 95 % [−15.8 %, +5.5 %] y CLV −6.3 % frente al cierre de Pinnacle. Con la mejor cuota disponible, el ROI es +2.2 % con IC [−7.0 %, +12.4 %]. Ninguna de las dos es evidencia de ventaja.
 - **Experimentos:** 10 registrados (13 filas; E01 tiene 4 variantes de línea base) en [`reports/experiments.csv`](reports/experiments.csv) (E01–E09 y E12), buenos y malos. Se detuvieron por la regla de parada de la spec.
+- **Regla de parada aplicada por familia:** la regla se aplicó por separado a los modelos sin cuotas y con cuotas (decidido antes de correr E09, tras ver E06–E08); con la regla global literal no se habría probado ningún modelo con cuotas. Ver [`decisions.md`](specs/001-prediction-model/decisions.md#2026-09-26--regla-de-parada-aplicada-por-familia-de-modelos-antes-de-correr-e09).
 
 ## Arquitectura (hexagonal)
 

@@ -17,7 +17,7 @@ Mismas reglas de ejecución que la spec 001: en orden, una tarea a la vez, `lint
 - [x] **T002** Investigar el `/matches` vacío del sábado 26/09/2026 (spec §7). Reproducir con el `fixtures.csv` real guardado en `data/raw/fixtures/`. Si es un bug (fecha `dd/mm`, zona horaria, filtro de ligas), corregirlo con un test de regresión que use un extracto de ese CSV. Si no lo es, documentar por qué no había partidos.
   - Commit: `fix(fixtures): ...` o `docs: ...`
 
-- [ ] **T003** README: documentar la decisión de la regla de parada por modelos con/sin cuotas (spec 001) en una línea con enlace a `decisions.md`.
+- [x] **T003** README: documentar la decisión de la regla de parada por modelos con/sin cuotas (spec 001) en una línea con enlace a `decisions.md`.
   - Commit: `docs(readme): stop-rule decision`
 
 ## Fase 1 — Backtest (puerta de decisión)
