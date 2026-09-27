@@ -78,7 +78,7 @@ files = ["src/betting_ml"]
 testpaths = ["tests"]
 addopts = "-q --cov=betting_ml --cov-report=term-missing:skip-covered"
 markers = ["network: tests que requieren red (excluidos por defecto en CI)"]
-filterwarnings = ["ignore::DeprecationWarning"]
+filterwarnings = ["ignore::DeprecationWarning", "ignore:Using `httpx` with `starlette.testclient`"]
 
 [tool.coverage.run]
 source = ["betting_ml"]
