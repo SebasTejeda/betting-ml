@@ -2,7 +2,8 @@
 
 - The monthly loss is the net loss of REAL bets settled in the current calendar month in Lima.
 - Once the monthly budget is exhausted, real bets are blocked until next month (paper bets are
-  always allowed).
+  always allowed). Real bets still pending more than ``OVERDUE_AFTER`` after kick-off count as
+  lost for the block until they are settled (worst case: not settling cannot dodge the block).
 - A high stake or getting close to / over the monthly budget produces warnings that need an
   explicit confirmation.
 - Lowering the monthly limit applies immediately; raising it only applies from next month.
@@ -14,7 +15,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timedelta
 from decimal import Decimal
 from enum import StrEnum
 from zoneinfo import ZoneInfo
@@ -24,6 +25,7 @@ from betting_ml.domain.journal import Bet, BetKind, BetStatus
 LIMA = ZoneInfo("America/Lima")
 NEAR_LIMIT_SHARE = Decimal("0.8")
 SIGNAL_TARGET_BETS = 100
+OVERDUE_AFTER = timedelta(hours=3)
 
 
 class LimitStatus(StrEnum):
@@ -108,6 +110,22 @@ def monthly_loss(bets: Iterable[Bet], month: str, tz: ZoneInfo = LIMA) -> Decima
     return max(Decimal("0.00"), -net)
 
 
+def overdue_pending(bets: Iterable[Bet], now: datetime) -> Decimal:
+    """Stakes of real bets still pending more than ``OVERDUE_AFTER`` after kick-off (the match
+    is over but nobody settled them)."""
+    return sum(
+        (
+            b.stake
+            for b in bets
+            if b.kind is BetKind.REAL
+            and b.status is BetStatus.PENDING
+            and b.kickoff_utc is not None
+            and now - b.kickoff_utc > OVERDUE_AFTER
+        ),
+        Decimal("0.00"),
+    )
+
+
 def signal_progress(bets: Iterable[Bet]) -> SignalProgress:
     """Settled paper bets from the experimental signal with a CLV."""
     clvs = [
@@ -130,20 +148,29 @@ def check_bet(
     from_experimental_signal: bool = False,
     progress: SignalProgress | None = None,
     pending_exposure: Decimal = Decimal("0.00"),
+    overdue: Decimal = Decimal("0.00"),
 ) -> LimitCheck:
     """ok / warning (needs confirmation) / blocked. Paper bets are never blocked.
 
     Warnings use the worst case: settled loss of the month + stakes of pending real bets + this
-    stake. The block (403) uses the settled loss."""
+    stake. The block (403) uses the settled loss plus the overdue pending stakes (``overdue``,
+    a subset of ``pending_exposure``) counted as lost until they are settled."""
     if kind is BetKind.PAPER:
         return LimitCheck(LimitStatus.OK)
-    if month_loss >= monthly_limit:
+    if month_loss + overdue >= monthly_limit:
+        unsettled = (
+            f" Incluye {overdue} de apuestas reales sin liquidar de partidos terminados, que "
+            "cuentan como perdidas hasta liquidarlas."
+            if overdue > 0
+            else ""
+        )
         return LimitCheck(
             LimitStatus.BLOCKED,
             LimitCode.MONTHLY_LIMIT_REACHED,
             (
-                f"Presupuesto mensual de pérdida superado ({month_loss} de {monthly_limit}). "
-                "No se registran apuestas reales hasta el mes siguiente; las de papel siguen permitidas.",
+                f"Presupuesto mensual de pérdida superado ({month_loss + overdue} de {monthly_limit}). "
+                "No se registran apuestas reales hasta el mes siguiente; las de papel siguen permitidas."
+                + unsettled,
             ),
         )
     messages: list[str] = []

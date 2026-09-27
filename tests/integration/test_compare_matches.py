@@ -65,8 +65,14 @@ def test_day_comparison_best_prices_and_margins(env) -> None:  # type: ignore[no
         assert match.kickoff is not None and match.kickoff.date() in (DAY, date(2026, 10, 11))
         assert set(match.best) == set(OUTCOMES)
         for outcome, price in match.best.items():
-            all_prices = [b.odds[outcome] for b in match.books if outcome in b.odds]
-            assert price.odds == max(all_prices)
+            all_prices = [
+                comparator._net(b.key, b.odds[outcome]) for b in match.books if outcome in b.odds
+            ]
+            assert price.odds == max(all_prices)  # exchanges count net of commission
+            book = comparator.bookmakers.get(price.bookmaker)
+            if book is not None and book.role == "exchange":
+                raw = next(b for b in match.books if b.key == price.bookmaker).odds[outcome]
+                assert price.odds < raw
         assert match.reference is not None and match.reference.source == "pinnacle"
         assert match.margins.best_combined is not None and match.margins.average is not None
         assert match.margins.best_combined < match.margins.average

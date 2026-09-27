@@ -123,7 +123,8 @@ Señal experimental sin evidencia: si `kind = real`, `from_experimental_signal =
 
 Si viola un límite (US6):
 - Advertencia (stake alto o se acerca al límite mensual): `201` con `"warnings": ["..."]` **solo si** el request trae `"confirm": true`; si no, `409` con `code: "LIMIT_WARNING"` y el detalle. El "peor caso" suma la pérdida del mes + el stake de las apuestas reales pendientes + el stake nuevo.
-- Presupuesto mensual superado y `kind = real`: `403` con `code: "MONTHLY_LIMIT_REACHED"`.
+- Presupuesto mensual superado y `kind = real`: `403` con `code: "MONTHLY_LIMIT_REACHED"`. Para el bloqueo, las apuestas reales pendientes de partidos que empezaron hace más de 3 h cuentan como perdidas hasta que se liquidan.
+- Apuesta `real` sobre un partido sin cuotas de la API (hora de inicio desconocida): `422` con `code: "MATCH_WITHOUT_ODDS"`. En papel se acepta; sin hora de inicio conocida, se usa el inicio del día del `match_id` para liquidar o borrar.
 - Una apuesta registrada después del inicio del partido se acepta pero lleva un aviso en `warnings`, y su probabilidad justa usa solo cuotas anteriores al inicio.
 
 ### GET `/api/v1/bets`

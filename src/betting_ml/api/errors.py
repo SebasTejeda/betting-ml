@@ -21,6 +21,7 @@ from betting_ml.application.manage_bets import (
     BetNotFoundError,
     BetNotPendingError,
     LimitWarningError,
+    MatchWithoutOddsError,
     MonthlyLimitReachedError,
 )
 from betting_ml.application.predict_matches import (
@@ -105,6 +106,10 @@ def register_error_handlers(app: FastAPI) -> None:
     @app.exception_handler(BetNotPendingError)
     async def _bet_not_pending(_: Request, exc: BetNotPendingError) -> JSONResponse:
         return error_response(409, exc.code, str(exc))
+
+    @app.exception_handler(MatchWithoutOddsError)
+    async def _match_without_odds(_: Request, exc: MatchWithoutOddsError) -> JSONResponse:
+        return error_response(422, "MATCH_WITHOUT_ODDS", str(exc), {"match_id": exc.match_id})
 
     @app.exception_handler(NotManualBookmakerError)
     async def _not_manual(_: Request, exc: NotManualBookmakerError) -> JSONResponse:

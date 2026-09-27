@@ -188,3 +188,23 @@ def test_scheduler_helpers() -> None:
         raise RuntimeError("down")
 
     assert not auto_refresh_job(lambda: True, boom)
+
+
+class HeaderlessClient(FakeClient):
+    def sports(self) -> list:
+        self.calls.append("sports")
+        self.last_credits = None  # the probe response carried no balance headers
+        return []
+
+
+def test_probe_without_headers_unlocks_only_in_a_new_month(repo: SqlOddsRepository) -> None:
+    from betting_ml.domain.journal import OddsSnapshot, QuoteSource
+
+    repo.save_snapshot(
+        OddsSnapshot(datetime(2026, 9, 20, tzinfo=UTC), QuoteSource.API, credits_remaining=42)
+    )
+    client = HeaderlessClient(remaining=500)
+    assert _use_case(repo, client).refresh(["E0"]).leagues == ["E0"]  # new month: unlocked
+    repo.save_snapshot(OddsSnapshot(NOW, QuoteSource.API, credits_remaining=42, credits_used=2))
+    with pytest.raises(OddsBudgetLowError):
+        _use_case(repo, HeaderlessClient(remaining=500)).refresh(["E0"])  # same month: blocked

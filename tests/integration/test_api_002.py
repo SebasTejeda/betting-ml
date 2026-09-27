@@ -2,7 +2,7 @@
 
 import json
 from dataclasses import replace
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pandas as pd
@@ -512,3 +512,28 @@ def test_lifespan_starts_and_stops_the_auto_refresh(ctx) -> None:  # type: ignor
         assert events == ["start"]
         assert client.get("/api/v1/bookmakers").status_code == 200
     assert events == ["start", "stop"]
+
+
+def test_real_bet_on_a_match_without_odds_is_rejected(ctx) -> None:  # type: ignore[no-untyped-def]
+    client, *_ = ctx
+    body = _bet("E0-2026-10-01-foo-bar", odds=50, stake=10, confirm=True)
+    error = _error(client.post("/api/v1/bets", json=body, headers=AUTH), 422, "MATCH_WITHOUT_ODDS")
+    assert error["details"]["match_id"] == "E0-2026-10-01-foo-bar"
+    paper = client.post("/api/v1/bets", json={**body, "kind": "paper"}, headers=AUTH)
+    assert paper.status_code == 201 and paper.json()["kickoff"] is None
+
+
+def test_unsettled_finished_bets_count_for_the_403(ctx) -> None:  # type: ignore[no-untyped-def]
+    client, _, clock, *_ = ctx
+    match_id = _match_id(client)
+    for _ in range(10):
+        created = client.post(
+            "/api/v1/bets", json=_bet(match_id, stake=10, confirm=True), headers=AUTH
+        )
+        assert created.status_code == 201
+    clock.now = AFTER_KICKOFF + timedelta(hours=2)  # match over, settle never called
+    _error(
+        client.post("/api/v1/bets", json=_bet(match_id, stake=1, confirm=True), headers=AUTH),
+        403,
+        "MONTHLY_LIMIT_REACHED",
+    )

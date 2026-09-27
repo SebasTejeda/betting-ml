@@ -174,6 +174,13 @@ class CompareMatches:
             return book.accessible
         return True
 
+    def _net(self, key: str, odds: float) -> float:
+        """Odds actually paid: exchanges net of their commission on winnings."""
+        book = self.bookmakers.get(key)
+        if book is None or book.role != "exchange":
+            return odds
+        return round(1.0 + (odds - 1.0) * (1.0 - book.commission), 4)
+
     def _compare(
         self,
         match_id: str,
@@ -188,7 +195,7 @@ class CompareMatches:
         best: dict[Outcome, BestPrice] = {}
         for outcome in OUTCOMES:
             candidates = [
-                (key, quotes[outcome].odds)
+                (key, self._net(key, quotes[outcome].odds))
                 for key, quotes in books.items()
                 if outcome in quotes and self._eligible(key, accessible_only)
             ]

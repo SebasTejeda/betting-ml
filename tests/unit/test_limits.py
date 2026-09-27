@@ -16,6 +16,7 @@ from betting_ml.domain.limits import (
     month_key,
     monthly_loss,
     next_month_key,
+    overdue_pending,
     signal_progress,
 )
 
@@ -139,3 +140,26 @@ def test_raising_the_limit_applies_next_month() -> None:
     assert effective_monthly_limit(D("120"), [raise_, back], "2026-10") == D("100")
     assert effective_monthly_limit(D("120"), [raise_, back], "2026-12") == D("120")
     assert effective_monthly_limit(D("90"), [], "2026-10") == D("90")
+
+
+def test_overdue_pending_real_bets_count_for_the_block() -> None:
+    kickoff = datetime(2026, 10, 3, 14, tzinfo=UTC)
+    now = datetime(2026, 10, 3, 18, tzinfo=UTC)  # 4 h after kick-off
+    bets = [
+        _bet(BetKind.REAL, BetStatus.PENDING, None, "60", kickoff_utc=kickoff),
+        _bet(BetKind.REAL, BetStatus.PENDING, None, "50", kickoff_utc=now),  # not over yet
+        _bet(BetKind.PAPER, BetStatus.PENDING, None, "70", kickoff_utc=kickoff),
+        _bet(BetKind.REAL, BetStatus.LOST, now, "30", kickoff_utc=kickoff),
+        _bet(BetKind.REAL, BetStatus.PENDING, None, "99"),  # unknown kick-off
+    ]
+    assert overdue_pending(bets, now) == D("60")
+    assert overdue_pending(bets, datetime(2026, 10, 3, 16, tzinfo=UTC)) == D("0.00")  # < 3 h
+    blocked = check_bet(
+        D("5"), BetKind.REAL, D("40"), D("100"), D("10"), pending_exposure=D("60"), overdue=D("60")
+    )
+    assert blocked.status is LimitStatus.BLOCKED
+    assert "sin liquidar" in blocked.messages[0] and "100" in blocked.messages[0]
+    warned = check_bet(
+        D("5"), BetKind.REAL, D("40"), D("100"), D("10"), pending_exposure=D("60"), overdue=D("0")
+    )
+    assert warned.status is LimitStatus.WARNING  # still dodgeable only while the match is live

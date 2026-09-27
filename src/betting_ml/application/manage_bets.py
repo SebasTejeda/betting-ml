@@ -6,7 +6,7 @@ import re
 from collections import defaultdict
 from collections.abc import Callable
 from dataclasses import dataclass, field, replace
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime, time
 from decimal import Decimal
 from typing import Any
 
@@ -30,6 +30,7 @@ from betting_ml.domain.limits import (
     effective_monthly_limit,
     month_key,
     monthly_loss,
+    overdue_pending,
     signal_progress,
 )
 from betting_ml.domain.ports import BetRepository, OddsRepository, SettingsRepository
@@ -61,6 +62,18 @@ class BetNotFoundError(LookupError):
 
 class BetNotPendingError(ValueError):
     code = "BET_NOT_PENDING"
+
+
+class MatchWithoutOddsError(ValueError):
+    """422: a real bet needs a match with API odds (known kick-off), so that it can be settled
+    with the official result and never by hand at any time."""
+
+    def __init__(self, match_id: str) -> None:
+        super().__init__(
+            f"El partido {match_id} no tiene cuotas de la API (hora de inicio desconocida): "
+            "no se pueden registrar apuestas reales sobre él; usa una apuesta en papel."
+        )
+        self.match_id = match_id
 
 
 class BetStateError(BetNotPendingError):
@@ -215,6 +228,7 @@ class ManageBets:
             ),
             Decimal("0.00"),
         )
+        overdue = overdue_pending(everything, now)
         progress = signal_progress(everything) if request.from_experimental_signal else None
         return check_bet(
             request.stake,
@@ -225,12 +239,15 @@ class ManageBets:
             request.from_experimental_signal,
             progress,
             pending_exposure=exposure,
+            overdue=overdue,
         )
 
     def create(self, request: NewBet, confirm: bool = False) -> Bet:
         if request.stake <= 0 or request.odds <= 1:
             raise ValueError("stake > 0 y cuota > 1")
         info = self._match_info(request.match_id)
+        if request.kind is BetKind.REAL and info["kickoff_utc"] is None:
+            raise MatchWithoutOddsError(request.match_id)
         result = self.check(request)
         if result.status is LimitStatus.BLOCKED:
             raise MonthlyLimitReachedError(result)
@@ -285,7 +302,7 @@ class ManageBets:
                 )
             if status is BetStatus.PENDING:
                 raise BetNotPendingError("estado inválido")
-            if bet.kickoff_utc is not None and self.clock() < bet.kickoff_utc:
+            if self.clock() < _earliest_start(bet):
                 raise BetStateError(
                     "el partido aún no empieza: no se puede liquidar", "MATCH_NOT_STARTED"
                 )
@@ -296,7 +313,7 @@ class ManageBets:
         bet = self.get(bet_id)
         if bet.status is not BetStatus.PENDING:
             raise BetNotPendingError("solo se pueden borrar apuestas pendientes")
-        if bet.kickoff_utc is not None and self.clock() >= bet.kickoff_utc:
+        if self.clock() >= _earliest_start(bet):
             raise BetStateError(
                 "el partido ya empezó: la apuesta se liquida con el resultado, no se borra",
                 "MATCH_ALREADY_STARTED",
@@ -380,3 +397,12 @@ def _group(bets: list[Bet], key: Callable[[Bet], str], name: str) -> list[dict[s
             }
         )
     return out
+
+
+def _earliest_start(bet: Bet) -> datetime:
+    """Kick-off, or the start of the match day (UTC) from the ``match_id`` when it is unknown."""
+    if bet.kickoff_utc is not None:
+        return bet.kickoff_utc
+    found = MATCH_ID.match(bet.match_id)
+    day = date.fromisoformat(found["date"]) if found else bet.created_at.date()
+    return datetime.combine(day, time(0), tzinfo=UTC)

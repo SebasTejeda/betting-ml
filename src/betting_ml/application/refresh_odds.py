@@ -167,7 +167,13 @@ class RefreshOdds:
                     self.clock(), QuoteSource.API, credits_remaining=remaining, credits_used=0
                 )
             )
-        return stored if remaining is None else remaining
+        if remaining is None:
+            # No balance header: a new month (Lima) means the provider renewed the credits.
+            this_month = self.repository.snapshots_since(
+                month_start_lima(self.clock()), QuoteSource.API
+            )
+            return None if not this_month else stored
+        return remaining
 
     def should_auto_refresh(self, now: datetime | None = None) -> bool:
         """Automatic refresh only on days with matches of the configured leagues (in Lima),

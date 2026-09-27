@@ -18,6 +18,7 @@ from betting_ml.application.manage_bets import (
     BetStateError,
     LimitWarningError,
     ManageBets,
+    MatchWithoutOddsError,
     MonthlyLimitReachedError,
     NewBet,
 )
@@ -229,3 +230,27 @@ def test_manual_quotes_do_not_change_fair_probability(env) -> None:  # type: ign
         OddsSnapshot(datetime(2026, 10, 10, 11, tzinfo=UTC), QuoteSource.MANUAL, manual)
     )
     assert use_case.create(_new(kind=BetKind.PAPER)).fair_probability == pytest.approx(before)
+
+
+def test_real_bets_need_a_known_kickoff(env) -> None:  # type: ignore[no-untyped-def]
+    use_case, clock = env
+    with pytest.raises(MatchWithoutOddsError):
+        use_case.create(_new(match_id="E0-2026-10-11-foo-bar", odds=D("50.00")), confirm=True)
+    paper = use_case.create(_new(kind=BetKind.PAPER, match_id="E0-2026-10-11-foo-bar"))
+    assert paper.kickoff_utc is None
+    with pytest.raises(BetStateError) as early:  # the match day has not started yet
+        use_case.update(paper.id, status=BetStatus.WON)
+    assert early.value.code == "MATCH_NOT_STARTED"
+    clock.now = datetime(2026, 10, 11, 20, tzinfo=UTC)
+    assert use_case.update(paper.id, status=BetStatus.WON).status is BetStatus.WON
+
+
+def test_not_settling_cannot_dodge_the_monthly_block(env) -> None:  # type: ignore[no-untyped-def]
+    use_case, clock = env
+    for _ in range(10):
+        use_case.create(_new(stake=D("10.00")), confirm=True)
+    clock.now = KICKOFF + timedelta(hours=4)  # the match is over, nobody settled
+    with pytest.raises(MonthlyLimitReachedError) as blocked:
+        use_case.create(_new(stake=D("1.00")), confirm=True)
+    assert "sin liquidar" in blocked.value.check.messages[0]
+    assert use_case.create(_new(kind=BetKind.PAPER)).kind is BetKind.PAPER
