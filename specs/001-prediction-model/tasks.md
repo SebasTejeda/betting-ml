@@ -97,7 +97,7 @@ Instrucciones para el agente:
 
 ## Fase 6 — Evaluación final e informe
 
-- [ ] **T029** `make holdout` (una sola vez, `experiments.md` §6).
+- [x] **T029** `make holdout` (una sola vez, `experiments.md` §6).
   - Commit: `exp(final): holdout evaluation — level <nivel>`
 - [ ] **T030** `make report` → `reports/REPORT.md` con todo lo pedido en spec US4, escrito en español claro, con tablas y figuras enlazadas.
   - Commit: `docs(report): final model report`

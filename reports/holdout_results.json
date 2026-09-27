@@ -1,0 +1,352 @@
+{
+  "evaluated_at": "2026-09-27T00:22:42+00:00",
+  "git_commit": "141172c",
+  "holdout_season": "2025-26",
+  "n_matches": 1752,
+  "train_seasons": [
+    "2014-15",
+    "2015-16",
+    "2016-17",
+    "2017-18",
+    "2018-19",
+    "2019-20",
+    "2020-21",
+    "2021-22",
+    "2022-23",
+    "2023-24",
+    "2024-25"
+  ],
+  "champion": "E12",
+  "champion_no_odds": "E06",
+  "metrics": {
+    "champion": {
+      "log_loss": 0.9809764207720951,
+      "brier": 0.5837239431274477,
+      "rps": 0.1977790301766615,
+      "ece": 0.018705859468127195,
+      "accuracy": 0.5273972602739726,
+      "n": 1752
+    },
+    "champion_no_odds": {
+      "log_loss": 0.9933817458540891,
+      "brier": 0.5918228011874497,
+      "rps": 0.20177335523097925,
+      "ece": 0.013205016249770987,
+      "accuracy": 0.5251141552511416,
+      "n": 1752
+    },
+    "E02": {
+      "log_loss": 0.9983573063600159,
+      "brier": 0.5959871317552411,
+      "rps": 0.20426847905842185,
+      "ece": 0.02215322363356928,
+      "accuracy": 0.5136986301369864,
+      "n": 1752
+    },
+    "E01-freq": {
+      "log_loss": 1.0711685183750153,
+      "brier": 0.647720612781624,
+      "rps": 0.2288468886306858,
+      "ece": 0.0016415377803431497,
+      "accuracy": 0.4400684931506849,
+      "n": 1752
+    },
+    "E01-avg": {
+      "log_loss": 0.9776827884737294,
+      "brier": 0.5821786900099191,
+      "rps": 0.19753706915979138,
+      "ece": 0.027862854238641432,
+      "accuracy": 0.533675799086758,
+      "n": 1752
+    },
+    "E01-psc_with_freq_fallback": {
+      "log_loss": 1.0169942119816566,
+      "brier": 0.6103686422749481,
+      "rps": 0.21104890439261134,
+      "ece": 0.017472517505499194,
+      "accuracy": 0.4868721461187215,
+      "n": 1752
+    }
+  },
+  "metrics_note": "E01-psc_with_freq_fallback: Pinnacle al cierre donde hay cuota y frecuencias de liga donde no; NO es la línea base de Pinnacle. Usar pinnacle_closing_subset.",
+  "paired_log_loss_differences": {
+    "champion_vs_E01-avg": {
+      "mean_diff": 0.003293632298365481,
+      "ci_low": -0.0007883243472448176,
+      "ci_high": 0.007430725402627921
+    },
+    "champion_vs_E02": {
+      "mean_diff": -0.017380885587920895,
+      "ci_low": -0.025959773973810645,
+      "ci_high": -0.00888424722464522
+    },
+    "champion_vs_E01-freq": {
+      "mean_diff": -0.09019209760292037,
+      "ci_low": -0.10870459073710241,
+      "ci_high": -0.07087378906862356
+    },
+    "champion_vs_champion_no_odds": {
+      "mean_diff": -0.012405325081994085,
+      "ci_low": -0.019374719141884527,
+      "ci_high": -0.005296041783346416
+    },
+    "champion_no_odds_vs_E02": {
+      "mean_diff": -0.004975560505926807,
+      "ci_low": -0.011896337190628463,
+      "ci_high": 0.0015505191105313946
+    }
+  },
+  "pinnacle_closing_subset": {
+    "n": 898,
+    "coverage": 0.5125570776255708,
+    "champion": 0.9663883484125205,
+    "champion_no_odds": 0.9806661437263954,
+    "E01-avg": 0.9610001939382715,
+    "psc": 0.963198549310864
+  },
+  "models": {
+    "champion": {
+      "spec": {
+        "type": "optuna_lightgbm",
+        "groups": [
+          "elo",
+          "form",
+          "schedule",
+          "xg",
+          "market"
+        ],
+        "n_trials": 40
+      },
+      "describe": {
+        "name": "lightgbm_optuna[elo+form+schedule+xg+market]",
+        "uses_odds": true,
+        "kind": "lightgbm",
+        "groups": [
+          "elo",
+          "form",
+          "schedule",
+          "xg",
+          "market"
+        ],
+        "params": {},
+        "n_features": 91,
+        "n_trials": 40,
+        "best_params": {
+          "learning_rate": 0.0234765357445108,
+          "num_leaves": 5,
+          "min_child_samples": 37,
+          "subsample": 0.5772304266446582,
+          "colsample_bytree": 0.42018255011908795,
+          "reg_lambda": 0.030203594598464008,
+          "reg_alpha": 0.006463709389190969,
+          "n_estimators": 348
+        }
+      }
+    },
+    "champion_no_odds": {
+      "spec": {
+        "type": "sklearn",
+        "kind": "logistic",
+        "groups": [
+          "elo",
+          "form",
+          "schedule",
+          "xg"
+        ],
+        "params": {
+          "C": 0.05
+        }
+      },
+      "describe": {
+        "name": "logistic[elo+form+schedule+xg]",
+        "uses_odds": false,
+        "kind": "logistic",
+        "groups": [
+          "elo",
+          "form",
+          "schedule",
+          "xg"
+        ],
+        "params": {
+          "C": 0.05
+        },
+        "n_features": 87
+      }
+    },
+    "E02": {
+      "spec": {
+        "type": "sklearn",
+        "kind": "logistic",
+        "groups": [
+          "elo"
+        ]
+      },
+      "describe": {
+        "name": "logistic[elo]",
+        "uses_odds": false,
+        "kind": "logistic",
+        "groups": [
+          "elo"
+        ],
+        "params": {},
+        "n_features": 4
+      }
+    },
+    "E01-freq": {
+      "spec": {
+        "type": "frequencies"
+      },
+      "describe": {
+        "name": "frequencies",
+        "uses_odds": false
+      }
+    },
+    "E01-avg": {
+      "spec": {
+        "type": "market",
+        "source": "avg",
+        "method": "shin"
+      },
+      "describe": {
+        "name": "market_avg_shin",
+        "uses_odds": true,
+        "source": "avg",
+        "method": "shin"
+      },
+      "odds_coverage": 1.0
+    },
+    "E01-psc": {
+      "spec": {
+        "type": "market",
+        "source": "psc",
+        "method": "shin"
+      },
+      "describe": {
+        "name": "market_psc_shin",
+        "uses_odds": true,
+        "source": "psc",
+        "method": "shin"
+      },
+      "odds_coverage": 0.5125570776255708
+    }
+  },
+  "artifacts": {
+    "predictions": "holdout_artifacts/holdout_predictions.parquet",
+    "bets": "holdout_artifacts/holdout_bets.parquet"
+  },
+  "betting": {
+    "champion": {
+      "threshold": 0.02,
+      "realistic": {
+        "scenario": "avg",
+        "threshold": 0.02,
+        "n_bets": 692,
+        "hit_rate": 0.3569364161849711,
+        "roi_flat": -0.05700867052023123,
+        "roi_ci_low": -0.15818605491329482,
+        "roi_ci_high": 0.05506322254335259,
+        "max_drawdown_flat": 93.88,
+        "clv_mean": -0.06316529141550326,
+        "clv_n": 369,
+        "roi_kelly": -0.04951181509506537,
+        "final_bankroll_kelly": 0.7057524874081914,
+        "max_drawdown_kelly": 0.6077800435323147
+      },
+      "optimistic": {
+        "scenario": "max",
+        "threshold": 0.02,
+        "n_bets": 1239,
+        "hit_rate": 0.36077481840193704,
+        "roi_flat": 0.021533494753833735,
+        "roi_ci_low": -0.06953531073446328,
+        "roi_ci_high": 0.12377461662631152,
+        "max_drawdown_flat": 69.37,
+        "clv_mean": -0.01709719610155297,
+        "clv_n": 638,
+        "roi_kelly": 0.004919748853772079,
+        "final_bankroll_kelly": 1.0737675723033862,
+        "max_drawdown_kelly": 0.6920104043204016
+      }
+    },
+    "champion_no_odds": {
+      "threshold": 0.05,
+      "realistic": {
+        "scenario": "avg",
+        "threshold": 0.05,
+        "n_bets": 941,
+        "hit_rate": 0.30818278427205104,
+        "roi_flat": -0.1554622741764081,
+        "roi_ci_low": -0.24312778958554732,
+        "roi_ci_high": -0.06294580233793852,
+        "max_drawdown_flat": 158.72999999999988,
+        "clv_mean": -0.06789221982972668,
+        "clv_n": 493,
+        "roi_kelly": -0.19453149837789427,
+        "final_bankroll_kelly": 0.11115060913551836,
+        "max_drawdown_kelly": 0.9434113984585131
+      },
+      "optimistic": {
+        "scenario": "max",
+        "threshold": 0.05,
+        "n_bets": 1284,
+        "hit_rate": 0.32242990654205606,
+        "roi_flat": -0.07581775700934579,
+        "roi_ci_low": -0.1576152647975078,
+        "roi_ci_high": 0.003614485981308394,
+        "max_drawdown_flat": 119.55999999999997,
+        "clv_mean": -0.0285580081219031,
+        "clv_n": 675,
+        "roi_kelly": -0.1285523086327562,
+        "final_bankroll_kelly": 0.1280343435024233,
+        "max_drawdown_kelly": 0.9364512642823988
+      }
+    }
+  },
+  "metrics_by_league": {
+    "D1": {
+      "champion": 0.9472907954704767,
+      "champion_no_odds": 0.960011004457464,
+      "E01-avg": 0.9518186691937359,
+      "E01-freq": 1.0707323192139728
+    },
+    "E0": {
+      "champion": 1.0274852936775616,
+      "champion_no_odds": 1.0289220016115912,
+      "E01-avg": 1.016028162303183,
+      "E01-freq": 1.0835184247317433
+    },
+    "F1": {
+      "champion": 0.9753340463262684,
+      "champion_no_odds": 0.9837992863771258,
+      "E01-avg": 0.9723016966380585,
+      "E01-freq": 1.0625048616411021
+    },
+    "I1": {
+      "champion": 0.9798056605971261,
+      "champion_no_odds": 1.0020739023667518,
+      "E01-avg": 0.9799617795239715,
+      "E01-freq": 1.0883857183456986
+    },
+    "SP1": {
+      "champion": 0.9673076973119078,
+      "champion_no_odds": 0.983737963761077,
+      "E01-avg": 0.9622190409661218,
+      "E01-freq": 1.0489291907419631
+    }
+  },
+  "level": "Bueno",
+  "level_checks": {
+    "minimo_vs_frecuencias": true,
+    "minimo_vs_e02": true,
+    "minimo_ece": true,
+    "bueno_vs_mercado_avg": true,
+    "excelente_vs_pinnacle_cierre": false,
+    "excelente_estrategia_valor": false
+  },
+  "figures": [
+    "figures/holdout_champion_calibration.png",
+    "figures/holdout_champion_roi.png",
+    "figures/holdout_champion_no_odds_calibration.png",
+    "figures/holdout_champion_no_odds_roi.png"
+  ]
+}
