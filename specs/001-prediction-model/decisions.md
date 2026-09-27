@@ -98,3 +98,4 @@ Decisiones tomadas durante la implementación que no estaban en la spec o que la
   - `/admin/refresh` reconstruye los datasets con `build_dataset` (reescribe `data/processed/*` y `reports/data_quality.md`) y el historial de servicio; esto sí lee el holdout (ya evaluado) desde el contenedor. La API de predicción sigue leyendo solo `history.parquet`.
   - Dockerfile con uv 0.12.5 (la versión que generó `uv.lock`).
   - Pendientes documentados (no bloqueantes): `SEED` de `.env` no se usa (la semilla 42 está fijada en el código), CI no corre mypy, parte de la narrativa del informe es fija en el generador.
+  - (2ª revisión T039) `make all` usa `betting-ml select --skip-if-locked`: con el lock `completed` valida que `champion.json` coincide con el lock y continúa; sin lock elige campeón. `exp --skip-existing` solo omite un experimento si todas sus variantes están registradas; si falta alguna, re-ejecuta todas (las anteriores pasan al historial).

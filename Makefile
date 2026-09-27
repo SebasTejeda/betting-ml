@@ -53,6 +53,6 @@ docker:
 all: data
 	$(CLI) exp E01 --skip-existing
 	@for id in $(EXPERIMENTS); do $(CLI) exp $$id --skip-existing || exit 1; done
-	$(MAKE) select
+	$(CLI) select --skip-if-locked
 	$(CLI) holdout --skip-if-done
 	$(MAKE) report train-prod

@@ -72,11 +72,27 @@ def conclude(exp_id: str, text: str) -> None:
 
 
 @app.command()
-def select() -> None:
+def select(skip_if_locked: bool = False) -> None:
     """Elige campeón y campeón sin cuotas (experiments.md §4) → models/champion.json."""
+    import json
+
+    from betting_ml.application.select_champion import check_champions_match_lock
     from betting_ml.container import Container
 
-    selection = Container().select_champion().run()
+    container = Container()
+    use_case = container.select_champion()
+    if skip_if_locked and use_case.lock_path is not None and use_case.lock_path.exists():
+        lock = json.loads(use_case.lock_path.read_text(encoding="utf-8"))
+        if lock.get("status") != "completed":
+            typer.echo(f"El lock del holdout quedó en estado {lock.get('status')!r}.", err=True)
+            raise typer.Exit(code=1)
+        selection_file = json.loads(container.champion_path.read_text(encoding="utf-8"))
+        check_champions_match_lock(selection_file, lock)
+        typer.echo(
+            "Campeón ya evaluado en el holdout; champion.json coincide con el lock. Se omite."
+        )
+        return
+    selection = use_case.run()
     for label, entry in (
         ("champion", selection.champion),
         ("champion_no_odds", selection.champion_no_odds),

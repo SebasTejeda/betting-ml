@@ -20,8 +20,8 @@ Walk-forward por temporada con ventana expansiva: F1 valida en 2022-23, F2 en 20
 | ID | Modelo | Cuotas | F1 | F2 | F3 | Media | ECE | Apuestas | ROI | IC 95 % ROI | Conclusión |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | E01-freq | frequencies | no | 1.0630 | 1.0763 | 1.0785 | **1.0726** | 0.017 | 5116 | -16.1 % | [-21.6 %, -10.8 %] | Piso: 1.0726. Cualquier modelo útil debe bajar claramente de aquí. |
-| E01-avg | market_avg_shin | sí | 0.9776 | 0.9545 | 0.9631 | **0.9651** | 0.022 | 0 | — | [—, —] | Techo realista: 0.9651 (Shin). Meta nivel Bueno: <= 0.9701 en validación. |
-| E01-avg_prop | market_avg_proportional | sí | 0.9779 | 0.9556 | 0.9638 | **0.9657** | 0.024 | 0 | — | [—, —] | Proporcional 0.9657, apenas peor que Shin (0.9651): se mantiene Shin como método principal. |
+| E01-avg | market_avg_shin | sí | 0.9776 | 0.9545 | 0.9631 | **0.9651** | 0.022 | 0 | — | — | Techo realista: 0.9651 (Shin). Meta nivel Bueno: <= 0.9701 en validación. |
+| E01-avg_prop | market_avg_proportional | sí | 0.9779 | 0.9556 | 0.9638 | **0.9657** | 0.024 | 0 | — | — | Proporcional 0.9657, apenas peor que Shin (0.9651): se mantiene Shin como método principal. |
 | E01-psc | market_psc_shin | sí | 0.9747 | 0.9519 | 0.9600 | **0.9622** | 0.018 | 521 | +22.6 % | [+6.4 %, +40.4 %] | Referencia sharp: 0.9622 (meta Excelente). Su ROI/CLV no es alcanzable: apuesta con información de cierre; solo referencia. |
 | E02 | logistic[elo] | no | 0.9898 | 0.9758 | 0.9864 | **0.9840** | 0.018 | 2759 | -10.1 % | [-16.4 %, -3.5 %] | Confirmada: 0.9840 vs 1.0726 de frecuencias (-0.089), estable en los 3 folds y ECE 0.018. Queda a 0.019 del mercado Avg; referencia de estabilidad para el campeón. |
 | E03 | poisson_goals_xi0.0019 | no | 0.9969 | 0.9783 | 0.9852 | **0.9868** | 0.015 | 4199 | -15.8 % | [-20.7 %, -10.9 %] | Rechazada: 0.9868, peor que Elo (0.9840), sobre todo en F1. Mejor ECE (0.015). Re-ejecutado tras T025 (equipos inactivos >365 días como ascendidos). |

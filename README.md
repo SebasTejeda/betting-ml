@@ -75,7 +75,7 @@ Sin make: `uv sync --extra dev`, seguido de `uv run pre-commit install`. Despué
 | `make serve` | `uv run betting-ml serve` | API en `http://localhost:8000` (Swagger en `/docs`) |
 | `make track` | `uv run betting-ml track` | Califica las predicciones servidas con los resultados reales |
 | `make docker` | `docker build -t betting-ml:latest .` | Imagen de la API (ver comentario en el [`Dockerfile`](Dockerfile); aún no se construyó porque la máquina de desarrollo no tiene Docker) |
-| `make all` | — | data → baselines → experimentos → select → holdout (se omite si ya existe el lock) → report → train-prod |
+| `make all` | — | data → baselines → experimentos (omite los ya registrados) → select y holdout (si ya existe el lock, se validan y se omiten) → report → train-prod |
 
 Para servir en una máquina limpia: `make data && make train-prod && make serve`. `train-prod` necesita el lock del holdout, que está versionado.
 

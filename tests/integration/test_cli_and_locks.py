@@ -91,3 +91,18 @@ def test_champions_must_match_lock() -> None:
             {**selection, "champion": {"experiment_id": "E13"}},
             {"champion": "E12", "champion_no_odds": "E06"},
         )
+
+
+def test_select_skip_if_locked_validates_champion(settings: Settings) -> None:
+    _lock(settings, "completed")
+    settings.models_path.mkdir(parents=True)
+    champion = {"champion": {"experiment_id": "E12"}, "champion_no_odds": {"experiment_id": "E06"}}
+    (settings.models_path / "champion.json").write_text(json.dumps(champion), encoding="utf-8")
+    ok = runner.invoke(app, ["select", "--skip-if-locked"])
+    assert ok.exit_code == 0 and "Se omite" in ok.stdout
+    champion["champion"]["experiment_id"] = "E13"
+    (settings.models_path / "champion.json").write_text(json.dumps(champion), encoding="utf-8")
+    mismatch = runner.invoke(app, ["select", "--skip-if-locked"])
+    assert isinstance(mismatch.exception, ChampionLockedError)
+    _lock(settings, "started")
+    assert runner.invoke(app, ["select", "--skip-if-locked"]).exit_code == 1

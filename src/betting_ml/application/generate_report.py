@@ -164,7 +164,9 @@ def _experiments_table(experiments: pd.DataFrame) -> str:
                 _f(r["val_ece"], 3),
                 str(r["n_bets"]),
                 _pct(r["roi_flat"]),
-                f"[{_pct(r['roi_ci_low'])}, {_pct(r['roi_ci_high'])}]",
+                "—"
+                if _pct(r["roi_ci_low"]) == "—"
+                else f"[{_pct(r['roi_ci_low'])}, {_pct(r['roi_ci_high'])}]",
                 r["conclusion"],
             ]
         )
