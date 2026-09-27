@@ -96,47 +96,62 @@ def test_final_requires_validation_and_runs_once(use_case: BacktestPinnacle) -> 
         use_case.run_final()
 
 
-def test_missing_holdout_predictions(use_case: BacktestPinnacle) -> None:
+def test_missing_holdout_predictions_do_not_burn_the_lock(use_case: BacktestPinnacle) -> None:
     use_case.run_validation()
     use_case.load_holdout_predictions = lambda: pd.DataFrame(
-        columns=[
-            "match_id",
-            *[
-                f"{v}__p_{o}"
-                for v in ("champion", "champion_no_odds")
-                for o in ("home", "draw", "away")
-            ],
-        ]
+        columns=["match_id", "champion__p_home"]
     )
-    with pytest.raises(ValueError, match="holdout predictions"):
+    with pytest.raises(ValueError, match="incomplete"):
         use_case.run_final()
-    assert json.loads(use_case.lock_path.read_text(encoding="utf-8"))["status"] == "started"
+    assert not use_case.lock_path.exists()
+
+
+def test_final_payload_has_irrecoverable_details(use_case: BacktestPinnacle) -> None:
+    use_case.run_validation()
+    payload = use_case.run_final()
+    assert set(payload["hashes"]) == {"validation_json_sha256", "holdout_predictions_sha256"}
+    assert set(payload["pooled_b365_evidence"]) == {
+        "b365|none",
+        "b365|champion",
+        "b365|champion_no_odds",
+    }
+    assert "max_longshots" in payload["test"]["placebo"]
+    assert payload["test"]["pinnacle_coverage_by_league"]["E0"] == pytest.approx(50 / 56, abs=1e-4)
+    bets = pd.read_parquet(use_case.reports_dir / payload["test"]["bets_file"])
+    assert {"ps_odds", "psc_odds", "p_close", "p_model", "kelly_fraction"} <= set(bets.columns)
+    lock = json.loads(use_case.lock_path.read_text(encoding="utf-8"))
+    assert lock["validation_json_sha256"] == payload["hashes"]["validation_json_sha256"]
+    report = (use_case.reports_dir / "REPORT_002_backtest.md").read_text(encoding="utf-8")
+    assert "Placebo" in report and "potencia estadística" in report
 
 
 def _result(clv: float | None, roi_low: float | None, n: int = 100) -> dict:
     return {"clv_mean": clv, "roi_ci_low": roi_low, "n_bets": n}
 
 
+def _pooled(low: float, n: int = 80, key: str = "b365|none") -> dict:
+    return {key: {"n": n, "clv_mean": low + 0.01, "clv_ci_low": low, "clv_ci_high": low + 0.02}}
+
+
 def test_level_and_conclusion_rules() -> None:
     passed = {"gate": {"passed": True}}
     failed = {"gate": {"passed": False}}
-    base = {"max|none": _result(-0.01, -0.2), "avg|none": _result(0.05, 0.0)}
+    base = {"max|none": _result(0.05, -0.2), "avg|none": _result(0.05, 0.0)}
     good = {**base, "b365|none": _result(0.01, -0.02)}
-    assert level_and_conclusion(passed, good)[:2] == ("Bueno", "seguir")
+    assert level_and_conclusion(passed, good, _pooled(-0.01))[:2] == ("Bueno", "seguir")
     excellent = {**base, "b365|none": _result(0.01, 0.01, n=400)}
     assert level_and_conclusion(passed, excellent)[0] == "Excelente"
-    few = {**base, "b365|none": _result(0.01, 0.01, n=100)}
-    assert level_and_conclusion(passed, few)[0] == "Bueno"
-    change = {
-        "max|none": _result(0.02, -0.3),
-        "avg|none": _result(-0.1, -0.5),
-        "b365|none": _result(-0.01, -0.1),
-    }
-    assert level_and_conclusion(passed, change)[:2] == ("Mínimo (backtest)", "seguir con cambios")
-    stop = {
-        "max|none": _result(-0.02, -0.3),
-        "avg|none": _result(0.2, 0.1),
-        "b365|none": _result(None, None, 0),
-    }
-    assert level_and_conclusion(passed, stop)[:2] == ("Mínimo (backtest)", "no seguir")
+    weak = {**base, "b365|none": _result(-0.01, -0.5, n=20)}
+    # max positive in the test no longer rescues the conclusion
+    assert level_and_conclusion(passed, weak, _pooled(-0.005))[:2] == (
+        "Mínimo (backtest)",
+        "no seguir",
+    )
+    assert level_and_conclusion(passed, weak, None)[1] == "no seguir"
+    # pooled Bet365 evidence with CI above 0 and enough bets -> continue with changes
+    assert level_and_conclusion(passed, weak, _pooled(0.002))[1] == "seguir con cambios"
+    assert level_and_conclusion(passed, weak, _pooled(0.002, n=30))[1] == "no seguir"
+    filtered = _pooled(0.004, key="b365|champion")
+    assert level_and_conclusion(passed, weak, filtered)[1] == "seguir con cambios"
+    assert level_and_conclusion(passed, weak, _pooled(0.01, key="max|none"))[1] == "no seguir"
     assert level_and_conclusion(failed, good)[0] == "No alcanzado"

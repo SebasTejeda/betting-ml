@@ -79,9 +79,27 @@ def select_bets(
             "ev": ev[idx, outcome],
             "won": frame["target"].to_numpy(dtype=float)[idx] == outcome,
             "clv": taken * p_close - 1.0,
+            "ps_odds": odds(frame, "ps")[idx, outcome],
+            "psc_odds": odds(frame, "psc")[idx, outcome],
+            "p_close": p_close,
+            "p_model": model_proba[idx, outcome] if model_proba is not None else np.nan,
+            "kelly_fraction": kelly_fraction(p_fair[idx, outcome], taken),
         }
     )
     return bets.sort_values("date", kind="mergesort").reset_index(drop=True)
+
+
+def placebo_clv(frame: pd.DataFrame, scenario: Scenario, min_odds: float = 1.0) -> dict[str, float]:
+    """CLV of backing EVERY outcome at the scenario price (no selection): how much CLV the
+    price source has by itself, to separate it from the effect of the selection rule."""
+    price = odds(frame, scenario)
+    clv = price * closing_probabilities(frame) - 1.0
+    ok = np.isfinite(clv) & (price >= min_odds)
+    values = clv[ok]
+    return {
+        "n": int(values.size),
+        "clv_mean": float(values.mean()) if values.size else float("nan"),
+    }
 
 
 @dataclass
@@ -209,6 +227,17 @@ def evaluate(
         by_season=_group(bets, bets["season"]),
         cumulative_profit=np.cumsum(profit).tolist(),
     )
+
+
+def threshold_is_default(
+    frame: pd.DataFrame,
+    scenario: Scenario,
+    model_proba: np.ndarray | None = None,
+    thresholds: Sequence[float] = THRESHOLDS,
+    min_bets: int = MIN_BETS_FOR_THRESHOLD,
+) -> bool:
+    """True when no threshold reaches ``min_bets`` (the lowest one is used by default)."""
+    return all(len(select_bets(frame, t, scenario, model_proba)) < min_bets for t in thresholds)
 
 
 def choose_threshold(

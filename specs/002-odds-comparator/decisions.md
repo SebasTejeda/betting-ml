@@ -45,3 +45,17 @@ Formato:
 - Conclusión: **seguir** si la principal alcanza el nivel Bueno en el test (CLV > 0 y límite inferior del IC del ROI > −3 %); **seguir con cambios** si no, pero algún escenario que no sea el control `avg` tiene CLV > 0 en el test; **no seguir** en otro caso.
 - El test final usa los umbrales fijados en validación, las predicciones del holdout de la spec 001 (modelos entrenados sin ver 2025-26) y su propio lock (`reports/HOLDOUT_002_USED.lock`, reclamado antes de leer datos). Las apuestas del test se guardan en `reports/holdout_artifacts/backtest_002_test_bets.parquet`.
 - Solo hay cuotas de Pinnacle en ~55 % de 2025-26: en el resto no hay referencia y no se apuesta. Se reporta la cobertura.
+
+## 2026-09-27 — Reglas del test final revisadas tras el checkpoint T006 (antes de ver el test)
+- Contexto: `ml-reviewer` bloqueó el diseño del test final (sin fuga). Con las reglas anteriores la conclusión estaba casi decidida: el CLV de `max` es positivo por construcción (sigue al EV casi 1:1 porque mide que el precio máximo supera a Pinnacle, no que se pueda apostar a él), y cualquier escenario con CLV puntual > 0 bastaba para "seguir con cambios".
+- Decisiones (fijadas antes de ejecutar T007):
+  - `max` y `avg` son **solo informativos**. La evidencia sale de **Bet365**, una casa blanda real.
+  - **Seguir:** la estrategia principal `b365|none` alcanza el nivel Bueno en el test (CLV > 0 y límite inferior del IC 95 % del ROI > −3 %).
+  - **Seguir con cambios:** si no, pero alguna variante Bet365 (sin filtro o con filtro de modelo) tiene, sumando validación y test con sus umbrales fijos, **≥ 50 apuestas con CLV y límite inferior del IC 95 % del CLV > 0**.
+  - **No seguir:** en otro caso.
+  - **Potencia declarada:** se esperan ~23 apuestas de `b365|none` en el test (2.4 % de los partidos × ~51–55 % de cobertura de Pinnacle). Con esa muestra, el nivel Bueno no tiene potencia estadística y el informe no lo presentará como un resultado firme.
+  - Lecturas adicionales: 6 variantes × 4 umbrales sin corrección por comparaciones múltiples; en los escenarios `b365` y `avg` el umbral es 0.01 por defecto (ningún umbral llega a 300 apuestas).
+  - Se agrega un **placebo** (CLV de apostar a todos los resultados a esa cuota, sin selección) en validación y test.
+  - Se guarda por apuesta: `ps_odds`, `psc_odds`, `p_close`, `p_model` y la fracción de Kelly. Se guardan también la cobertura de Pinnacle por liga y por mes, y hashes del JSON de validación y de las predicciones del holdout (también en el lock).
+  - Las comprobaciones previas de las predicciones del holdout se hacen **antes** de reclamar el lock.
+- **Lectura honesta de la puerta T008** (validación): pasa en lo formal (CLV medio > 0), pero el escenario `max` no es apostable. La evidencia realista es débil: `b365|none` tiene CLV +0.9 % con un IC que incluye el 0 (+2.9 % en 2022-23, −0.02 % en 2023-24 y −0.4 % en 2024-25). Las variantes con filtro de modelo tienen un IC por encima de 0, pero con ~47 apuestas y sin corregir por comparaciones múltiples.
