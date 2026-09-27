@@ -73,3 +73,13 @@ Bitácora del agente. Una línea por tarea: `AAAA-MM-DD · TXXX · qué se hizo 
 - 2026-09-26 · T037 · Dockerfile (python:3.12-slim, uv --frozen, usuario no root, healthcheck) + .dockerignore + make docker · Docker no instalado aquí: validado con test estático, build pendiente (decisions.md)
 - 2026-09-26 · T038 · README final: resultados (nivel Bueno, no concluyente; peor que el mercado), arquitectura hexagonal en texto, instalación, comandos make/uv, Postman, limitaciones y aviso de juego responsable
 - 2026-09-26 · T039 · Auditoría final con ml-reviewer: 1ª BLOQUEADO (make all roto, sin candado campeón↔lock, ROI sin IC en REPORT) → corregido; 2ª BLOQUEADO (select cortaba make all) → select --skip-if-locked; 3ª APROBADO CON OBSERVACIONES (sin fuga, cifras recalculadas coinciden, hexagonal OK, cobertura 98.7 %)
+- 2026-09-26 · T040 · Verificación final: lint (ruff + format + mypy) y 203 tests en verde, cobertura 98.7 % global y 100 % en domain/ y ml/features/; API levantada y probada con curl (/health, /leagues/E0/teams, POST /predictions, /matches vacío en 0.33 s, 422 con fecha mal formada)
+
+## Resumen final
+
+- **Datos:** 5 ligas, 2014-15…2026-27; xG emparejado al 100 %; reporte de calidad en `reports/data_quality.md`.
+- **Experimentos:** E01–E09 y E12 registrados. E10, E11 y E13–E15 no se corrieron: la familia sin cuotas se detuvo tras E09 y E12 activó la parada anticipada por nivel Bueno.
+- **Campeón:** E12 (LightGBM + mercado). Sin cuotas: E06 (logística).
+- **Holdout 2025-26 (evaluado una vez):** campeón 0.9810 frente al mercado Avg 0.9777. **Nivel Bueno, no concluyente:** la diferencia, +0.0033, tiene un IC [−0.0008, +0.0074] que contiene el umbral de +0.005. El modelo no le gana al mercado. Apuestas: ROI −5.7 % con IC [−15.8 %, +5.5 %] y CLV −6.3 %.
+- **Producción:** API FastAPI, colección de Postman, seguimiento en vivo y Dockerfile. Docker no se construyó porque no está instalado en esta máquina.
+- **Pendiente para el dueño:** `git push` (nunca lo hace el agente); instalar make y Docker si se quieren usar esos comandos; probar E13 (stacking con el mercado) en un nuevo ciclo con 2026-27 como holdout.

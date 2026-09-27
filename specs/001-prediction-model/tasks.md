@@ -117,5 +117,5 @@ Instrucciones para el agente:
 
 - [x] **T038** `README.md` final: qué es, resultados principales (nivel alcanzado y métricas clave), arquitectura (diagrama en texto), cómo instalar, cómo correr, cómo probar con Postman, limitaciones y aviso de juego responsable.
 - [x] 🔍 **T039** Auditoría final con `ml-reviewer` sobre todo el repo (arquitectura, calidad, fuga, reproducibilidad). Corregir hallazgos bloqueantes.
-- [ ] **T040** Verificación final: `make lint`, `make test` (cobertura según constitución), `make serve` + probar 3 endpoints con `curl`. Resumen final en `PROGRESS.md`.
+- [x] **T040** Verificación final: `make lint`, `make test` (cobertura según constitución), `make serve` + probar 3 endpoints con `curl`. Resumen final en `PROGRESS.md`.
   - Commit: `chore: final verification`
