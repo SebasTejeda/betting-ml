@@ -41,6 +41,7 @@ from betting_ml.application.predict_matches import PredictMatches
 from betting_ml.application.refresh_odds import RefreshOdds
 from betting_ml.application.run_experiment import RunExperiment
 from betting_ml.application.select_champion import SelectChampion
+from betting_ml.application.settle_bets import SettleBets
 from betting_ml.application.track_predictions import TrackPredictions
 from betting_ml.application.train_production import TrainProduction
 from betting_ml.config import (
@@ -328,3 +329,13 @@ class Container:
     @cached_property
     def manage_bets(self) -> ManageBets:
         return ManageBets(self.bet_repository, self.settings_repository, self.odds_repository)
+
+    @cached_property
+    def settle_bets(self) -> SettleBets:
+        return SettleBets(
+            self.bet_repository,
+            self.odds_repository,
+            self.football_data,
+            self.team_names,
+            exchange_commission=self.settings.exchange_commission,
+        )

@@ -72,3 +72,6 @@ db-upgrade:
 
 odds:
 	$(CLI) odds
+
+settle:
+	$(CLI) settle

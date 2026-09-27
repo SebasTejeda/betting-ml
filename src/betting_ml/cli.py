@@ -221,6 +221,17 @@ def odds(league: list[str] = typer.Option(None, help="Ligas (por defecto todas)"
         )
 
 
+@app.command()
+def settle() -> None:
+    """Liquida las apuestas pendientes con los resultados de football-data y calcula el CLV."""
+    from betting_ml.container import Container
+
+    result = Container().settle_bets.run()
+    typer.echo(
+        f"liquidadas={result.settled} con CLV={result.clv_computed} pendientes={result.still_pending}"
+    )
+
+
 @app.command("db-upgrade")
 def db_upgrade() -> None:
     """Aplica las migraciones de la base SQLite (spec 002)."""
