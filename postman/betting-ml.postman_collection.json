@@ -1,0 +1,730 @@
+{
+  "info": {
+    "name": "betting-ml API",
+    "description": "Predicciones 1X2 y value bets (contracts/api.md). Levanta la API con `make serve` (o `uv run betting-ml serve`) y usa la variable baseUrl.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8000"
+    },
+    {
+      "key": "date",
+      "value": "2026-09-27"
+    },
+    {
+      "key": "adminApiKey",
+      "value": "cambia-esto"
+    }
+  ],
+  "item": [
+    {
+      "name": "Salud",
+      "item": [
+        {
+          "name": "GET /health",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"status ok\", function () { pm.expect(pm.response.json().status).to.eql(\"ok\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health"
+              ]
+            },
+            "description": ""
+          }
+        }
+      ]
+    },
+    {
+      "name": "Ligas",
+      "item": [
+        {
+          "name": "GET ligas",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"5 ligas\", function () { pm.expect(pm.response.json().length).to.eql(5); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/leagues",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "leagues"
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "GET equipos de E0 (Elo)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"equipos con elo\", function () { pm.expect(pm.response.json()[0]).to.have.keys(\"name\", \"elo\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/leagues/E0/teams",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "leagues",
+                "E0",
+                "teams"
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "GET liga inexistente (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 404\", function () { pm.response.to.have.status(404); });",
+                  "pm.test(\"formato de error uniforme\", function () { const e = pm.response.json().error; pm.expect(e).to.have.keys(\"code\", \"message\", \"details\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/leagues/XX/teams",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "leagues",
+                "XX",
+                "teams"
+              ]
+            },
+            "description": ""
+          }
+        }
+      ]
+    },
+    {
+      "name": "Partidos del día",
+      "item": [
+        {
+          "name": "GET partidos de hoy (Lima)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"count coincide\", function () { const b = pm.response.json(); pm.expect(b.count).to.eql(b.matches.length); });",
+                  "pm.test(\"probabilidades suman ~1\", function () { const body = pm.response.json(); const items = body.matches ? body.matches : [body]; items.forEach(function (m) { const p = m.probabilities; pm.expect(p.home + p.draw + p.away).to.be.closeTo(1, 0.001); }); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/matches",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "matches"
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "GET partidos de una fecha",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"probabilidades suman ~1\", function () { const body = pm.response.json(); const items = body.matches ? body.matches : [body]; items.forEach(function (m) { const p = m.probabilities; pm.expect(p.home + p.draw + p.away).to.be.closeTo(1, 0.001); }); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/matches?date={{date}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "matches"
+              ],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "{{date}}"
+                }
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "GET solo value bets de E0",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"todas con value bet\", function () { pm.response.json().matches.forEach(function (m) { pm.expect(m.value_bets.length).to.be.above(0); }); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/matches?date={{date}}&league=E0&only_value=true&min_edge=0.05",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "matches"
+              ],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "{{date}}"
+                },
+                {
+                  "key": "league",
+                  "value": "E0"
+                },
+                {
+                  "key": "only_value",
+                  "value": "true"
+                },
+                {
+                  "key": "min_edge",
+                  "value": "0.05"
+                }
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "GET fecha sin partidos (lista vacía)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"lista vacía con mensaje\", function () { const b = pm.response.json(); pm.expect(b.count).to.eql(0); pm.expect(b.message).to.be.a(\"string\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/matches?date=2026-07-01",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "matches"
+              ],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "2026-07-01"
+                }
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "GET fecha mal formada (422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 422\", function () { pm.response.to.have.status(422); });",
+                  "pm.test(\"formato de error uniforme\", function () { const e = pm.response.json().error; pm.expect(e).to.have.keys(\"code\", \"message\", \"details\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/matches?date=27-09-2026",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "matches"
+              ],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "27-09-2026"
+                }
+              ]
+            },
+            "description": ""
+          }
+        }
+      ]
+    },
+    {
+      "name": "Predicciones",
+      "item": [
+        {
+          "name": "POST predicción con cuotas",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"probabilidades suman ~1\", function () { const body = pm.response.json(); const items = body.matches ? body.matches : [body]; items.forEach(function (m) { const p = m.probabilities; pm.expect(p.home + p.draw + p.away).to.be.closeTo(1, 0.001); }); });",
+                  "pm.test(\"variante con cuotas\", function () { pm.expect(pm.response.json().model_variant).to.eql(\"with_odds\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/predictions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "predictions"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"league\": \"E0\",\n  \"home_team\": \"Arsenal\",\n  \"away_team\": \"Chelsea\",\n  \"match_date\": \"{{date}}\",\n  \"odds\": {\n    \"home\": 1.98,\n    \"draw\": 3.9,\n    \"away\": 4.5\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "POST predicción sin cuotas",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"probabilidades suman ~1\", function () { const body = pm.response.json(); const items = body.matches ? body.matches : [body]; items.forEach(function (m) { const p = m.probabilities; pm.expect(p.home + p.draw + p.away).to.be.closeTo(1, 0.001); }); });",
+                  "pm.test(\"sin mercado\", function () { const b = pm.response.json(); pm.expect(b.model_variant).to.eql(\"without_odds\"); pm.expect(b.market).to.eql(null); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/predictions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "predictions"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"league\": \"SP1\",\n  \"home_team\": \"Barcelona\",\n  \"away_team\": \"Real Madrid\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "POST equipo inexistente (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 404\", function () { pm.response.to.have.status(404); });",
+                  "pm.test(\"formato de error uniforme\", function () { const e = pm.response.json().error; pm.expect(e).to.have.keys(\"code\", \"message\", \"details\"); });",
+                  "pm.test(\"TEAM_NOT_FOUND\", function () { pm.expect(pm.response.json().error.code).to.eql(\"TEAM_NOT_FOUND\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/predictions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "predictions"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"league\": \"E0\",\n  \"home_team\": \"Man Utd FC\",\n  \"away_team\": \"Chelsea\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "POST cuerpo inválido (422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 422\", function () { pm.response.to.have.status(422); });",
+                  "pm.test(\"formato de error uniforme\", function () { const e = pm.response.json().error; pm.expect(e).to.have.keys(\"code\", \"message\", \"details\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/predictions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "predictions"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"league\": \"E0\",\n  \"home_team\": \"Arsenal\",\n  \"odds\": {\n    \"home\": 0.5,\n    \"draw\": 3,\n    \"away\": 4\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Modelo y experimentos",
+      "item": [
+        {
+          "name": "GET modelo en producción",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"tiene versión y nivel\", function () { const b = pm.response.json(); pm.expect(b.version).to.be.a(\"string\"); pm.expect(b).to.have.property(\"success_level\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/model",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "model"
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "GET experimentos",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"ordenados por log loss\", function () { const e = pm.response.json(); for (let i = 1; i < e.length; i++) { pm.expect(e[i].val_ll_mean).to.be.at.least(e[i-1].val_ll_mean); } });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/experiments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "experiments"
+              ]
+            },
+            "description": ""
+          }
+        }
+      ]
+    },
+    {
+      "name": "Seguimiento",
+      "item": [
+        {
+          "name": "GET resumen de seguimiento",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"campos\", function () { pm.expect(pm.response.json()).to.have.keys(\"predictions\", \"graded\", \"log_loss\", \"accuracy\", \"value_bets\", \"roi\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/tracking/summary",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "tracking",
+                "summary"
+              ]
+            },
+            "description": ""
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin",
+      "item": [
+        {
+          "name": "POST refresh (202)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 202\", function () { pm.response.to.have.status(202); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-API-Key",
+                "value": "{{adminApiKey}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/refresh",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "refresh"
+              ]
+            },
+            "description": "Vuelve a descargar fixtures.csv y, en segundo plano, la temporada en curso."
+          }
+        },
+        {
+          "name": "POST refresh sin clave (401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 401\", function () { pm.response.to.have.status(401); });",
+                  "pm.test(\"formato de error uniforme\", function () { const e = pm.response.json().error; pm.expect(e).to.have.keys(\"code\", \"message\", \"details\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/refresh",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "refresh"
+              ]
+            },
+            "description": ""
+          }
+        }
+      ]
+    }
+  ]
+}

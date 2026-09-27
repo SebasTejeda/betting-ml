@@ -109,7 +109,7 @@ Instrucciones para el agente:
 - [x] **T033** Casos de uso `predict_matches` y `track_predictions` (US5 y US6).
 - [x] **T034** API FastAPI completa según `contracts/api.md`: routers, schemas, errores uniformes, inyección desde `container.py`, CORS abierto para `localhost`.
 - [x] **T035** Tests de API con `TestClient` (todos los endpoints, casos de error, lista vacía, suma de probabilidades = 1).
-- [ ] **T036** Colección de Postman `postman/betting-ml.postman_collection.json` (ver contrato).
+- [x] **T036** Colección de Postman `postman/betting-ml.postman_collection.json` (ver contrato).
 - [ ] **T037** `Dockerfile` (imagen slim, usuario no root) y target `make docker`.
   - Commits: uno por tarea.
 
