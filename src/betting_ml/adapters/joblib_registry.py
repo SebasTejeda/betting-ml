@@ -21,7 +21,9 @@ class JoblibModelRegistry:
         target.mkdir(parents=True, exist_ok=True)
         joblib.dump(model, target / "model.joblib", compress=3)
         (target / "metadata.json").write_text(
-            json.dumps(metadata, indent=2, ensure_ascii=False, default=str), encoding="utf-8"
+            json.dumps(metadata, indent=2, ensure_ascii=False, default=str) + "\n",
+            encoding="utf-8",
+            newline="\n",
         )
 
     def load(self, version: str) -> tuple[Any, dict[str, Any]]:
