@@ -15,6 +15,7 @@ from betting_ml.application.compare_matches import (
     BookmakerNotFoundError,
     MatchNotFoundError,
     NoReferenceError,
+    NotManualBookmakerError,
 )
 from betting_ml.application.manage_bets import (
     BetNotFoundError,
@@ -103,7 +104,11 @@ def register_error_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(BetNotPendingError)
     async def _bet_not_pending(_: Request, exc: BetNotPendingError) -> JSONResponse:
-        return error_response(409, "BET_NOT_PENDING", str(exc))
+        return error_response(409, exc.code, str(exc))
+
+    @app.exception_handler(NotManualBookmakerError)
+    async def _not_manual(_: Request, exc: NotManualBookmakerError) -> JSONResponse:
+        return error_response(422, "BOOKMAKER_NOT_MANUAL", str(exc), {"bookmaker": exc.key})
 
     @app.exception_handler(MatchNotFoundError)
     async def _match_missing(_: Request, exc: MatchNotFoundError) -> JSONResponse:

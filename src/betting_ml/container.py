@@ -19,8 +19,7 @@ from betting_ml.adapters.git_info import current_commit
 from betting_ml.adapters.http import HttpClient
 from betting_ml.adapters.joblib_registry import JoblibModelRegistry
 from betting_ml.adapters.parquet_repository import ParquetMatchRepository
-from betting_ml.adapters.sql.db import make_engine, session_factory
-from betting_ml.adapters.sql.models import Base
+from betting_ml.adapters.sql.db import prepare, session_factory
 from betting_ml.adapters.sql.repositories import (
     SqlBetRepository,
     SqlOddsRepository,
@@ -70,6 +69,9 @@ class JournalServices:
     bookmakers: BookmakersFile
     app_api_key: str
     reports_path: Path
+    # Starts the optional automatic refresh (ODDS_AUTO_REFRESH); returns an object with
+    # ``shutdown()``. ``None`` when disabled.
+    start_auto_refresh: Callable[[], Any] | None = None
 
 
 @dataclass
@@ -266,6 +268,7 @@ class Container:
                 bookmakers=self.bookmakers,
                 app_api_key=self.settings.app_api_key,
                 reports_path=self.settings.reports_path,
+                start_auto_refresh=self._auto_refresh if self.settings.odds_auto_refresh else None,
             ),
         )
 
@@ -296,9 +299,16 @@ class Container:
 
     @cached_property
     def db_sessions(self) -> sessionmaker[Session]:
-        engine = make_engine(self.settings.database_url)
-        Base.metadata.create_all(engine)  # no-op when `make db-upgrade` already ran
-        return session_factory(engine)
+        return session_factory(prepare(self.settings.database_url))
+
+    def _auto_refresh(self) -> Any:  # pragma: no cover - starts a real background scheduler
+        from betting_ml.adapters.scheduler import start_scheduler
+
+        return start_scheduler(
+            self.settings.odds_auto_refresh_times,
+            self.refresh_odds.should_auto_refresh,
+            self.refresh_odds.refresh,
+        )
 
     @cached_property
     def odds_repository(self) -> SqlOddsRepository:

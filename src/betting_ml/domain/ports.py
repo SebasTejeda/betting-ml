@@ -129,6 +129,7 @@ class OddsRepository(Protocol):
         kickoff_from: Any = None,
         kickoff_to: Any = None,
         before: Any = None,
+        source: Any = None,
     ) -> list[Any]: ...
 
     def latest_snapshot(self, source: Any = ...) -> Any: ...

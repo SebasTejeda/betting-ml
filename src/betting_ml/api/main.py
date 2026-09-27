@@ -44,7 +44,14 @@ def create_app(services: Any | None = None) -> FastAPI:
             app.state.container.predictor.state()
         except ModelNotAvailableError as exc:
             logger.warning("API started without a trained model: %s", exc)
-        yield
+        journal = getattr(app.state.container, "journal", None)
+        starter = getattr(journal, "start_auto_refresh", None)
+        scheduler = starter() if starter is not None else None
+        try:
+            yield
+        finally:
+            if scheduler is not None:
+                scheduler.shutdown(wait=False)
 
     app = FastAPI(
         title="betting-ml API",

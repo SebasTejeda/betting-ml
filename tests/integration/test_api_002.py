@@ -33,7 +33,8 @@ from tests.serving import build_serving_env, leagues
 FIXTURES = Path(__file__).parents[1] / "fixtures" / "the_odds_api"
 KEY = "app-test-key"
 AUTH = {"X-API-Key": KEY}
-NOW = datetime(2026, 10, 10, 12, tzinfo=UTC)  # 07:00 in Lima
+NOW = datetime(2026, 10, 10, 10, tzinfo=UTC)  # 05:00 in Lima, before the 11:30 kick-off
+AFTER_KICKOFF = datetime(2026, 10, 10, 14, tzinfo=UTC)
 
 
 class Clock:
@@ -49,6 +50,11 @@ class FakeClient:
 
     def __init__(self, remaining: int) -> None:
         self.remaining = remaining
+        self.last_credits = None
+
+    def sports(self) -> list:
+        self.last_credits = Credits(self.remaining, 500 - self.remaining, 0)
+        return []
 
     def odds(self, sport_key: str, markets: str = "h2h"):  # type: ignore[no-untyped-def]
         from tests.integration.test_refresh_odds import _Response
@@ -172,11 +178,7 @@ def test_refresh_requires_key_and_respects_budget(ctx) -> None:  # type: ignore[
         404,
         "LEAGUE_NOT_FOUND",
     )
-    box["client"] = FakeClient(40)
-    client.post(
-        "/api/v1/odds/refresh", params={"league": "E0"}, headers=AUTH
-    )  # stops before the call
-    # force a low recorded budget
+    box["client"] = FakeClient(42)
     ctx[1].refresh_odds.repository.save_snapshot(
         OddsSnapshot(NOW, QuoteSource.API, [], credits_remaining=42, credits_used=0)
     )
@@ -233,6 +235,12 @@ def test_calculator(ctx) -> None:  # type: ignore[no-untyped-def]
         404,
         "BOOKMAKER_NOT_FOUND",
     )
+    # bookmakers served by the API cannot be typed by hand (they would pollute reference/CLV)
+    _error(
+        client.post("/api/v1/calculator", json={**body, "bookmaker": "pinnacle"}, headers=AUTH),
+        422,
+        "BOOKMAKER_NOT_MANUAL",
+    )
     _error(
         client.post(
             "/api/v1/calculator", json={**body, "match_id": "E0-2030-01-01-a-b"}, headers=AUTH
@@ -260,7 +268,7 @@ def _bet(match_id: str, **kw: object) -> dict:
 
 
 def test_bets_crud_and_limits(ctx) -> None:  # type: ignore[no-untyped-def]
-    client, *_ = ctx
+    client, _, clock, *_ = ctx
     match_id = _match_id(client)
     _error(client.post("/api/v1/bets", json=_bet(match_id)), 401, "UNAUTHORIZED")
     created = client.post("/api/v1/bets", json=_bet(match_id, note="n"), headers=AUTH)
@@ -304,7 +312,19 @@ def test_bets_crud_and_limits(ctx) -> None:  # type: ignore[no-untyped-def]
     assert page["total"] == 2 and page["page"] == 1
     assert client.get("/api/v1/bets", params={"kind": "paper", "size": 1}).json()["total"] == 1
     assert client.get("/api/v1/bets", params={"from": "2030-01-01"}).json()["total"] == 0
-    # patch / delete
+    # patch / delete: settling needs the match to have started, deleting needs the opposite
+    _error(
+        client.patch(f"/api/v1/bets/{bet['id']}", json={"status": "perdida"}, headers=AUTH),
+        409,
+        "MATCH_NOT_STARTED",
+    )
+    assert client.delete(f"/api/v1/bets/{paper.json()['id']}", headers=AUTH).status_code == 204
+    clock.now = AFTER_KICKOFF
+    _error(
+        client.delete(f"/api/v1/bets/{confirmed.json()['id']}", headers=AUTH),
+        409,
+        "MATCH_ALREADY_STARTED",
+    )
     patched = client.patch(
         f"/api/v1/bets/{bet['id']}", json={"status": "perdida", "note": "mala"}, headers=AUTH
     ).json()
@@ -317,7 +337,11 @@ def test_bets_crud_and_limits(ctx) -> None:  # type: ignore[no-untyped-def]
         409,
         "BET_NOT_PENDING",
     )
-    assert client.delete(f"/api/v1/bets/{paper.json()['id']}", headers=AUTH).status_code == 204
+    _error(
+        client.patch(f"/api/v1/bets/{bet['id']}", json={"status": "ganada"}, headers=AUTH),
+        409,
+        "BET_NOT_PENDING",
+    )
     _error(client.delete("/api/v1/bets/9999", headers=AUTH), 404, "BET_NOT_FOUND")
     _error(
         client.patch("/api/v1/bets/9999", json={"note": "x"}, headers=AUTH), 404, "BET_NOT_FOUND"
@@ -325,13 +349,20 @@ def test_bets_crud_and_limits(ctx) -> None:  # type: ignore[no-untyped-def]
 
 
 def test_monthly_limit_403_but_paper_allowed(ctx) -> None:  # type: ignore[no-untyped-def]
-    client, *_ = ctx
+    client, _, clock, *_ = ctx
     match_id = _match_id(client)
-    for _ in range(10):
-        bet = client.post(
+    bets = [
+        client.post(
             "/api/v1/bets", json=_bet(match_id, stake=10, confirm=True), headers=AUTH
         ).json()
-        client.patch(f"/api/v1/bets/{bet['id']}", json={"status": "perdida"}, headers=AUTH)
+        for _ in range(10)
+    ]
+    clock.now = AFTER_KICKOFF
+    for bet in bets:
+        response = client.patch(
+            f"/api/v1/bets/{bet['id']}", json={"status": "perdida"}, headers=AUTH
+        )
+        assert response.status_code == 200, response.text
     error = _error(
         client.post("/api/v1/bets", json=_bet(match_id, stake=1, confirm=True), headers=AUTH),
         403,
@@ -435,3 +466,49 @@ def test_openapi_lists_every_spec_002_route(ctx) -> None:  # type: ignore[no-unt
         "/api/v1/backtest/pinnacle",
     ):
         assert path in paths
+
+
+def test_settle_corrects_a_wrong_manual_result(ctx) -> None:  # type: ignore[no-untyped-def]
+    client, _, clock, _, results, _ = ctx
+    match_id = _match_id(client)
+    bet = client.post("/api/v1/bets", json=_bet(match_id, stake=10), headers=AUTH).json()
+    clock.now = AFTER_KICKOFF
+    wrong = client.patch(f"/api/v1/bets/{bet['id']}", json={"status": "perdida"}, headers=AUTH)
+    assert wrong.status_code == 200
+    assert client.get("/api/v1/bets/summary").json()["month"]["current_loss"] == 10.0
+    results.frame = pd.DataFrame(
+        [
+            {
+                "league": "E0",
+                "date": pd.Timestamp(bet["match_id"][3:13]),
+                "home_team": bet["home_team"],
+                "away_team": bet["away_team"],
+                "home_goals": 0.0,
+                "away_goals": 1.0,
+            }
+        ]
+    )
+    settled = client.post("/api/v1/bets/settle", headers=AUTH).json()
+    assert settled["corrected"] == 1 and settled["settled"] == 0
+    fixed = client.get("/api/v1/bets", params={"status": "ganada"}).json()["items"][0]
+    assert fixed["id"] == bet["id"] and "resultado oficial" in fixed["note"]
+    assert client.get("/api/v1/bets/summary").json()["month"]["current_loss"] == 0.0
+
+
+def test_lifespan_starts_and_stops_the_auto_refresh(ctx) -> None:  # type: ignore[no-untyped-def]
+    _, journal, *_, services = ctx
+    events: list[str] = []
+
+    class FakeScheduler:
+        def shutdown(self, wait: bool = True) -> None:
+            events.append("stop")
+
+    def start() -> FakeScheduler:
+        events.append("start")
+        return FakeScheduler()
+
+    app = create_app(replace(services, journal=replace(journal, start_auto_refresh=start)))
+    with TestClient(app) as client:
+        assert events == ["start"]
+        assert client.get("/api/v1/bookmakers").status_code == 200
+    assert events == ["start", "stop"]

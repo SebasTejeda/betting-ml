@@ -30,12 +30,23 @@ class _Response:
 class FakeClient:
     regions = "eu,uk"
 
-    def __init__(self, remaining: int = 498) -> None:
+    def __init__(self, remaining: int = 498, fail_on: str | None = None) -> None:
         self.remaining = remaining
         self.calls: list[str] = []
+        self.fail_on = fail_on
+        self.last_credits: Credits | None = None
+
+    def sports(self) -> list:
+        self.calls.append("sports")
+        self.last_credits = Credits(self.remaining, 500 - self.remaining, 0)
+        return []
 
     def odds(self, sport_key: str, markets: str = "h2h") -> _Response:
         self.calls.append(sport_key)
+        if sport_key == self.fail_on:
+            from betting_ml.adapters.the_odds_api import OddsApiError
+
+            raise OddsApiError(500, "boom")
         self.remaining -= 2
         events = (
             json.loads((FIXTURES / "soccer_epl_odds.json").read_text(encoding="utf-8"))
@@ -97,20 +108,48 @@ def test_budget_blocks_and_stops_midway(repo: SqlOddsRepository) -> None:
     result = use_case.refresh()
     assert result.stopped_by_budget and result.leagues == ["E0", "SP1"]
     assert result.credits_remaining == 50 and not use_case.budget().low
-    # Nothing can be refreshed now without going below the reserve.
-    again = use_case.refresh()
-    assert again.snapshot_id is None and again.leagues == [] and again.stopped_by_budget
-    assert client.calls == ["soccer_epl", "soccer_spain_la_liga"]
+    # Nothing can be refreshed now without going below the reserve: free probe, then 429.
+    with pytest.raises(OddsBudgetLowError, match="Quedan 50 créditos"):
+        use_case.refresh()
+    assert client.calls == ["soccer_epl", "soccer_spain_la_liga", "sports"]
 
 
 def test_low_budget_raises(repo: SqlOddsRepository) -> None:
     from betting_ml.domain.journal import OddsSnapshot, QuoteSource
 
     repo.save_snapshot(OddsSnapshot(NOW, QuoteSource.API, credits_remaining=42, credits_used=2))
-    use_case = _use_case(repo, FakeClient())
+    use_case = _use_case(repo, FakeClient(remaining=42))
     assert use_case.budget().low
     with pytest.raises(OddsBudgetLowError, match="Quedan 42 créditos"):
         use_case.refresh()
+
+
+def test_monthly_reset_is_detected_with_a_free_probe(repo: SqlOddsRepository) -> None:
+    from betting_ml.domain.journal import OddsSnapshot, QuoteSource
+
+    repo.save_snapshot(OddsSnapshot(NOW, QuoteSource.API, credits_remaining=42, credits_used=2))
+    client = FakeClient(remaining=500)  # credits were reset by the provider
+    result = _use_case(repo, client).refresh(["E0"])
+    assert client.calls == ["sports", "soccer_epl"]
+    assert result.leagues == ["E0"] and result.credits_remaining == 498
+
+
+def test_partial_failure_keeps_what_was_paid_for(repo: SqlOddsRepository) -> None:
+    from betting_ml.adapters.the_odds_api import OddsApiError
+
+    client = FakeClient(fail_on="soccer_germany_bundesliga")
+    with pytest.raises(OddsApiError):
+        _use_case(repo, client).refresh()
+    latest = repo.latest_snapshot()
+    assert latest is not None and latest.leagues == ["E0", "SP1"] and latest.credits_used == 4
+    assert repo.latest_quotes()
+
+
+def test_in_play_events_are_skipped(repo: SqlOddsRepository) -> None:
+    late = datetime(2026, 10, 10, 12, 0, tzinfo=UTC)  # after the first EPL kick-off (11:30)
+    result = _use_case(repo, FakeClient(), now=late).refresh(["E0"])
+    assert result.events < 20
+    assert all(q.kickoff_utc > late for q in repo.latest_quotes())
 
 
 def test_monthly_usage_resets_in_lima(repo: SqlOddsRepository) -> None:

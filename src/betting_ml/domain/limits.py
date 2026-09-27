@@ -129,8 +129,12 @@ def check_bet(
     max_stake: Decimal,
     from_experimental_signal: bool = False,
     progress: SignalProgress | None = None,
+    pending_exposure: Decimal = Decimal("0.00"),
 ) -> LimitCheck:
-    """ok / warning (needs confirmation) / blocked. Paper bets are never blocked."""
+    """ok / warning (needs confirmation) / blocked. Paper bets are never blocked.
+
+    Warnings use the worst case: settled loss of the month + stakes of pending real bets + this
+    stake. The block (403) uses the settled loss."""
     if kind is BetKind.PAPER:
         return LimitCheck(LimitStatus.OK)
     if month_loss >= monthly_limit:
@@ -158,14 +162,12 @@ def check_bet(
         code = LimitCode.EXPERIMENTAL_SIGNAL_UNPROVEN
     if stake > max_stake:
         messages.append(f"El stake {stake} supera el máximo por apuesta ({max_stake}).")
-    if month_loss + stake > monthly_limit:
-        messages.append(
-            f"Si pierdes esta apuesta superas el límite mensual (pérdida actual {month_loss} de {monthly_limit})."
-        )
-    elif month_loss + stake >= monthly_limit * NEAR_LIMIT_SHARE:
-        messages.append(
-            f"Te acercas al límite mensual (pérdida actual {month_loss} de {monthly_limit})."
-        )
+    worst = month_loss + pending_exposure + stake
+    exposure = f"pérdida actual {month_loss} + pendientes {pending_exposure} de {monthly_limit}"
+    if worst > monthly_limit:
+        messages.append(f"En el peor caso superas el límite mensual ({exposure}).")
+    elif worst >= monthly_limit * NEAR_LIMIT_SHARE:
+        messages.append(f"Te acercas al límite mensual ({exposure}).")
     if not messages:
         return LimitCheck(LimitStatus.OK)
     return LimitCheck(LimitStatus.WARNING, code or LimitCode.LIMIT_WARNING, tuple(messages))

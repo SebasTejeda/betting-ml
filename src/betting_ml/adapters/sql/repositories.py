@@ -141,6 +141,7 @@ class SqlOddsRepository:
         kickoff_from: datetime | None = None,
         kickoff_to: datetime | None = None,
         before: datetime | None = None,
+        source: QuoteSource | None = None,
     ) -> list[OddsQuote]:
         """Most recent quote per (match, bookmaker, outcome), optionally only snapshots taken
         before ``before`` (e.g. last quote before kick-off, for CLV)."""
@@ -154,6 +155,8 @@ class SqlOddsRepository:
                 query = query.where(OddsQuoteRow.kickoff_utc < kickoff_to)
             if before is not None:
                 query = query.where(OddsSnapshotRow.fetched_at < before)
+            if source is not None:
+                query = query.where(OddsSnapshotRow.source == source.value)
             query = query.order_by(OddsSnapshotRow.fetched_at, OddsQuoteRow.id)
             latest: dict[tuple[str, str, str], OddsQuote] = {}
             for row, fetched_at in session.execute(query).all():

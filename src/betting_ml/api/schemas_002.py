@@ -150,7 +150,7 @@ class BetIn(BaseModel):
     match_id: str = Field(min_length=3)
     outcome: OutcomeName
     bookmaker: str = Field(min_length=1)
-    odds: Decimal = Field(gt=1)
+    odds: Decimal = Field(gt=1, max_digits=8, decimal_places=3)
     stake: Decimal = Field(gt=0, max_digits=12, decimal_places=2)
     kind: Literal["real", "paper"]
     from_experimental_signal: bool = False
@@ -199,6 +199,7 @@ class SettleOut(BaseModel):
     settled: int
     clv_computed: int
     still_pending: int
+    corrected: int = 0
 
 
 class SeriesPoint(BaseModel):

@@ -18,6 +18,8 @@ from betting_ml.domain.entities import Outcome, make_match_id
 from betting_ml.domain.journal import OddsQuote
 
 logger = logging.getLogger(__name__)
+# httpx logs full URLs at INFO, and the API key travels in the query string.
+logging.getLogger("httpx").setLevel(logging.WARNING)
 BASE_URL = "https://api.the-odds-api.com/v4"
 SOURCE = "the_odds_api"
 

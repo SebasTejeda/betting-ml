@@ -319,18 +319,22 @@ def list_bets(
 def settle(container: Any = Depends(get_container)) -> SettleOut:
     result = _services(container).settle.run()
     return SettleOut(
-        settled=result.settled, clv_computed=result.clv_computed, still_pending=result.still_pending
+        settled=result.settled,
+        clv_computed=result.clv_computed,
+        still_pending=result.still_pending,
+        corrected=result.corrected,
     )
 
 
 @router.get("/bets/summary", response_model=SummaryOut)
 def summary(
-    kind: BetKind | None = Query(BetKind.REAL),
+    kind: str = Query("real", pattern="^(real|paper|all)$"),
     date_from: dt.date | None = Query(None, alias="from"),
     date_to: dt.date | None = Query(None, alias="to"),
     container: Any = Depends(get_container),
 ) -> SummaryOut:
-    s = _services(container).bets.summary(kind, _start(date_from), _end(date_to))
+    chosen = None if kind == "all" else BetKind(kind)
+    s = _services(container).bets.summary(chosen, _start(date_from), _end(date_to))
     return SummaryOut(
         bets=s.bets,
         settled=s.settled,

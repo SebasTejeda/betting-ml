@@ -10,14 +10,14 @@ import logging
 from collections import defaultdict
 from collections.abc import Callable
 from dataclasses import dataclass, replace
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 
 import numpy as np
 import pandas as pd
 
 from betting_ml.domain.clv import bet_clv
 from betting_ml.domain.entities import OUTCOMES, OddsTriple, Outcome, make_match_id
-from betting_ml.domain.journal import Bet, BetFilters, BetStatus
+from betting_ml.domain.journal import Bet, BetFilters, BetStatus, QuoteSource
 from betting_ml.domain.odds import exchange_net_odds
 from betting_ml.domain.ports import (
     BetRepository,
@@ -35,6 +35,15 @@ class SettleResult:
     settled: int
     clv_computed: int
     still_pending: int
+    corrected: int = 0
+
+
+RECONCILE_DAYS = 30
+
+
+def _outcome(row: pd.Series) -> Outcome:
+    hg, ag = int(row["home_goals"]), int(row["away_goals"])
+    return Outcome.HOME if hg > ag else Outcome.AWAY if hg < ag else Outcome.DRAW
 
 
 def season_of(day: date) -> str:
@@ -81,9 +90,12 @@ class SettleBets:
         return out
 
     def _api_closing(self, bet: Bet) -> tuple[OddsTriple | None, str | None]:
-        before = bet.kickoff_utc or self.clock()
+        if bet.kickoff_utc is None:  # without the kick-off time there is no "closing" line
+            return None, None
         books: dict[str, dict[Outcome, float]] = defaultdict(dict)
-        for q in self.odds.latest_quotes(match_ids=[bet.match_id], before=before):
+        for q in self.odds.latest_quotes(
+            match_ids=[bet.match_id], before=bet.kickoff_utc, source=QuoteSource.API
+        ):
             books[q.bookmaker][q.outcome] = q.odds
         if len(books.get("pinnacle", {})) == 3:
             return OddsTriple(*(books["pinnacle"][o] for o in OUTCOMES)), "odds_api_pinnacle"
@@ -102,19 +114,37 @@ class SettleBets:
 
     def run(self) -> SettleResult:
         pending = self.bets.all(BetFilters(status=BetStatus.PENDING))
+        now = self.clock()
+        recent = now - timedelta(days=RECONCILE_DAYS)
+        # Manually settled bets are checked against the official result (it always wins).
+        settled_recent = [
+            b
+            for b in self.bets.all()
+            if b.status is not BetStatus.PENDING
+            and (b.clv is None or (b.settled_at or now) >= recent)
+        ]
+        results = self._results(pending + settled_recent) if (pending or settled_recent) else {}
+        settled = clv_count = corrected = 0
+        for bet in settled_recent:
+            row = results.get(bet.match_id)
+            if row is None:
+                continue
+            real = bet.result_status(_outcome(row))
+            if bet.status is not real:
+                fixed = replace(bet.settle(real, now), clv=bet.clv, clv_source=bet.clv_source)
+                fixed = replace(
+                    fixed, note=((bet.note or "") + " [corregida con el resultado oficial]").strip()
+                )
+                self.bets.update(fixed)
+                corrected += 1
         missing_clv = [
             b for b in self.bets.all() if b.status is not BetStatus.PENDING and b.clv is None
         ]
-        results = self._results(pending + missing_clv) if (pending or missing_clv) else {}
-        settled = clv_count = 0
-        now = self.clock()
         for bet in pending:
             row = results.get(bet.match_id)
             if row is None:
                 continue
-            hg, ag = int(row["home_goals"]), int(row["away_goals"])
-            outcome = Outcome.HOME if hg > ag else Outcome.AWAY if hg < ag else Outcome.DRAW
-            updated = bet.settle(bet.result_status(outcome), now)
+            updated = bet.settle(bet.result_status(_outcome(row)), now)
             closing, source = self._closing(bet, row)
             if closing is not None:
                 updated = replace(
@@ -132,7 +162,7 @@ class SettleBets:
                     )
                 )
                 clv_count += 1
-        return SettleResult(settled, clv_count, len(pending) - settled)
+        return SettleResult(settled, clv_count, len(pending) - settled, corrected)
 
 
 def _day(bet: Bet) -> date:

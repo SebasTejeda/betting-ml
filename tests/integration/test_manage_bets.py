@@ -15,6 +15,7 @@ from betting_ml.adapters.sql.repositories import (
 from betting_ml.application.manage_bets import (
     BetNotFoundError,
     BetNotPendingError,
+    BetStateError,
     LimitWarningError,
     ManageBets,
     MonthlyLimitReachedError,
@@ -103,8 +104,9 @@ def test_warning_needs_confirmation(env) -> None:  # type: ignore[no-untyped-def
 
 def test_monthly_block_until_next_month_in_lima(env) -> None:  # type: ignore[no-untyped-def]
     use_case, clock = env
-    for _ in range(10):  # lose 10 × 10 = 100 = limit
-        bet = use_case.create(_new(stake=D("10.00")), confirm=True)
+    bets = [use_case.create(_new(stake=D("10.00")), confirm=True) for _ in range(10)]
+    clock.now = KICKOFF + timedelta(hours=2)  # settle after the match
+    for bet in bets:  # lose 10 × 10 = 100 = limit
         use_case.update(bet.id, status=BetStatus.LOST)
     with pytest.raises(MonthlyLimitReachedError) as err:
         use_case.create(_new(stake=D("1.00")), confirm=True)
@@ -158,17 +160,26 @@ def test_update_delete_and_summary(env) -> None:  # type: ignore[no-untyped-def]
     won = use_case.create(_new(bookmaker="betsson", odds=D("4.20")))
     lost = use_case.create(_new(stake=D("4.00"), outcome=Outcome.HOME, odds=D("2.00")))
     pending = use_case.create(_new(kind=BetKind.PAPER))
+    with pytest.raises(BetStateError) as not_started:
+        use_case.update(won.id, status=BetStatus.WON)  # before kick-off
+    assert not_started.value.code == "MATCH_NOT_STARTED"
+    use_case.delete(pending.id)  # a pending bet can be deleted before kick-off
+    with pytest.raises(BetNotFoundError):
+        use_case.get(pending.id)
+    late = use_case.create(_new(kind=BetKind.PAPER))
     clock.now += timedelta(hours=6)
+    with pytest.raises(BetStateError) as started:
+        use_case.delete(late.id)
+    assert started.value.code == "MATCH_ALREADY_STARTED"
     use_case.update(won.id, status=BetStatus.WON)
     use_case.update(lost.id, status=BetStatus.LOST, note="mala")
     assert use_case.get(lost.id).note == "mala"
     with pytest.raises(BetNotPendingError):
         use_case.update(won.id, status=BetStatus.PENDING)
     with pytest.raises(BetNotPendingError):
+        use_case.update(won.id, status=BetStatus.VOID)  # settled bets are not re-settled by hand
+    with pytest.raises(BetNotPendingError):
         use_case.delete(won.id)
-    use_case.delete(pending.id)
-    with pytest.raises(BetNotFoundError):
-        use_case.get(pending.id)
     summary = use_case.summary()
     assert summary.bets == 2 and summary.settled == 2
     assert summary.staked == D("9.00") and summary.profit == D("12.00")  # +16 − 4
@@ -180,4 +191,41 @@ def test_update_delete_and_summary(env) -> None:  # type: ignore[no-untyped-def]
     assert summary.signal.paper_bets == 0 and "ROI" in summary.note
     assert summary.best_odds_uplift_mean is not None
     paper = use_case.summary(kind=BetKind.PAPER)
-    assert paper.bets == 0 and paper.roi is None and paper.clv_mean is None
+    assert paper.bets == 1 and paper.roi is None and paper.clv_mean is None  # `late`, pending
+
+
+def test_pending_real_exposure_counts_for_warnings(env) -> None:  # type: ignore[no-untyped-def]
+    use_case, _ = env
+    for _ in range(7):
+        use_case.create(_new(stake=D("10.00")))  # 70 pending: no loss yet, still OK
+    with pytest.raises(LimitWarningError) as near:
+        use_case.create(_new(stake=D("10.00")))  # worst case 80 of 100 -> near the limit
+    assert "pendientes 70.00" in near.value.check.messages[0]
+    for _ in range(3):
+        use_case.create(_new(stake=D("10.00")), confirm=True)
+    with pytest.raises(LimitWarningError) as over:
+        use_case.create(_new(stake=D("10.00")))  # 100 pending + 10 -> over the limit
+    assert "peor caso" in over.value.check.messages[0]
+    # paper bets never add exposure
+    assert use_case.create(_new(kind=BetKind.PAPER, stake=D("10.00"))).warnings == ()
+
+
+def test_bet_after_kickoff_is_flagged_and_uses_prior_quotes(env) -> None:  # type: ignore[no-untyped-def]
+    use_case, clock = env
+    clock.now = KICKOFF + timedelta(minutes=30)
+    bet = use_case.create(_new(kind=BetKind.PAPER))
+    assert any("después del inicio" in w for w in bet.warnings)
+    assert bet.fair_probability is not None
+
+
+def test_manual_quotes_do_not_change_fair_probability(env) -> None:  # type: ignore[no-untyped-def]
+    use_case, _ = env
+    before = use_case.create(_new(kind=BetKind.PAPER)).fair_probability
+    manual = [
+        OddsQuote(MATCH, "E0", "pinnacle", o, p, KICKOFF, "Arsenal", "Chelsea")
+        for o, p in zip(OUTCOMES, (5.0, 5.0, 1.2), strict=True)
+    ]
+    use_case.odds.save_snapshot(
+        OddsSnapshot(datetime(2026, 10, 10, 11, tzinfo=UTC), QuoteSource.MANUAL, manual)
+    )
+    assert use_case.create(_new(kind=BetKind.PAPER)).fair_probability == pytest.approx(before)

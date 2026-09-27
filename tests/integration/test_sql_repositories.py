@@ -6,7 +6,13 @@ import pytest
 from sqlalchemy import inspect
 from sqlalchemy.orm import Session, sessionmaker
 
-from betting_ml.adapters.sql.db import make_engine, resolve_url, session_factory, upgrade
+from betting_ml.adapters.sql.db import (
+    make_engine,
+    prepare,
+    resolve_url,
+    session_factory,
+    upgrade,
+)
 from betting_ml.adapters.sql.models import Base
 from betting_ml.adapters.sql.repositories import (
     BetFilters,
@@ -184,3 +190,14 @@ def test_resolve_url_relative(tmp_path: Path) -> None:
     assert resolve_url("postgresql://x/y") == "postgresql://x/y"
     resolved = resolve_url("sqlite:///data/test_resolve.db")
     assert resolved.startswith("sqlite:///") and resolved.endswith("data/test_resolve.db")
+
+
+def test_prepare_migrates_file_dbs_and_stamps_pre_alembic_ones(tmp_path: Path) -> None:
+    memory = prepare("sqlite:///:memory:")
+    assert set(Base.metadata.tables) <= set(inspect(memory).get_table_names())
+    url = f"sqlite:///{(tmp_path / 'old.db').as_posix()}"
+    Base.metadata.create_all(make_engine(url))  # created before Alembic existed
+    engine = prepare(url)
+    assert "alembic_version" in set(inspect(engine).get_table_names())
+    assert SqlBetRepository(session_factory(engine)).add(_bet()).id == 1
+    prepare(url)  # idempotent

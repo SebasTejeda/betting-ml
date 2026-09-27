@@ -19,6 +19,7 @@ Query: `league` (opcional, por defecto todas).
 ```json
 { "error": { "code": "ODDS_BUDGET_LOW", "message": "Quedan 42 créditos (mínimo 50). Refresco bloqueado hasta el próximo ciclo." } }
 ```
+Antes de responder `429` se consulta `GET /v4/sports` (gratis) para detectar si el proveedor ya renovó los créditos del mes. Si una liga falla a mitad del refresco, lo ya descargado (y pagado) se guarda igual y se responde `502 ODDS_API_ERROR`. Los partidos ya empezados no se guardan.
 
 ### GET `/api/v1/odds/budget`
 ```json
@@ -96,7 +97,7 @@ Detalle: todas las casas × resultados, margen de cada casa, mejor cuota resalta
 ```
 
 ### POST `/api/v1/calculator`
-Evalúa una cuota ingresada a mano (US4). También guarda la cuota como snapshot `manual`.
+Evalúa una cuota ingresada a mano (US4). También guarda la cuota como snapshot `manual`. Solo acepta casas de ingreso manual (`source: manual` en el catálogo): una casa que llega por la API (p. ej. `pinnacle`) responde `422 BOOKMAKER_NOT_MANUAL`. Las cuotas manuales nunca se usan como referencia, ni para el CLV ni para la señal.
 
 Request:
 ```json
@@ -121,23 +122,27 @@ Veredicto: `valor` si `ev ≥ min_edge`; `justo` si `0 ≤ ev < min_edge`; `evit
 Señal experimental sin evidencia: si `kind = real`, `from_experimental_signal = true` y aún no hay 100 apuestas en papel de la señal con CLV medio > 0, sin `"confirm": true` responde `409` con `code: "EXPERIMENTAL_SIGNAL_UNPROVEN"` y el mensaje "Esta señal aún no tiene evidencia (X/100 apuestas en papel, CLV actual Y). ¿Apostar dinero real igual?". Con `confirm: true` se registra (con la marca).
 
 Si viola un límite (US6):
-- Advertencia (stake alto o se acerca al límite mensual): `201` con `"warnings": ["..."]` **solo si** el request trae `"confirm": true`; si no, `409` con `code: "LIMIT_WARNING"` y el detalle.
+- Advertencia (stake alto o se acerca al límite mensual): `201` con `"warnings": ["..."]` **solo si** el request trae `"confirm": true`; si no, `409` con `code: "LIMIT_WARNING"` y el detalle. El "peor caso" suma la pérdida del mes + el stake de las apuestas reales pendientes + el stake nuevo.
 - Presupuesto mensual superado y `kind = real`: `403` con `code: "MONTHLY_LIMIT_REACHED"`.
+- Una apuesta registrada después del inicio del partido se acepta pero lleva un aviso en `warnings`, y su probabilidad justa usa solo cuotas anteriores al inicio.
 
 ### GET `/api/v1/bets`
 Query: `status`, `kind`, `league`, `from`, `to`. Lista paginada (`page`, `size`).
 
 ### PATCH `/api/v1/bets/{id}`
-Editar nota o liquidar manualmente (`status`).
+Editar nota (siempre) o liquidar manualmente (`status`). La liquidación manual solo vale para apuestas `pendiente` (si no, `409 BET_NOT_PENDING`) y después del inicio del partido (si no, `409 MATCH_NOT_STARTED`). Una apuesta liquidada no se puede volver a liquidar a mano ni volver a `pendiente`.
 
 ### DELETE `/api/v1/bets/{id}`
-Solo apuestas `pendiente`.
+Solo apuestas `pendiente` (si no, `409 BET_NOT_PENDING`) y antes del inicio del partido (si no, `409 MATCH_ALREADY_STARTED`): así borrar una apuesta no puede esconder una pérdida del mes.
 
 ### POST `/api/v1/bets/settle`
-Liquida las pendientes con los resultados disponibles y calcula el CLV. Responde el número de apuestas liquidadas.
+Liquida las pendientes con los resultados disponibles y calcula el CLV. Además revisa las apuestas liquidadas a mano en los últimos 30 días: si no coinciden con el resultado oficial, se corrigen (el resultado oficial manda).
+```json
+{ "settled": 3, "clv_computed": 3, "still_pending": 1, "corrected": 0 }
+```
 
 ### GET `/api/v1/bets/summary`
-Query: `kind` (default `real`), `from`, `to`.
+Query: `kind` (`real` por defecto, `paper` o `all`), `from`, `to`.
 ```json
 {
   "bets": 57, "settled": 52, "staked": 520.0, "profit": -8.4, "roi": -0.0162,

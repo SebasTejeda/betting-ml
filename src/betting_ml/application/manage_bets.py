@@ -17,6 +17,7 @@ from betting_ml.domain.journal import (
     BetFilters,
     BetKind,
     BetStatus,
+    QuoteSource,
     SettingsChange,
 )
 from betting_ml.domain.limits import (
@@ -59,7 +60,15 @@ class BetNotFoundError(LookupError):
 
 
 class BetNotPendingError(ValueError):
-    pass
+    code = "BET_NOT_PENDING"
+
+
+class BetStateError(BetNotPendingError):
+    """The operation is not allowed at this point of the match (409)."""
+
+    def __init__(self, message: str, code: str) -> None:
+        super().__init__(message)
+        self.code = code
 
 
 @dataclass(frozen=True)
@@ -174,12 +183,15 @@ class ManageBets:
         return info
 
     def _fair(
-        self, match_id: str, outcome: Outcome, odds: Decimal
+        self, match_id: str, outcome: Outcome, odds: Decimal, kickoff: datetime | None = None
     ) -> tuple[float | None, float | None]:
         from betting_ml.domain.entities import OddsTriple
 
         books: dict[str, dict[Outcome, float]] = defaultdict(dict)
-        for q in self.odds.latest_quotes(match_ids=[match_id], before=self.clock()):
+        cutoff = self.clock() if kickoff is None else min(self.clock(), kickoff)
+        for q in self.odds.latest_quotes(
+            match_ids=[match_id], before=cutoff, source=QuoteSource.API
+        ):
             books[q.bookmaker][q.outcome] = q.odds
         complete = {
             k: OddsTriple(*(v[o] for o in OUTCOMES)) for k, v in books.items() if len(v) == 3
@@ -193,8 +205,17 @@ class ManageBets:
     def check(self, request: NewBet) -> LimitCheck:
         settings = self.settings_repo.get()
         now = self.clock()
-        loss = monthly_loss(self.bets.all(), month_key(now))
-        progress = signal_progress(self.bets.all()) if request.from_experimental_signal else None
+        everything = self.bets.all()
+        loss = monthly_loss(everything, month_key(now))
+        exposure = sum(
+            (
+                b.stake
+                for b in everything
+                if b.kind is BetKind.REAL and b.status is BetStatus.PENDING
+            ),
+            Decimal("0.00"),
+        )
+        progress = signal_progress(everything) if request.from_experimental_signal else None
         return check_bet(
             request.stake,
             request.kind,
@@ -203,6 +224,7 @@ class ManageBets:
             settings.max_stake,
             request.from_experimental_signal,
             progress,
+            pending_exposure=exposure,
         )
 
     def create(self, request: NewBet, confirm: bool = False) -> Bet:
@@ -214,7 +236,13 @@ class ManageBets:
             raise MonthlyLimitReachedError(result)
         if result.status is LimitStatus.WARNING and not confirm:
             raise LimitWarningError(result)
-        fair, ev = self._fair(request.match_id, request.outcome, request.odds)
+        fair, ev = self._fair(request.match_id, request.outcome, request.odds, info["kickoff_utc"])
+        warnings = result.messages
+        if info["kickoff_utc"] is not None and self.clock() >= info["kickoff_utc"]:
+            warnings = (
+                *warnings,
+                "Registrada después del inicio del partido (EV calculado con cuotas previas).",
+            )
         bet = Bet(
             match_id=request.match_id,
             league=info["league"],
@@ -231,7 +259,7 @@ class ManageBets:
             from_experimental_signal=request.from_experimental_signal,
             fair_probability=fair,
             ev=ev,
-            warnings=result.messages,
+            warnings=warnings,
         )
         return self.bets.add(bet)
 
@@ -251,8 +279,16 @@ class ManageBets:
         if note is not None:
             bet = replace(bet, note=note)
         if status is not None and status is not bet.status:
+            if bet.status is not BetStatus.PENDING:
+                raise BetNotPendingError(
+                    "una apuesta liquidada no se vuelve a liquidar a mano (el resultado oficial manda)"
+                )
             if status is BetStatus.PENDING:
-                raise BetNotPendingError("una apuesta liquidada no vuelve a pendiente")
+                raise BetNotPendingError("estado inválido")
+            if bet.kickoff_utc is not None and self.clock() < bet.kickoff_utc:
+                raise BetStateError(
+                    "el partido aún no empieza: no se puede liquidar", "MATCH_NOT_STARTED"
+                )
             bet = bet.settle(status, self.clock())
         return self.bets.update(bet)
 
@@ -260,6 +296,11 @@ class ManageBets:
         bet = self.get(bet_id)
         if bet.status is not BetStatus.PENDING:
             raise BetNotPendingError("solo se pueden borrar apuestas pendientes")
+        if bet.kickoff_utc is not None and self.clock() >= bet.kickoff_utc:
+            raise BetStateError(
+                "el partido ya empezó: la apuesta se liquida con el resultado, no se borra",
+                "MATCH_ALREADY_STARTED",
+            )
         self.bets.delete(bet_id)
 
     # ------------------------------------------------------------------ summary
@@ -311,7 +352,9 @@ class ManageBets:
         for bet in bets:
             quotes = [
                 q.odds
-                for q in self.odds.latest_quotes(match_ids=[bet.match_id], before=bet.created_at)
+                for q in self.odds.latest_quotes(
+                    match_ids=[bet.match_id], before=bet.created_at, source=QuoteSource.API
+                )
                 if q.outcome is bet.outcome
             ]
             if quotes:

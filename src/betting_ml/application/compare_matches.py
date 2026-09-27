@@ -44,6 +44,17 @@ class BookmakerNotFoundError(LookupError):
         self.key = key
 
 
+class NotManualBookmakerError(ValueError):
+    """Only `source: manual` bookmakers can be typed in: API bookmakers (and the reference)
+    come from the feed, so a typed price could never overwrite them."""
+
+    def __init__(self, key: str) -> None:
+        super().__init__(
+            f"La casa '{key}' viene del feed de cuotas; en la calculadora solo se ingresan casas manuales"
+        )
+        self.key = key
+
+
 class NoReferenceError(ValueError):
     def __init__(self, match_id: str) -> None:
         super().__init__(f"Sin cuota de referencia (Pinnacle o Betfair Exchange) para '{match_id}'")
@@ -302,8 +313,9 @@ class CompareMatches:
     ) -> DayComparison:
         day = day or self.clock().astimezone(self.tz).date()
         start = datetime(day.year, day.month, day.day, tzinfo=self.tz).astimezone(UTC)
+        # Only bookmaker feeds (The Odds API): manual quotes never drive the comparator.
         quotes = self.repository.latest_quotes(
-            kickoff_from=start, kickoff_to=start + timedelta(days=1)
+            kickoff_from=start, kickoff_to=start + timedelta(days=1), source=QuoteSource.API
         )
         if league is not None:
             quotes = [q for q in quotes if q.league == league]
@@ -325,7 +337,7 @@ class CompareMatches:
     def detail(
         self, match_id: str, accessible_only: bool = False
     ) -> tuple[MatchComparison, list[tuple[datetime, dict[Outcome, float]]]]:
-        quotes = self.repository.latest_quotes(match_ids=[match_id])
+        quotes = self.repository.latest_quotes(match_ids=[match_id], source=QuoteSource.API)
         if not quotes:
             raise MatchNotFoundError(match_id)
         grouped = self._books(quotes)
@@ -369,8 +381,11 @@ class EvaluateManualOdds:
     ) -> ManualEvaluation:
         if odds <= 1:
             raise ValueError("odds must be > 1")
-        if self.comparator.bookmakers.get(bookmaker) is None:
+        book = self.comparator.bookmakers.get(bookmaker)
+        if book is None:
             raise BookmakerNotFoundError(bookmaker)
+        if book.source != "manual":
+            raise NotManualBookmakerError(bookmaker)
         comparison, _ = self.comparator.detail(match_id, accessible_only=True)
         if comparison.reference is None:
             raise NoReferenceError(match_id)
