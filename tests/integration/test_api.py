@@ -256,3 +256,30 @@ def test_refresh_data_logs_failures() -> None:
     refresher.data()  # must not raise
     assert calls == []
     assert refresher.fixtures() == 1 and calls == ["reset"]
+
+
+def test_same_team_is_rejected(client: TestClient) -> None:
+    body = {"league": "E0", "home_team": "Team 00", "away_team": "team 00"}
+    _assert_error(client.post("/api/v1/predictions", json=body), 422, "VALIDATION_ERROR")
+
+
+def test_tracking_uses_validated_threshold(client: TestClient, env: ServingEnv) -> None:
+    served = client.get("/api/v1/matches", params={"date": "2022-09-03", "min_edge": 0}).json()
+    tracked = env.tracking.store.load()
+    assert len(tracked) == served["count"]
+    # The request asked for min_edge=0 but tracking keeps the model threshold (default 0.05).
+    assert (tracked["value_ev"].dropna() > 0.05).all()
+
+
+def test_admin_disabled_with_default_key(env: ServingEnv) -> None:
+    services = ApiServices(
+        env.predictor,
+        env.tracking,
+        leagues(),
+        pd.DataFrame,
+        "cambia-esto",
+        RefreshData(lambda: 0, lambda: None, env.predictor.reset),
+    )
+    with TestClient(create_app(services)) as client:
+        response = client.post("/api/v1/admin/refresh", headers={"X-API-Key": "cambia-esto"})
+        _assert_error(response, 503, "ADMIN_DISABLED")

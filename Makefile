@@ -4,7 +4,8 @@
 UV ?= uv
 RUN = $(UV) run
 CLI = $(RUN) betting-ml
-EXPERIMENTS ?= E02 E03 E04 E05 E06 E07 E08 E09 E10 E11 E12 E13 E14 E15
+# Experimentos corridos (E10, E11, E13-E15 no se corrieron por la regla de parada).
+EXPERIMENTS ?= E02 E03 E04 E05 E06 E07 E08 E09 E12
 
 setup:
 	$(UV) sync --extra dev
@@ -48,8 +49,10 @@ track:
 docker:
 	docker build -t betting-ml:latest .
 
-all: data baselines
-	@for id in $(EXPERIMENTS); do $(MAKE) exp ID=$$id || exit 1; done
+# Reproduce la cadena sin sobrescribir resultados ya registrados (--skip-existing).
+all: data
+	$(CLI) exp E01 --skip-existing
+	@for id in $(EXPERIMENTS); do $(CLI) exp $$id --skip-existing || exit 1; done
 	$(MAKE) select
 	$(CLI) holdout --skip-if-done
 	$(MAKE) report train-prod

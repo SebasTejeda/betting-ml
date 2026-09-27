@@ -87,3 +87,14 @@ Decisiones tomadas durante la implementación que no estaban en la spec o que la
 - Contexto: esta máquina Windows no tiene Docker instalado.
 - Decisión: se entrega `Dockerfile` (python:3.12-slim, `uv sync --frozen --no-dev`, usuario no root uid 10001, healthcheck a `/health`) y `.dockerignore` (sin `.env`, `data/`, `models/`), más `make docker`. Datos, modelos y reportes se montan como volúmenes. Se valida con un test estático; la construcción real queda pendiente de una máquina con Docker (o CI).
 - Impacto: la imagen no se ha construido todavía; el README lo indica.
+
+## 2026-09-27 — Correcciones tras la auditoría final (T039)
+- Contexto: `ml-reviewer` bloqueó por tres puntos (sin fuga; cifras del informe recalculadas y coincidentes).
+- Decisiones:
+  - `make all` usa solo los experimentos corridos (E01–E09, E12) y `betting-ml exp --skip-existing`, que no vuelve a correr (ni borra conclusiones de) los experimentos ya registrados.
+  - Con el lock del holdout en su sitio, `make select` se niega a re-elegir campeón, y `train-prod` y `report` fallan si `champion.json` no coincide con los campeones evaluados en el holdout.
+  - La tabla de experimentos del informe muestra el IC 95 % del ROI (constitución §IV.2).
+  - API: probabilidades redondeadas a 4 decimales tras el ajuste de suma; local = visita → 422; la temporada de una fila de predicción se deriva de su fecha; el seguimiento guarda las value bets con el umbral validado del modelo (no con `min_edge` de la petición); `/admin/refresh` responde 503 si la clave es la de ejemplo; contrato actualizado (market null / value_bets [] sin cuotas; significado de `odds`).
+  - `/admin/refresh` reconstruye los datasets con `build_dataset` (reescribe `data/processed/*` y `reports/data_quality.md`) y el historial de servicio; esto sí lee el holdout (ya evaluado) desde el contenedor. La API de predicción sigue leyendo solo `history.parquet`.
+  - Dockerfile con uv 0.12.5 (la versión que generó `uv.lock`).
+  - Pendientes documentados (no bloqueantes): `SEED` de `.env` no se usa (la semilla 42 está fijada en el código), CI no corre mypy, parte de la narrativa del informe es fija en el generador.

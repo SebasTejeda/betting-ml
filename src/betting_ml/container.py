@@ -131,6 +131,7 @@ class Container:
             load_details=self.experiment_store.load_details,
             output_path=self.champion_path,
             git_commit=current_commit,
+            lock_path=self.settings.reports_path / "HOLDOUT_USED.lock",
         )
 
     def evaluate_holdout(self) -> EvaluateHoldout:

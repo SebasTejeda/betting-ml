@@ -38,6 +38,20 @@ def simplicity_rank(spec: dict[str, Any]) -> int:
     return SIMPLICITY["logistic"]  # frequencies / market: trivial
 
 
+class ChampionLockedError(RuntimeError):
+    pass
+
+
+def check_champions_match_lock(selection: dict[str, Any], lock: dict[str, Any]) -> None:
+    """champion.json must be the selection that was evaluated on the holdout."""
+    for key in ("champion", "champion_no_odds"):
+        if selection[key]["experiment_id"] != lock.get(key):
+            raise ChampionLockedError(
+                f"{key} in champion.json ({selection[key]['experiment_id']}) differs from the one "
+                f"evaluated on the holdout ({lock.get(key)})"
+            )
+
+
 @dataclass
 class Selection:
     champion: dict[str, Any]
@@ -108,7 +122,9 @@ class SelectChampion:
         output_path: Path,
         git_commit: Callable[[], str],
         clock: Callable[[], datetime] = lambda: datetime.now(UTC),
+        lock_path: Path | None = None,
     ) -> None:
+        self.lock_path = lock_path
         self.read_rows = read_rows
         self.load_details = load_details
         self.output_path = output_path
@@ -116,6 +132,11 @@ class SelectChampion:
         self.clock = clock
 
     def run(self) -> Selection:
+        if self.lock_path is not None and self.lock_path.exists():
+            raise ChampionLockedError(
+                f"{self.lock_path} exists: the champion was evaluated on the holdout and cannot "
+                "be re-selected (constitution §II.3)."
+            )
         rows = self.read_rows()
         candidates, excluded = eligible(rows)
         specs = {e: self.load_details(e)["spec"] for e in candidates["exp_id"]}

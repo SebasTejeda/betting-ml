@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Callable, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import UTC, date, datetime
 from typing import Any, Literal
 
@@ -48,6 +48,10 @@ class UnknownLeagueError(LookupError):
     def __init__(self, league: str) -> None:
         super().__init__(f"Liga '{league}' no soportada")
         self.league = league
+
+
+class InvalidMatchError(ValueError):
+    pass
 
 
 class UnknownTeamError(LookupError):
@@ -121,7 +125,13 @@ def value_bets(
 def _probabilities(row: np.ndarray) -> Probabilities:
     rounded = np.round(row, 4)
     rounded[np.argmax(rounded)] += round(1.0 - float(rounded.sum()), 4)
-    return Probabilities(*(float(x) for x in rounded))
+    return Probabilities(*(round(float(x), 4) for x in rounded))
+
+
+def season_of(day: date) -> str:
+    """European season of a date: July onwards belongs to the season starting that year."""
+    start = day.year if day.month >= 7 else day.year - 1
+    return f"{start}-{(start + 1) % 100:02d}"
 
 
 class PredictMatches:
@@ -199,7 +209,7 @@ class PredictMatches:
             record: dict[str, Any] = {
                 "match_id": f.match_id,
                 "league": f.league,
-                "season": self.leagues.seasons.current,
+                "season": season_of(uk_date.date()),
                 "date": uk_date,
                 "kickoff_utc": kickoff,
                 "home_team": f.home_team,
@@ -291,6 +301,18 @@ class PredictMatches:
             model_variant=variant,
         )
 
+    def _for_tracking(self, predictions: list[MatchPrediction]) -> list[MatchPrediction]:
+        """Tracked value bets always use the threshold fixed in validation, never the
+        ``min_edge`` of the request (the first tracked prediction of a match is kept)."""
+        state = self.state()
+        out = []
+        for p in predictions:
+            loaded = state.champion if p.model_version == state.champion.version else state.no_odds
+            threshold = float(loaded.metadata.get("bet_threshold", DEFAULT_MIN_EDGE))
+            odds = p.market.best_odds or p.market.average_odds if p.market else None
+            out.append(replace(p, value_bets=value_bets(p.probabilities, odds, threshold)))
+        return out
+
     # ------------------------------------------------------------------ public API
     def check_league(self, league: str) -> None:
         if league not in self.leagues.codes:
@@ -312,7 +334,7 @@ class PredictMatches:
             fixtures = [f for f in fixtures if f.league == league]
         predictions = self._predict(fixtures, min_edge)
         if self.on_predictions is not None and predictions:
-            self.on_predictions(predictions, fixtures)
+            self.on_predictions(self._for_tracking(predictions), fixtures)
         if only_value:
             predictions = [p for p in predictions if p.value_bets]
         message = None
@@ -338,6 +360,8 @@ class PredictMatches:
         away = self.team_names.lookup(league, away_team)
         if away is None:
             raise UnknownTeamError(away_team, league)
+        if home == away:
+            raise InvalidMatchError("home_team y away_team deben ser equipos distintos")
         day = match_date or pd.Timestamp(self.clock()).tz_convert(self.timezone).date()
         kickoff = datetime(day.year, day.month, day.day, 14, 0, tzinfo=UTC)
         fixture = Fixture(

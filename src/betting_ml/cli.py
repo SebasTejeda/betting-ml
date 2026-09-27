@@ -38,7 +38,7 @@ def data(verbose: bool = False) -> None:
 
 
 @app.command()
-def exp(exp_id: str, verbose: bool = False) -> None:
+def exp(exp_id: str, verbose: bool = False, skip_existing: bool = False) -> None:
     """Corre un experimento de configs/experiments/{ID}_*.yaml en F1–F3."""
     from betting_ml.config import load_experiment
     from betting_ml.container import Container
@@ -46,6 +46,11 @@ def exp(exp_id: str, verbose: bool = False) -> None:
     _setup_logging(verbose)
     container = Container()
     config = load_experiment(exp_id, container.settings.configs_dir / "experiments")
+    if skip_existing:
+        recorded = set(container.experiment_store.read_rows()["exp_id"])
+        if set(config.model_specs()) <= recorded:
+            typer.echo(f"{exp_id} ya está en experiments.csv; se omite (--skip-existing).")
+            return
     for result in container.run_experiment().run(config):
         row = result.row
         typer.echo(

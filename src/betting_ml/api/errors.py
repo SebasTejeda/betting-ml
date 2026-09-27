@@ -11,6 +11,7 @@ from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from betting_ml.application.predict_matches import (
+    InvalidMatchError,
     ModelNotAvailableError,
     UnknownLeagueError,
     UnknownTeamError,
@@ -49,6 +50,10 @@ def register_error_handlers(app: FastAPI) -> None:
         return error_response(
             404, "TEAM_NOT_FOUND", str(exc), {"team": exc.team, "league": exc.league}
         )
+
+    @app.exception_handler(InvalidMatchError)
+    async def _invalid(_: Request, exc: InvalidMatchError) -> JSONResponse:
+        return error_response(422, "VALIDATION_ERROR", str(exc))
 
     @app.exception_handler(ModelNotAvailableError)
     async def _model(_: Request, exc: ModelNotAvailableError) -> JSONResponse:

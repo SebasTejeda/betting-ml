@@ -12,6 +12,7 @@ from typing import Any
 
 import pandas as pd
 
+from betting_ml.application.select_champion import check_champions_match_lock
 from betting_ml.config import FeaturesFile, LeaguesFile, with_overrides
 from betting_ml.domain.ports import MatchRepository, ModelRegistry
 from betting_ml.ml.features.pipeline import ALL_GROUPS, FeaturePipeline
@@ -92,6 +93,7 @@ class TrainProduction:
                 "run the final holdout evaluation before training for production"
             )
         selection = json.loads(self.champion_path.read_text(encoding="utf-8"))
+        check_champions_match_lock(selection, json.loads(lock.read_text(encoding="utf-8")))
         holdout = json.loads(
             (self.reports_dir / "holdout_results.json").read_text(encoding="utf-8")
         )

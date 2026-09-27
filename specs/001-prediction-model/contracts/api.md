@@ -102,7 +102,7 @@ Request:
 }
 ```
 
-`match_date` y `odds` son opcionales. Sin `odds`, la respuesta no incluye `value_bets` ni `market`. Si el campeón usa cuotas como feature y no se envían, se usa la variante del modelo sin cuotas y se indica en `model_variant`.
+`match_date` y `odds` son opcionales. Sin `odds`, la respuesta trae `market: null` y `value_bets: []`. `home_team` y `away_team` deben ser distintos (si no, 422). Las `odds` enviadas se usan como cuota promedio (feature de mercado) y como mejor cuota (value bets): envía cuotas promedio de mercado para no sacar al modelo de su distribución. Si el campeón usa cuotas como feature y no se envían, se usa la variante del modelo sin cuotas y se indica en `model_variant`.
 
 Response: igual a un elemento de `matches`, más `"model_variant": "with_odds" | "without_odds"`.
 
@@ -132,7 +132,7 @@ Devuelve el contenido de `reports/experiments.csv` como lista de objetos, ordena
 
 ## POST `/api/v1/admin/refresh`
 
-Vuelve a descargar `fixtures.csv` y los datos de la temporada en curso. Protegido con header `X-API-Key` (valor en `.env`). Responde `202` con un resumen.
+Vuelve a descargar `fixtures.csv` y los datos de la temporada en curso. Protegido con header `X-API-Key` (valor en `.env`). Responde `202` con un resumen. Si `ADMIN_API_KEY` es la de ejemplo (`cambia-esto`) responde `503 ADMIN_DISABLED`.
 
 ---
 

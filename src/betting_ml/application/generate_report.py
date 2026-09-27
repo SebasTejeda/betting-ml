@@ -9,6 +9,8 @@ from typing import Any
 
 import pandas as pd
 
+from betting_ml.application.select_champion import check_champions_match_lock
+
 LEVEL_TEXT = {
     "No alcanzado": "no alcanza el nivel mínimo",
     "Mínimo": "alcanza el nivel **Mínimo**",
@@ -55,6 +57,9 @@ class GenerateReport:
         holdout = (
             json.loads(holdout_path.read_text(encoding="utf-8")) if holdout_path.exists() else None
         )
+        lock_path = self.reports_dir / "HOLDOUT_USED.lock"
+        if holdout is not None and lock_path.exists():
+            check_champions_match_lock(selection, json.loads(lock_path.read_text(encoding="utf-8")))
         text = render(experiments, selection, holdout)
         path = self.reports_dir / "REPORT.md"
         path.write_text(text, encoding="utf-8", newline="\n")
@@ -159,6 +164,7 @@ def _experiments_table(experiments: pd.DataFrame) -> str:
                 _f(r["val_ece"], 3),
                 str(r["n_bets"]),
                 _pct(r["roi_flat"]),
+                f"[{_pct(r['roi_ci_low'])}, {_pct(r['roi_ci_high'])}]",
                 r["conclusion"],
             ]
         )
@@ -173,6 +179,7 @@ def _experiments_table(experiments: pd.DataFrame) -> str:
         "ECE",
         "Apuestas",
         "ROI",
+        "IC 95 % ROI",
         "Conclusión",
     ]
     return _table(headers, rows)
