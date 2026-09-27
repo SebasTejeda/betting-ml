@@ -1,0 +1,141 @@
+from datetime import UTC, datetime
+from decimal import Decimal
+
+import pytest
+
+from betting_ml.domain.entities import Outcome
+from betting_ml.domain.journal import Bet, BetKind, BetStatus
+from betting_ml.domain.limits import (
+    LimitChange,
+    LimitCode,
+    LimitStatus,
+    SignalProgress,
+    check_bet,
+    effective_from_for,
+    effective_monthly_limit,
+    month_key,
+    monthly_loss,
+    next_month_key,
+    signal_progress,
+)
+
+D = Decimal
+
+
+def _bet(
+    kind: BetKind, status: BetStatus, settled: datetime | None, stake: str = "10", **kw: object
+) -> Bet:
+    bet = Bet(
+        match_id="E0-2026-10-03-a-b",
+        league="E0",
+        outcome=Outcome.HOME,
+        bookmaker="teapuesto",
+        odds=D("2.00"),
+        stake=D(stake),
+        kind=kind,
+        created_at=datetime(2026, 10, 1, tzinfo=UTC),
+        **kw,  # type: ignore[arg-type]
+    )
+    if status is BetStatus.PENDING:
+        return bet
+    return bet.settle(status, settled)  # type: ignore[arg-type]
+
+
+def test_month_keys_in_lima() -> None:
+    # 2026-11-01 03:00 UTC is still October 31st in Lima (UTC-5)
+    assert month_key(datetime(2026, 11, 1, 3, 0, tzinfo=UTC)) == "2026-10"
+    assert month_key(datetime(2026, 11, 1, 5, 0, tzinfo=UTC)) == "2026-11"
+    assert next_month_key(datetime(2026, 12, 15, tzinfo=UTC)) == "2027-01"
+    assert next_month_key(datetime(2026, 10, 31, 23, tzinfo=UTC)) == "2026-11"
+
+
+def test_monthly_loss_counts_only_real_settled_in_lima_month() -> None:
+    boundary = datetime(2026, 11, 1, 3, 0, tzinfo=UTC)  # Oct 31st in Lima
+    bets = [
+        _bet(BetKind.REAL, BetStatus.LOST, boundary, "30"),
+        _bet(BetKind.REAL, BetStatus.WON, datetime(2026, 10, 10, tzinfo=UTC), "10"),  # +10
+        _bet(BetKind.PAPER, BetStatus.LOST, datetime(2026, 10, 10, tzinfo=UTC), "50"),
+        _bet(BetKind.REAL, BetStatus.PENDING, None, "40"),
+        _bet(BetKind.REAL, BetStatus.LOST, datetime(2026, 11, 1, 6, tzinfo=UTC), "20"),  # November
+        _bet(BetKind.REAL, BetStatus.VOID, datetime(2026, 10, 12, tzinfo=UTC), "99"),
+    ]
+    assert monthly_loss(bets, "2026-10") == D("20.00")  # −30 + 10
+    assert monthly_loss(bets, "2026-11") == D("20.00")
+    assert monthly_loss(bets[1:2], "2026-10") == D("0.00")  # net gain is not a negative loss
+
+
+def test_blocked_when_budget_reached_but_paper_allowed() -> None:
+    blocked = check_bet(D("5"), BetKind.REAL, D("100"), D("100"), D("10"))
+    assert blocked.status is LimitStatus.BLOCKED and blocked.code is LimitCode.MONTHLY_LIMIT_REACHED
+    paper = check_bet(
+        D("500"), BetKind.PAPER, D("1000"), D("100"), D("10"), from_experimental_signal=True
+    )
+    assert paper.status is LimitStatus.OK
+
+
+def test_warnings() -> None:
+    ok = check_bet(D("5"), BetKind.REAL, D("10"), D("100"), D("10"))
+    assert ok.status is LimitStatus.OK and ok.messages == ()
+    high = check_bet(D("12"), BetKind.REAL, D("0"), D("100"), D("10"))
+    assert high.status is LimitStatus.WARNING and high.code is LimitCode.LIMIT_WARNING
+    assert "supera el máximo" in high.messages[0]
+    near = check_bet(D("5"), BetKind.REAL, D("76"), D("100"), D("10"))
+    assert near.status is LimitStatus.WARNING and "acercas" in near.messages[0]
+    over = check_bet(D("10"), BetKind.REAL, D("95"), D("100"), D("10"))
+    assert "superas el límite mensual" in over.messages[0]
+
+
+def test_experimental_signal_requires_evidence_for_real_money() -> None:
+    progress = SignalProgress(paper_bets=23, clv_mean=0.012)
+    check = check_bet(D("5"), BetKind.REAL, D("0"), D("100"), D("10"), True, progress)
+    assert (
+        check.status is LimitStatus.WARNING and check.code is LimitCode.EXPERIMENTAL_SIGNAL_UNPROVEN
+    )
+    assert "23/100" in check.messages[0] and "+1.20 %" in check.messages[0]
+    none = check_bet(D("5"), BetKind.REAL, D("0"), D("100"), D("10"), True, None)
+    assert "0/100" in none.messages[0] and "sin datos" in none.messages[0]
+    proven = SignalProgress(100, 0.01)
+    assert proven.evidence_met
+    assert (
+        check_bet(D("5"), BetKind.REAL, D("0"), D("100"), D("10"), True, proven).status
+        is LimitStatus.OK
+    )
+    assert not SignalProgress(150, -0.01).evidence_met
+    # the monthly block still wins over everything
+    blocked = check_bet(D("5"), BetKind.REAL, D("100"), D("100"), D("10"), True, progress)
+    assert blocked.status is LimitStatus.BLOCKED
+    # both warnings: the experimental code is the one reported
+    both = check_bet(D("50"), BetKind.REAL, D("0"), D("100"), D("10"), True, progress)
+    assert both.code is LimitCode.EXPERIMENTAL_SIGNAL_UNPROVEN and len(both.messages) == 2
+
+
+def test_signal_progress() -> None:
+    at = datetime(2026, 10, 10, tzinfo=UTC)
+    bets = [
+        _bet(BetKind.PAPER, BetStatus.WON, at, from_experimental_signal=True, clv=0.03),
+        _bet(BetKind.PAPER, BetStatus.LOST, at, from_experimental_signal=True, clv=-0.01),
+        _bet(BetKind.PAPER, BetStatus.LOST, at, from_experimental_signal=False, clv=0.5),
+        _bet(BetKind.REAL, BetStatus.LOST, at, from_experimental_signal=True, clv=0.5),
+        _bet(BetKind.PAPER, BetStatus.PENDING, None, from_experimental_signal=True),
+    ]
+    progress = signal_progress(bets)
+    assert progress.paper_bets == 2 and progress.clv_mean == pytest.approx(0.01)
+    assert signal_progress([]).clv_mean is None
+
+
+def test_raising_the_limit_applies_next_month() -> None:
+    oct15 = datetime(2026, 10, 15, tzinfo=UTC)
+    assert effective_from_for(D("100"), D("150"), oct15) == "2026-11"
+    assert effective_from_for(D("100"), D("80"), oct15) == "2026-10"
+    assert effective_from_for(D("100"), D("100"), oct15) == "2026-10"
+    raise_ = LimitChange(oct15, D("100"), D("150"), "2026-11")
+    assert effective_monthly_limit(D("150"), [raise_], "2026-10") == D("100")
+    assert effective_monthly_limit(D("150"), [raise_], "2026-11") == D("150")
+    # raise to 150 then lower to 120 (still above the 100 in force) and later lower to 80
+    back = LimitChange(datetime(2026, 10, 16, tzinfo=UTC), D("150"), D("120"), "2026-11")
+    low = LimitChange(datetime(2026, 10, 17, tzinfo=UTC), D("120"), D("80"), "2026-10")
+    assert effective_monthly_limit(D("80"), [raise_, back, low], "2026-10") == D("80")
+    assert effective_monthly_limit(D("80"), [raise_, back, low], "2026-11") == D("80")
+    assert effective_monthly_limit(D("120"), [raise_, back], "2026-10") == D("100")
+    assert effective_monthly_limit(D("120"), [raise_, back], "2026-12") == D("120")
+    assert effective_monthly_limit(D("90"), [], "2026-10") == D("90")

@@ -23,12 +23,22 @@ from betting_ml.domain.entities import Outcome
 from betting_ml.domain.journal import (
     BankrollSettings,
     Bet,
+    BetFilters,
     BetKind,
     BetStatus,
     OddsQuote,
     OddsSnapshot,
     QuoteSource,
+    SettingsChange,
 )
+
+__all__ = [
+    "BetFilters",
+    "SettingsChange",
+    "SqlBetRepository",
+    "SqlOddsRepository",
+    "SqlSettingsRepository",
+]
 
 
 def _utc(value: datetime | None) -> datetime | None:
@@ -183,16 +193,6 @@ class SqlOddsRepository:
 
 
 # ---------------------------------------------------------------------- bets
-@dataclass(frozen=True)
-class BetFilters:
-    status: BetStatus | None = None
-    kind: BetKind | None = None
-    league: str | None = None
-    date_from: datetime | None = None
-    date_to: datetime | None = None
-    from_experimental_signal: bool | None = None
-
-
 class SqlBetRepository:
     def __init__(self, sessions: sessionmaker[Session]) -> None:
         self.sessions = sessions
@@ -308,15 +308,6 @@ class SqlBetRepository:
 
 
 # ---------------------------------------------------------------------- settings
-@dataclass(frozen=True)
-class SettingsChange:
-    changed_at: datetime
-    field: str
-    old_value: str
-    new_value: str
-    effective_from: str
-
-
 class SqlSettingsRepository:
     def __init__(
         self, sessions: sessionmaker[Session], defaults: BankrollSettings | None = None

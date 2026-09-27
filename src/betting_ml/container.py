@@ -36,6 +36,7 @@ from betting_ml.application.catalog import RefreshData
 from betting_ml.application.compare_matches import CompareMatches, EvaluateManualOdds
 from betting_ml.application.evaluate_holdout import EvaluateHoldout
 from betting_ml.application.generate_report import GenerateReport
+from betting_ml.application.manage_bets import ManageBets
 from betting_ml.application.predict_matches import PredictMatches
 from betting_ml.application.refresh_odds import RefreshOdds
 from betting_ml.application.run_experiment import RunExperiment
@@ -323,3 +324,7 @@ class Container:
     @cached_property
     def evaluate_manual_odds(self) -> EvaluateManualOdds:
         return EvaluateManualOdds(self.compare_matches)
+
+    @cached_property
+    def manage_bets(self) -> ManageBets:
+        return ManageBets(self.bet_repository, self.settings_repository, self.odds_repository)

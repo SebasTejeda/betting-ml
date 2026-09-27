@@ -101,6 +101,25 @@ class Bet:
 
 
 @dataclass(frozen=True)
+class BetFilters:
+    status: BetStatus | None = None
+    kind: BetKind | None = None
+    league: str | None = None
+    date_from: datetime | None = None
+    date_to: datetime | None = None
+    from_experimental_signal: bool | None = None
+
+
+@dataclass(frozen=True)
+class SettingsChange:
+    changed_at: datetime
+    field: str
+    old_value: str
+    new_value: str
+    effective_from: str  # YYYY-MM (Lima calendar month)
+
+
+@dataclass(frozen=True)
 class BankrollSettings:
     bankroll_initial: Decimal = Decimal("500.00")
     currency: str = "PEN"
