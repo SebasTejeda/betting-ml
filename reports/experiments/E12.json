@@ -1,0 +1,263 @@
+{
+  "exp_id": "E12",
+  "config": {
+    "id": "E12",
+    "name": "LightGBM + Optuna con features de E06 + probabilidades del mercado pre-cierre",
+    "hypothesis": "El mercado pre-cierre (probabilidades Shin de las cuotas promedio Avg, más su margen) combinado con nuestras señales (Elo, forma, calendario, xG) predice mejor que el mercado solo (E01-avg, 0.9651). Mismo procedimiento que el mejor ML sin cuotas (E08): Optuna 40 trials en validación interna. Nunca se usan cuotas de cierre.",
+    "uses_odds": true,
+    "model": {
+      "type": "optuna_lightgbm",
+      "groups": [
+        "elo",
+        "form",
+        "schedule",
+        "xg",
+        "market"
+      ],
+      "n_trials": 40
+    },
+    "variants": null,
+    "feature_overrides": {},
+    "notes": null
+  },
+  "spec": {
+    "type": "optuna_lightgbm",
+    "groups": [
+      "elo",
+      "form",
+      "schedule",
+      "xg",
+      "market"
+    ],
+    "n_trials": 40
+  },
+  "folds": {
+    "F1": {
+      "train": [
+        "2014-15",
+        "2015-16",
+        "2016-17",
+        "2017-18",
+        "2018-19",
+        "2019-20",
+        "2020-21",
+        "2021-22"
+      ],
+      "valid": "2022-23"
+    },
+    "F2": {
+      "train": [
+        "2014-15",
+        "2015-16",
+        "2016-17",
+        "2017-18",
+        "2018-19",
+        "2019-20",
+        "2020-21",
+        "2021-22",
+        "2022-23"
+      ],
+      "valid": "2023-24"
+    },
+    "F3": {
+      "train": [
+        "2014-15",
+        "2015-16",
+        "2016-17",
+        "2017-18",
+        "2018-19",
+        "2019-20",
+        "2020-21",
+        "2021-22",
+        "2022-23",
+        "2023-24"
+      ],
+      "valid": "2024-25"
+    }
+  },
+  "fold_metrics": {
+    "F1": {
+      "log_loss": 0.9780486108601438,
+      "brier": 0.5816154605162344,
+      "rps": 0.1994564049475423,
+      "ece": 0.011566756395552184,
+      "accuracy": 0.5334063526834611,
+      "n": 1826
+    },
+    "F2": {
+      "log_loss": 0.9635009485551527,
+      "brier": 0.5717546455699398,
+      "rps": 0.18960232874078434,
+      "ece": 0.022175117773355398,
+      "accuracy": 0.5519406392694064,
+      "n": 1752
+    },
+    "F3": {
+      "log_loss": 0.9667323544111233,
+      "brier": 0.574900917230221,
+      "rps": 0.1947830201939593,
+      "ece": 0.02553760318627776,
+      "accuracy": 0.535958904109589,
+      "n": 1752
+    }
+  },
+  "mean_metrics": {
+    "log_loss": 0.9694273046088066,
+    "brier": 0.5760903411054651,
+    "rps": 0.194613917960762,
+    "ece": 0.019759825785061778,
+    "accuracy": 0.5404352986874855,
+    "n": 1776.6666666666667
+  },
+  "models": {
+    "F1": {
+      "name": "lightgbm_optuna[elo+form+schedule+xg+market]",
+      "uses_odds": true,
+      "kind": "lightgbm",
+      "groups": [
+        "elo",
+        "form",
+        "schedule",
+        "xg",
+        "market"
+      ],
+      "params": {},
+      "n_features": 91,
+      "n_trials": 40,
+      "best_params": {
+        "learning_rate": 0.027436342261606468,
+        "num_leaves": 9,
+        "min_child_samples": 22,
+        "subsample": 0.6050761369293586,
+        "colsample_bytree": 0.36629017295440824,
+        "reg_lambda": 0.0048053545353164695,
+        "reg_alpha": 5.414738048508493,
+        "n_estimators": 163
+      }
+    },
+    "F2": {
+      "name": "lightgbm_optuna[elo+form+schedule+xg+market]",
+      "uses_odds": true,
+      "kind": "lightgbm",
+      "groups": [
+        "elo",
+        "form",
+        "schedule",
+        "xg",
+        "market"
+      ],
+      "params": {},
+      "n_features": 91,
+      "n_trials": 40,
+      "best_params": {
+        "learning_rate": 0.021155455272184594,
+        "num_leaves": 34,
+        "min_child_samples": 22,
+        "subsample": 0.83330374191468,
+        "colsample_bytree": 0.34752658168195555,
+        "reg_lambda": 19.744587075471088,
+        "reg_alpha": 6.112952344331033,
+        "n_estimators": 141
+      }
+    },
+    "F3": {
+      "name": "lightgbm_optuna[elo+form+schedule+xg+market]",
+      "uses_odds": true,
+      "kind": "lightgbm",
+      "groups": [
+        "elo",
+        "form",
+        "schedule",
+        "xg",
+        "market"
+      ],
+      "params": {},
+      "n_features": 91,
+      "n_trials": 40,
+      "best_params": {
+        "learning_rate": 0.017645273239477753,
+        "num_leaves": 9,
+        "min_child_samples": 23,
+        "subsample": 0.7027891223595243,
+        "colsample_bytree": 0.3626929610598783,
+        "reg_lambda": 0.0027108681428640534,
+        "reg_alpha": 0.4251965092274057,
+        "n_estimators": 262
+      }
+    }
+  },
+  "betting": {
+    "realistic": {
+      "scenario": "avg",
+      "threshold": 0.02,
+      "n_bets": 3340,
+      "hit_rate": 0.3197604790419162,
+      "roi_flat": -0.08858982035928144,
+      "roi_ci_low": -0.14308839820359281,
+      "roi_ci_high": -0.03195935628742521,
+      "max_drawdown_flat": 304.85999999999973,
+      "clv_mean": -0.04560251439031902,
+      "clv_n": 3340,
+      "roi_kelly": -0.050258711041298566,
+      "final_bankroll_kelly": 0.14507792023604907,
+      "max_drawdown_kelly": 1.0630666532104385
+    },
+    "optimistic": {
+      "scenario": "max",
+      "threshold": 0.02,
+      "n_bets": 4933,
+      "hit_rate": 0.3221163592134604,
+      "roi_flat": -0.03755321305493614,
+      "roi_ci_low": -0.08632693087370769,
+      "roi_ci_high": 0.010751216298398494,
+      "max_drawdown_flat": 248.37999999999982,
+      "clv_mean": 0.005380682152859222,
+      "clv_n": 4932,
+      "roi_kelly": -0.022246665005782693,
+      "final_bankroll_kelly": 0.17806250312111896,
+      "max_drawdown_kelly": 1.6209739248626784
+    }
+  },
+  "metrics_by_league": {
+    "D1": {
+      "log_loss": 0.9808886701650029,
+      "brier": 0.5838421777053685,
+      "rps": 0.19756738191005033,
+      "ece": 0.04479826389212793,
+      "accuracy": 0.5228758169934641,
+      "n": 918
+    },
+    "E0": {
+      "log_loss": 0.9484098107014397,
+      "brier": 0.5615926726977617,
+      "rps": 0.19293273925829507,
+      "ece": 0.025947247339773286,
+      "accuracy": 0.5631578947368421,
+      "n": 1140
+    },
+    "F1": {
+      "log_loss": 0.985527159708114,
+      "brier": 0.5866086340116746,
+      "rps": 0.20326418101279686,
+      "ece": 0.018950793566266458,
+      "accuracy": 0.53125,
+      "n": 992
+    },
+    "I1": {
+      "log_loss": 0.973308522135869,
+      "brier": 0.5797590024338708,
+      "rps": 0.18956184637554968,
+      "ece": 0.02280761635498551,
+      "accuracy": 0.5333333333333333,
+      "n": 1140
+    },
+    "SP1": {
+      "log_loss": 0.9638840957465654,
+      "brier": 0.5718829677239957,
+      "rps": 0.19175594297120999,
+      "ece": 0.024508925356875797,
+      "accuracy": 0.5464912280701755,
+      "n": 1140
+    }
+  }
+}

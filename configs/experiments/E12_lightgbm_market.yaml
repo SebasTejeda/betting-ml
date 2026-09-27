@@ -1,0 +1,12 @@
+id: E12
+name: LightGBM + Optuna con features de E06 + probabilidades del mercado pre-cierre
+hypothesis: >-
+  El mercado pre-cierre (probabilidades Shin de las cuotas promedio Avg, más su margen) combinado
+  con nuestras señales (Elo, forma, calendario, xG) predice mejor que el mercado solo (E01-avg,
+  0.9651). Mismo procedimiento que el mejor ML sin cuotas (E08): Optuna 40 trials en validación
+  interna. Nunca se usan cuotas de cierre.
+uses_odds: true
+model:
+  type: optuna_lightgbm
+  groups: [elo, form, schedule, xg, market]
+  n_trials: 40
