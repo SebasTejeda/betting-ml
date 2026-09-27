@@ -23,8 +23,9 @@ import pandas as pd
 from betting_ml.config import FeaturesFile, LeaguesFile, with_overrides
 from betting_ml.domain.metrics import evaluate
 from betting_ml.domain.ports import MatchRepository
-from betting_ml.ml.betting import simulate
+from betting_ml.ml.betting import select_bets, simulate
 from betting_ml.ml.features.pipeline import ALL_GROUPS, TARGET, FeaturePipeline
+from betting_ml.ml.models.baselines import MarketBaseline
 from betting_ml.ml.models.factory import build_model
 from betting_ml.ml.plots import calibration_plot, roi_plot
 from betting_ml.ml.validation import check_temporal_order, final_split
@@ -41,6 +42,12 @@ BASELINES = {
     "E01-psc": {"type": "market", "source": "psc", "method": "shin"},
 }
 OUTCOMES = ["p_home", "p_draw", "p_away"]
+N_BOOTSTRAP = 2000
+SEED = 42
+# E01-psc falls back to league frequencies where Pinnacle closing odds are missing, so on the
+# full holdout it is NOT "Pinnacle at close": it is stored under this explicit name and the
+# real comparison is made on the subset with closing odds (see _psc_subset).
+PSC_FULL_KEY = "E01-psc_with_freq_fallback"
 
 
 class HoldoutAlreadyUsedError(RuntimeError):
@@ -85,6 +92,26 @@ def success_level(
     return "Mínimo", checks
 
 
+def per_match_log_loss(y: np.ndarray, proba: np.ndarray) -> np.ndarray:
+    p = np.clip(proba[np.arange(len(y)), y], 1e-15, 1.0)
+    return -np.log(p)
+
+
+def paired_bootstrap_diff(
+    y: np.ndarray, proba_a: np.ndarray, proba_b: np.ndarray, n: int = N_BOOTSTRAP, seed: int = SEED
+) -> dict[str, float]:
+    """95 % CI of mean log loss(a) − log loss(b) resampling matches (paired)."""
+    diff = per_match_log_loss(y, proba_a) - per_match_log_loss(y, proba_b)
+    rng = np.random.default_rng(seed)
+    idx = rng.integers(0, len(diff), size=(n, len(diff)))
+    means = diff[idx].mean(axis=1)
+    return {
+        "mean_diff": float(diff.mean()),
+        "ci_low": float(np.percentile(means, 2.5)),
+        "ci_high": float(np.percentile(means, 97.5)),
+    }
+
+
 class EvaluateHoldout:
     def __init__(
         self,
@@ -95,8 +122,10 @@ class EvaluateHoldout:
         load_details: Callable[[str], dict[str, Any]],
         reports_dir: Path,
         git_commit: Callable[[], str],
+        artifacts_dir: Path | None = None,
         clock: Callable[[], datetime] = lambda: datetime.now(UTC),
     ) -> None:
+        self.artifacts_dir = artifacts_dir or reports_dir / "holdout_artifacts"
         self.repository = repository
         self.leagues = leagues
         self.features = features
@@ -125,10 +154,24 @@ class EvaluateHoldout:
             "E02": (self.load_details("E02")["spec"], {}),
             **{name: (spec, {}) for name, spec in BASELINES.items()},
         }
-        predictions = {name: self._fit_predict(spec, ov) for name, (spec, ov) in specs.items()}
+        fitted = {name: self._fit_predict(spec, ov) for name, (spec, ov) in specs.items()}
+        predictions = {name: (frame, proba) for name, (frame, proba, _) in fitted.items()}
+        models = {name: info for name, (_, _, info) in fitted.items()}
         holdout = predictions["E01-freq"][0]
         y = holdout[TARGET].astype(int).to_numpy()
-        metrics = {name: evaluate(y, proba).to_dict() for name, (_, proba) in predictions.items()}
+        metrics = {
+            (PSC_FULL_KEY if name == "E01-psc" else name): evaluate(y, proba).to_dict()
+            for name, (_, proba) in predictions.items()
+        }
+        comparisons = {
+            f"champion_vs_{ref}": paired_bootstrap_diff(
+                y, predictions["champion"][1], predictions[ref][1]
+            )
+            for ref in ("E01-avg", "E02", "E01-freq", "champion_no_odds")
+        }
+        comparisons["champion_no_odds_vs_E02"] = paired_bootstrap_diff(
+            y, predictions["champion_no_odds"][1], predictions["E02"][1]
+        )
         psc_subset = self._psc_subset(holdout, predictions)
         betting = {
             "champion": self._betting(
@@ -138,19 +181,16 @@ class EvaluateHoldout:
                 holdout, predictions["champion_no_odds"][1], no_odds["bet_threshold"]
             ),
         }
-        best_strategy = max(
-            (b["realistic"] for b in betting.values() if b["realistic"]["n_bets"] > 0),
-            key=lambda s: s["roi_ci_low"],
-            default=None,
-        )
+        # Only the champion's strategy counts for "Excelente" (no selection on the holdout).
         level, checks = success_level(
             metrics["champion"],
             metrics["E01-freq"]["log_loss"],
             metrics["E02"]["log_loss"],
             metrics["E01-avg"]["log_loss"],
             psc_subset,
-            best_strategy,
+            betting["champion"]["realistic"],
         )
+        artifacts = self._save_artifacts(holdout, predictions, champion, no_odds)
         figures = self._figures(holdout, y, predictions, champion, no_odds)
         results = {
             "evaluated_at": self.clock().isoformat(timespec="seconds"),
@@ -161,7 +201,14 @@ class EvaluateHoldout:
             "champion": champion["experiment_id"],
             "champion_no_odds": no_odds["experiment_id"],
             "metrics": metrics,
+            "metrics_note": (
+                f"{PSC_FULL_KEY}: Pinnacle al cierre donde hay cuota y frecuencias de liga donde "
+                "no; NO es la línea base de Pinnacle. Usar pinnacle_closing_subset."
+            ),
+            "paired_log_loss_differences": comparisons,
             "pinnacle_closing_subset": psc_subset,
+            "models": models,
+            "artifacts": artifacts,
             "betting": betting,
             "metrics_by_league": self._by_league(holdout, predictions),
             "level": level,
@@ -192,13 +239,16 @@ class EvaluateHoldout:
 
     def _fit_predict(
         self, spec: dict[str, Any], overrides: dict[str, Any]
-    ) -> tuple[pd.DataFrame, np.ndarray]:
+    ) -> tuple[pd.DataFrame, np.ndarray, dict[str, Any]]:
         train, valid = self._frames(overrides)
         model = build_model(spec, with_overrides(self.features, overrides)).fit(train)
         proba = model.predict_proba(valid)
         if proba.shape != (len(valid), 3) or not np.allclose(proba.sum(axis=1), 1.0, atol=1e-6):
             raise ValueError("invalid probabilities on the holdout")
-        return valid.reset_index(drop=True), proba
+        info: dict[str, Any] = {"spec": spec, "describe": model.describe()}
+        if isinstance(model, MarketBaseline):
+            info["odds_coverage"] = model.coverage
+        return valid.reset_index(drop=True), proba, info
 
     @staticmethod
     def _psc_subset(
@@ -250,6 +300,43 @@ class EvaluateHoldout:
                 roi_plot([realistic, optimistic], figures / f"holdout_{key}_roi.png", title)
             )
         return [str(p.relative_to(self.reports_dir)).replace("\\", "/") for p in paths]
+
+    def _save_artifacts(
+        self,
+        holdout: pd.DataFrame,
+        predictions: dict[str, tuple[pd.DataFrame, np.ndarray]],
+        champion: dict[str, Any],
+        no_odds: dict[str, Any],
+    ) -> dict[str, str]:
+        """Per-match predictions of every model and every simulated bet (the holdout can
+        never be re-run, so everything needed later is stored now)."""
+        self.artifacts_dir.mkdir(parents=True, exist_ok=True)
+        base_cols = ["match_id", "league", "season", "date", "home_team", "away_team", TARGET]
+        odds_cols = [
+            c for c in holdout.columns if c.startswith(("avg_odds_", "max_odds_", "psc_odds_"))
+        ]
+        table = holdout[[*base_cols, *odds_cols]].copy()
+        for name, (_, proba) in predictions.items():
+            for col, values in zip(OUTCOMES, proba.T, strict=True):
+                table[f"{name}__{col}"] = values
+        pred_path = self.artifacts_dir / "holdout_predictions.parquet"
+        table.to_parquet(pred_path, index=False)
+        bets = []
+        for key, entry in (("champion", champion), ("champion_no_odds", no_odds)):
+            for scenario in ("avg", "max"):
+                chosen = select_bets(
+                    holdout,
+                    predictions[key][1],
+                    entry["bet_threshold"],
+                    scenario,  # type: ignore[arg-type]
+                )
+                bets.append(chosen.assign(model=key, scenario=scenario))
+        bets_path = self.artifacts_dir / "holdout_bets.parquet"
+        pd.concat(bets, ignore_index=True).to_parquet(bets_path, index=False)
+        return {
+            "predictions": str(pred_path.relative_to(self.reports_dir)).replace("\\", "/"),
+            "bets": str(bets_path.relative_to(self.reports_dir)).replace("\\", "/"),
+        }
 
     @staticmethod
     def _by_league(

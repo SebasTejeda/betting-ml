@@ -50,4 +50,6 @@ docker:
 
 all: data baselines
 	@for id in $(EXPERIMENTS); do $(MAKE) exp ID=$$id || exit 1; done
-	$(MAKE) select holdout report train-prod
+	$(MAKE) select
+	$(CLI) holdout --skip-if-done
+	$(MAKE) report train-prod

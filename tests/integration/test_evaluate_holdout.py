@@ -3,6 +3,7 @@
 import json
 from pathlib import Path
 
+import pandas as pd
 import pytest
 
 from betting_ml.adapters.parquet_repository import ParquetMatchRepository
@@ -69,8 +70,16 @@ def test_holdout_runs_once_and_locks(use_case: EvaluateHoldout) -> None:
         "E02",
         "E01-freq",
         "E01-avg",
-        "E01-psc",
+        "E01-psc_with_freq_fallback",
     }
+    assert results["models"]["E01-psc"]["odds_coverage"] == pytest.approx(46 / 56)
+    assert results["models"]["champion"]["describe"]["kind"] == "logistic"
+    diff = results["paired_log_loss_differences"]["champion_vs_E01-avg"]
+    assert diff["ci_low"] <= diff["mean_diff"] <= diff["ci_high"]
+    preds = pd.read_parquet(use_case.reports_dir / results["artifacts"]["predictions"])
+    assert len(preds) == 56 and "champion__p_home" in preds and "E02__p_away" in preds
+    bets = pd.read_parquet(use_case.reports_dir / results["artifacts"]["bets"])
+    assert set(bets["model"]) <= {"champion", "champion_no_odds"}
     assert results["n_matches"] == 56
     assert results["pinnacle_closing_subset"]["n"] == 46
     assert results["betting"]["champion"]["threshold"] == 0.05

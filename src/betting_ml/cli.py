@@ -85,15 +85,23 @@ def select() -> None:
 
 
 @app.command()
-def holdout(verbose: bool = False) -> None:
+def holdout(verbose: bool = False, skip_if_done: bool = False) -> None:
     """Evaluación final ÚNICA sobre el holdout (crea reports/HOLDOUT_USED.lock)."""
     from betting_ml.container import Container
 
     _setup_logging(verbose)
-    report = Container().evaluate_holdout().run()
-    metrics = report.results["metrics"]
-    for name, values in metrics.items():
+    use_case = Container().evaluate_holdout()
+    if skip_if_done and use_case.lock_path.exists():
+        typer.echo(f"Holdout ya evaluado ({use_case.lock_path}); se omite.")
+        return
+    report = use_case.run()
+    for name, values in report.results["metrics"].items():
         typer.echo(f"{name}: log_loss={values['log_loss']:.5f} ece={values['ece']:.4f}")
+    subset = report.results["pinnacle_closing_subset"]
+    typer.echo(
+        f"Subconjunto con cierre de Pinnacle (n={subset['n']}): campeón {subset['champion']:.5f} "
+        f"vs Pinnacle {subset['psc']:.5f}"
+    )
     typer.echo(f"Nivel alcanzado: {report.level}")
 
 
