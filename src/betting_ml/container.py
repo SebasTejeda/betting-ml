@@ -14,6 +14,7 @@ from betting_ml.adapters.parquet_repository import ParquetMatchRepository
 from betting_ml.adapters.team_names import TeamNameResolver
 from betting_ml.adapters.understat import UnderstatSource
 from betting_ml.application.build_dataset import BuildDataset
+from betting_ml.application.evaluate_holdout import EvaluateHoldout
 from betting_ml.application.run_experiment import RunExperiment
 from betting_ml.application.select_champion import SelectChampion
 from betting_ml.config import (
@@ -105,5 +106,17 @@ class Container:
             read_rows=self.experiment_store.read_rows,
             load_details=self.experiment_store.load_details,
             output_path=self.champion_path,
+            git_commit=current_commit,
+        )
+
+    def evaluate_holdout(self) -> EvaluateHoldout:
+        """The only place where the holdout repository is opened (constitution §II)."""
+        return EvaluateHoldout(
+            repository=ParquetMatchRepository(self.settings.processed_path, allow_holdout=True),
+            leagues=self.leagues,
+            features=self.features,
+            champion_path=self.champion_path,
+            load_details=self.experiment_store.load_details,
+            reports_dir=self.settings.reports_path,
             git_commit=current_commit,
         )

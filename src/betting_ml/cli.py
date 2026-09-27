@@ -84,5 +84,18 @@ def select() -> None:
         typer.echo(f"  excluido {exp_id}: {why}")
 
 
+@app.command()
+def holdout(verbose: bool = False) -> None:
+    """Evaluación final ÚNICA sobre el holdout (crea reports/HOLDOUT_USED.lock)."""
+    from betting_ml.container import Container
+
+    _setup_logging(verbose)
+    report = Container().evaluate_holdout().run()
+    metrics = report.results["metrics"]
+    for name, values in metrics.items():
+        typer.echo(f"{name}: log_loss={values['log_loss']:.5f} ece={values['ece']:.4f}")
+    typer.echo(f"Nivel alcanzado: {report.level}")
+
+
 if __name__ == "__main__":  # pragma: no cover
     app()

@@ -31,7 +31,7 @@ select:
 	$(CLI) select
 
 holdout:
-	@echo "pendiente"
+	$(CLI) holdout
 
 report:
 	@echo "pendiente"
