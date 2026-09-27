@@ -1,0 +1,133 @@
+{
+  "created_at": "2026-09-27T00:02:49+00:00",
+  "git_commit": "c498f99-dirty",
+  "rule": "experiments.md §4: candidatos con ECE < 0.03 y ningún fold peor que E02 por más de 0.01; gana el menor log loss medio F1–F3; un candidato más simple a menos de 0.001 gana (logística < Poisson/DC < blend < boosting < stacking). Solo métricas de validación; el holdout no se usa.",
+  "champion": {
+    "experiment_id": "E12",
+    "name": "LightGBM + Optuna con features de E06 + probabilidades del mercado pre-cierre",
+    "model": "lightgbm_optuna[elo+form+schedule+xg+market]",
+    "uses_odds": true,
+    "spec": {
+      "type": "optuna_lightgbm",
+      "groups": [
+        "elo",
+        "form",
+        "schedule",
+        "xg",
+        "market"
+      ],
+      "n_trials": 40
+    },
+    "feature_overrides": {},
+    "bet_threshold": 0.02,
+    "validation_metrics": {
+      "log_loss": 0.96943,
+      "log_loss_by_fold": {
+        "F1": 0.97805,
+        "F2": 0.9635,
+        "F3": 0.96673
+      },
+      "brier": 0.57609,
+      "rps": 0.19461,
+      "ece": 0.01976,
+      "accuracy": 0.54044
+    },
+    "reason": "menor log loss medio de validación (0.96943)"
+  },
+  "champion_no_odds": {
+    "experiment_id": "E06",
+    "name": "Logística con Elo + forma + calendario + xG",
+    "model": "logistic[elo+form+schedule+xg]",
+    "uses_odds": false,
+    "spec": {
+      "type": "sklearn",
+      "kind": "logistic",
+      "groups": [
+        "elo",
+        "form",
+        "schedule",
+        "xg"
+      ],
+      "params": {
+        "C": 0.05
+      }
+    },
+    "feature_overrides": {},
+    "bet_threshold": 0.05,
+    "validation_metrics": {
+      "log_loss": 0.9795,
+      "log_loss_by_fold": {
+        "F1": 0.97969,
+        "F2": 0.97774,
+        "F3": 0.98107
+      },
+      "brier": 0.58379,
+      "rps": 0.19808,
+      "ece": 0.02474,
+      "accuracy": 0.53535
+    },
+    "reason": "desempate por simplicidad: E06 (0.97950) está a menos de 0.001 de E08 (0.97852) y es un modelo más simple"
+  },
+  "candidates": [
+    {
+      "experiment_id": "E12",
+      "val_ll_mean": 0.96943,
+      "val_ece": 0.01976,
+      "uses_odds": true
+    },
+    {
+      "experiment_id": "E08",
+      "val_ll_mean": 0.97852,
+      "val_ece": 0.01554,
+      "uses_odds": false
+    },
+    {
+      "experiment_id": "E07",
+      "val_ll_mean": 0.97948,
+      "val_ece": 0.0225,
+      "uses_odds": false
+    },
+    {
+      "experiment_id": "E06",
+      "val_ll_mean": 0.9795,
+      "val_ece": 0.02474,
+      "uses_odds": false
+    },
+    {
+      "experiment_id": "E05",
+      "val_ll_mean": 0.98024,
+      "val_ece": 0.01855,
+      "uses_odds": false
+    },
+    {
+      "experiment_id": "E09",
+      "val_ll_mean": 0.98239,
+      "val_ece": 0.01712,
+      "uses_odds": false
+    },
+    {
+      "experiment_id": "E02",
+      "val_ll_mean": 0.98399,
+      "val_ece": 0.01765,
+      "uses_odds": false
+    },
+    {
+      "experiment_id": "E04",
+      "val_ll_mean": 0.98624,
+      "val_ece": 0.01793,
+      "uses_odds": false
+    },
+    {
+      "experiment_id": "E03",
+      "val_ll_mean": 0.98679,
+      "val_ece": 0.01531,
+      "uses_odds": false
+    }
+  ],
+  "excluded": {
+    "E01-freq": "línea base (referencia, no candidato)",
+    "E01-avg": "línea base (referencia, no candidato)",
+    "E01-avg_prop": "línea base (referencia, no candidato)",
+    "E01-psc": "línea base (referencia, no candidato)"
+  }
+}

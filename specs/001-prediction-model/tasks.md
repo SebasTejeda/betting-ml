@@ -91,7 +91,7 @@ Instrucciones para el agente:
 - [x] **T024** E02 → E06, uno por uno, según `experiments.md`. Después de cada uno, lee la tabla y ajusta la hipótesis del siguiente si hace falta (registrándolo).
 - [x] 🔍 **T025** Checkpoint con `ml-reviewer` tras E06 (foco: fuga de información, validación, métricas creíbles). Si un resultado parece "demasiado bueno" (log loss menor que Pinnacle al cierre sin usar cuotas), **se asume bug** hasta demostrar lo contrario.
 - [x] **T026** E07 → E15 (o hasta la regla de parada). E14 y E15: elige hipótesis según lo aprendido y justifícala.
-- [ ] **T027** `make select`: aplica la regla de `experiments.md` §4 y escribe `models/champion.json`.
+- [x] **T027** `make select`: aplica la regla de `experiments.md` §4 y escribe `models/champion.json`.
   - Commit: `feat(app): champion selection — <ID>`
 - [ ] 🔍 **T028** Checkpoint con `ml-reviewer` antes de tocar el holdout (última oportunidad de detectar problemas).
 

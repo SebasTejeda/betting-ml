@@ -28,7 +28,7 @@ exp:
 	$(CLI) exp $(ID)
 
 select:
-	@echo "pendiente"
+	$(CLI) select
 
 holdout:
 	@echo "pendiente"

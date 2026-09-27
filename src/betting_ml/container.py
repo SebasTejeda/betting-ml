@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from functools import cached_property
+from pathlib import Path
 
 from betting_ml.adapters.experiment_store import FileExperimentStore
 from betting_ml.adapters.football_data import FootballDataSource
@@ -14,6 +15,7 @@ from betting_ml.adapters.team_names import TeamNameResolver
 from betting_ml.adapters.understat import UnderstatSource
 from betting_ml.application.build_dataset import BuildDataset
 from betting_ml.application.run_experiment import RunExperiment
+from betting_ml.application.select_champion import SelectChampion
 from betting_ml.config import (
     FeaturesFile,
     LeaguesFile,
@@ -91,5 +93,17 @@ class Container:
             store=self.experiment_store,
             leagues=self.leagues,
             features=self.features,
+            git_commit=current_commit,
+        )
+
+    @property
+    def champion_path(self) -> Path:
+        return self.settings.models_path / "champion.json"
+
+    def select_champion(self) -> SelectChampion:
+        return SelectChampion(
+            read_rows=self.experiment_store.read_rows,
+            load_details=self.experiment_store.load_details,
+            output_path=self.champion_path,
             git_commit=current_commit,
         )

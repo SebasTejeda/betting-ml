@@ -66,5 +66,23 @@ def conclude(exp_id: str, text: str) -> None:
     typer.echo(f"{exp_id}: conclusión registrada")
 
 
+@app.command()
+def select() -> None:
+    """Elige campeón y campeón sin cuotas (experiments.md §4) → models/champion.json."""
+    from betting_ml.container import Container
+
+    selection = Container().select_champion().run()
+    for label, entry in (
+        ("champion", selection.champion),
+        ("champion_no_odds", selection.champion_no_odds),
+    ):
+        typer.echo(
+            f"{label}: {entry['experiment_id']} ({entry['model']}) "
+            f"val_ll={entry['validation_metrics']['log_loss']:.5f} — {entry['reason']}"
+        )
+    for exp_id, why in selection.excluded.items():
+        typer.echo(f"  excluido {exp_id}: {why}")
+
+
 if __name__ == "__main__":  # pragma: no cover
     app()
