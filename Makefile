@@ -46,7 +46,7 @@ track:
 	$(CLI) track
 
 docker:
-	@echo "pendiente"
+	docker build -t betting-ml:latest .
 
 all: data baselines
 	@for id in $(EXPERIMENTS); do $(MAKE) exp ID=$$id || exit 1; done

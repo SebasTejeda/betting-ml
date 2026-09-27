@@ -2,6 +2,7 @@
 # Construir:  make docker            (docker build -t betting-ml:latest .)
 # Ejecutar:   docker run --rm -p 8000:8000 \
 #               -v "$(pwd)/data:/app/data" -v "$(pwd)/models:/app/models" \
+#               -v "$(pwd)/reports:/app/reports" \
 #               --env-file .env betting-ml:latest
 # Los modelos (models/*/model.joblib) y los datos (data/processed/history.parquet) se generan con
 # `make data && make train-prod` y se montan como volúmenes: no se copian a la imagen.

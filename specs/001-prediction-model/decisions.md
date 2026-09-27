@@ -82,3 +82,8 @@ Decisiones tomadas durante la implementación que no estaban en la spec o que la
 ## 2026-09-27 — Entrenamiento de producción (T031)
 - Decisión: `make train-prod` exige el lock del holdout en estado `completed` y entrena con 2014-15…2025-26 + los partidos jugados de 2026-27 (plan §5). El conjunto completo se guarda como `data/processed/history.parquet`, que es lo único que lee la API (nunca abre `holdout.parquet`). Los modelos con Optuna se re-entrenan con los hiperparámetros elegidos en el split final del holdout (guardados en `holdout_results.json`), en lugar de volver a tunear con la validación interna, que en producción sería la temporada en curso (≈ 250 partidos).
 - Versión: `{experimento}-{tipo}-{fecha}` en `models/`, y `models/production.json` apunta a las versiones activas.
+
+## 2026-09-27 — Docker no disponible en la máquina de desarrollo (T037)
+- Contexto: esta máquina Windows no tiene Docker instalado.
+- Decisión: se entrega `Dockerfile` (python:3.12-slim, `uv sync --frozen --no-dev`, usuario no root uid 10001, healthcheck a `/health`) y `.dockerignore` (sin `.env`, `data/`, `models/`), más `make docker`. Datos, modelos y reportes se montan como volúmenes. Se valida con un test estático; la construcción real queda pendiente de una máquina con Docker (o CI).
+- Impacto: la imagen no se ha construido todavía; el README lo indica.
