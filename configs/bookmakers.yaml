@@ -1,0 +1,49 @@
+# Catálogo de casas de apuestas (spec 002).
+#   key         clave de The Odds API (o propia si la cuota se ingresa a mano)
+#   role        reference (Pinnacle) | exchange (Betfair, Matchbook, Smarkets) | soft (casa tradicional)
+#   accessible  true solo si opera legalmente en Perú (licencia MINCETUR). La mejor cuota "accesible"
+#               y la señal experimental solo usan estas casas; el resto se muestra como referencia.
+#   source      api (The Odds API, regiones eu/uk) | manual (se ingresa en la calculadora)
+# Las claves de The Odds API se verifican con una respuesta real en T011. Ajustar `accessible`
+# a mano si cambia la situación legal de una casa (decisions.md).
+bookmakers:
+  # --- referencia y exchanges (The Odds API)
+  - {key: pinnacle, name: Pinnacle, role: reference, accessible: false, source: api}
+  - {key: betfair_ex_eu, name: Betfair Exchange (EU), role: exchange, accessible: false, source: api, commission: 0.05}
+  - {key: betfair_ex_uk, name: Betfair Exchange (UK), role: exchange, accessible: false, source: api, commission: 0.05}
+  - {key: matchbook, name: Matchbook, role: exchange, accessible: false, source: api, commission: 0.02}
+  - {key: smarkets, name: Smarkets, role: exchange, accessible: false, source: api, commission: 0.02}
+  # --- casas blandas en The Odds API que operan en Perú
+  - {key: betsson, name: Betsson, role: soft, accessible: true, source: api}
+  - {key: coolbet, name: Coolbet, role: soft, accessible: true, source: api}
+  # --- casas blandas en The Odds API sin operación legal en Perú (solo referencia)
+  - {key: onexbet, name: 1xBet, role: soft, accessible: false, source: api}
+  - {key: sport888, name: 888sport, role: soft, accessible: false, source: api}
+  - {key: betclic, name: Betclic, role: soft, accessible: false, source: api}
+  - {key: betvictor, name: BetVictor, role: soft, accessible: false, source: api}
+  - {key: marathonbet, name: Marathon Bet, role: soft, accessible: false, source: api}
+  - {key: nordicbet, name: NordicBet, role: soft, accessible: false, source: api}
+  - {key: tipico_de, name: Tipico, role: soft, accessible: false, source: api}
+  - {key: unibet_eu, name: Unibet (EU), role: soft, accessible: false, source: api}
+  - {key: unibet_uk, name: Unibet (UK), role: soft, accessible: false, source: api}
+  - {key: williamhill, name: William Hill, role: soft, accessible: false, source: api}
+  - {key: winamax_fr, name: Winamax (FR), role: soft, accessible: false, source: api}
+  - {key: winamax_de, name: Winamax (DE), role: soft, accessible: false, source: api}
+  - {key: betway, name: Betway, role: soft, accessible: false, source: api}
+  - {key: betfair_sb_uk, name: Betfair Sportsbook, role: soft, accessible: false, source: api}
+  - {key: paddypower, name: Paddy Power, role: soft, accessible: false, source: api}
+  - {key: skybet, name: Sky Bet, role: soft, accessible: false, source: api}
+  - {key: ladbrokes_uk, name: Ladbrokes, role: soft, accessible: false, source: api}
+  - {key: coral, name: Coral, role: soft, accessible: false, source: api}
+  - {key: boylesports, name: BoyleSports, role: soft, accessible: false, source: api}
+  - {key: leovegas, name: LeoVegas, role: soft, accessible: false, source: api}
+  - {key: livescorebet_eu, name: LiveScore Bet (EU), role: soft, accessible: false, source: api}
+  - {key: everygame, name: Everygame, role: soft, accessible: false, source: api}
+  # --- casas peruanas: cuota ingresada a mano en la calculadora (sin scraping, constitución §X)
+  - {key: teapuesto, name: Te Apuesto, role: soft, accessible: true, source: manual}
+  - {key: inkabet, name: Inkabet, role: soft, accessible: true, source: manual}
+  - {key: doradobet, name: Doradobet, role: soft, accessible: true, source: manual}
+  - {key: apuestatotal, name: Apuesta Total, role: soft, accessible: true, source: manual}
+  - {key: betano, name: Betano, role: soft, accessible: true, source: manual}
+  - {key: betsson_pe, name: Betsson Perú (manual), role: soft, accessible: true, source: manual}
+  - {key: coolbet_pe, name: Coolbet Perú (manual), role: soft, accessible: true, source: manual}

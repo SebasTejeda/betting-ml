@@ -210,6 +210,53 @@ def load_team_aliases(path: Path | None = None) -> TeamAliases:
     return TeamAliases.model_validate({"teams": normalized})
 
 
+class BookmakerConfig(BaseModel):
+    key: str = Field(pattern=r"^[a-z0-9_]+$")
+    name: str
+    role: Literal["reference", "exchange", "soft"]
+    accessible: bool
+    source: Literal["api", "manual"]
+    commission: float = Field(default=0.0, ge=0.0, lt=1.0)
+
+
+class BookmakersFile(BaseModel):
+    bookmakers: list[BookmakerConfig] = Field(min_length=1)
+
+    @field_validator("bookmakers")
+    @classmethod
+    def _check(cls, value: list[BookmakerConfig]) -> list[BookmakerConfig]:
+        keys = [b.key for b in value]
+        if len(keys) != len(set(keys)):
+            raise ValueError("duplicated bookmaker keys")
+        if sum(b.role == "reference" for b in value) != 1:
+            raise ValueError("exactly one reference bookmaker is required")
+        for b in value:
+            if b.role == "exchange" and b.commission <= 0:
+                raise ValueError(f"exchange {b.key} needs a commission")
+            if b.role != "exchange" and b.commission:
+                raise ValueError(f"only exchanges have a commission ({b.key})")
+        return value
+
+    def get(self, key: str) -> BookmakerConfig | None:
+        return next((b for b in self.bookmakers if b.key == key), None)
+
+    @property
+    def reference(self) -> BookmakerConfig:
+        return next(b for b in self.bookmakers if b.role == "reference")
+
+    @property
+    def accessible_keys(self) -> set[str]:
+        return {b.key for b in self.bookmakers if b.accessible}
+
+    @property
+    def api_keys(self) -> set[str]:
+        return {b.key for b in self.bookmakers if b.source == "api"}
+
+
+def load_bookmakers(path: Path | None = None) -> BookmakersFile:
+    return BookmakersFile.model_validate(_read_yaml(path or CONFIGS_DIR / "bookmakers.yaml"))
+
+
 def load_data_overrides(path: Path | None = None) -> DataOverrides:
     target = path or CONFIGS_DIR / "data_overrides.yaml"
     if not target.exists():

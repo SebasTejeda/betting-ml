@@ -40,7 +40,7 @@ Mismas reglas de ejecución que la spec 001: en orden, una tarea a la vez, `lint
 
 ## Fase 2 — Datos en vivo y persistencia
 
-- [ ] **T009** `configs/bookmakers.yaml` con las casas de The Odds API (regiones `eu`, `uk`) y las peruanas de ingreso manual (Betsson, Te Apuesto, Inkabet, Doradobet, Apuesta Total, Betano, Coolbet; ajustar la lista). Marcar `accessible: true` solo para las que operan en Perú. Test de esquema.
+- [x] **T009** `configs/bookmakers.yaml` con las casas de The Odds API (regiones `eu`, `uk`) y las peruanas de ingreso manual (Betsson, Te Apuesto, Inkabet, Doradobet, Apuesta Total, Betano, Coolbet; ajustar la lista). Marcar `accessible: true` solo para las que operan en Perú. Test de esquema.
   - Commit: `feat(config): bookmakers catalog`
 - [ ] **T010** SQLite + SQLAlchemy + Alembic: modelos, repositorios, migración inicial, `make db-upgrade`. Tests con base en memoria.
   - Commit: `feat(db): sqlite persistence with migrations`
