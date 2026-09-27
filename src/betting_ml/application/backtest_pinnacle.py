@@ -254,12 +254,13 @@ class BacktestPinnacle:
         if missing or predictions.empty or predictions["match_id"].duplicated().any():
             raise ValueError(f"holdout predictions are incomplete (missing columns: {missing})")
         spec001 = self.reports_dir / "holdout_results.json"
-        if spec001.exists():
-            expected = json.loads(spec001.read_text(encoding="utf-8")).get("n_matches")
-            if expected is not None and len(predictions) != expected:
-                raise ValueError(
-                    f"holdout predictions are incomplete ({len(predictions)} rows, expected {expected})"
-                )
+        if not spec001.exists():
+            raise FileNotFoundError(f"{spec001} is needed to check the holdout predictions")
+        expected = json.loads(spec001.read_text(encoding="utf-8")).get("n_matches")
+        if expected is None or len(predictions) != expected:
+            raise ValueError(
+                f"holdout predictions are incomplete ({len(predictions)} rows, expected {expected})"
+            )
         return predictions
 
     def test_frame(
@@ -482,7 +483,7 @@ VARIANT_TEXT = {
 }
 CONCLUSION_TEXT = {
     "seguir": "La estrategia principal alcanza el nivel Bueno en el test (CLV positivo y peor caso razonable acotado).",
-    "seguir con cambios": "La estrategia principal no alcanza el nivel Bueno en el test, pero alguna variante con Bet365 tiene CLV positivo con IC 95 % por encima de 0 sumando validación y test.",
+    "seguir con cambios": "La estrategia principal no alcanza el nivel Bueno en el test, pero alguna variante con Bet365 tiene CLV positivo con IC 95 % por encima de 0 sumando validación y test, y CLV positivo en el test. Esa evidencia descansa sobre todo en la validación (el test tiene muy pocas apuestas): la confirmación real es la condición de la spec §5, **CLV medio > 0 en las primeras 100 apuestas en papel antes de apostar dinero real**.",
     "no seguir": "Ninguna variante con Bet365 muestra un CLV positivo con IC 95 % por encima de 0 (validación + test). El escenario de mejor cuota no cuenta porque sus precios no son apostables de forma fiable.",
 }
 

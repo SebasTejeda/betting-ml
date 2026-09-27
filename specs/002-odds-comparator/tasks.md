@@ -29,7 +29,7 @@ Mismas reglas de ejecución que la spec 001: en orden, una tarea a la vez, `lint
   - Hecho cuando: el escenario de control `avg` da CLV ≤ 0 aproximadamente (si no, investigar antes de seguir).
   - Commit: `feat(backtest): pinnacle reference strategy on validation folds`
 
-- [ ] 🔍 **T006** Checkpoint `ml-reviewer` del backtest antes del test final (fuga, uso de `psc_`, elección del umbral).
+- [x] 🔍 **T006** Checkpoint `ml-reviewer` del backtest antes del test final (fuga, uso de `psc_`, elección del umbral).
 
 - [ ] **T007** `make backtest-002-final` (una sola vez, lock `HOLDOUT_002_USED.lock`) + `reports/REPORT_002_backtest.md` con el nivel de la spec §5 y la conclusión **seguir / seguir con cambios / no seguir**.
   - Commit: `exp(002): final backtest — <conclusión>`

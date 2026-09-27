@@ -60,6 +60,7 @@ def use_case(tmp_path: Path) -> BacktestPinnacle:
 
     reports = tmp_path / "reports"
     reports.mkdir()
+    (reports / "holdout_results.json").write_text('{"n_matches": 56}', encoding="utf-8")
     return BacktestPinnacle(
         repo,
         leagues,
