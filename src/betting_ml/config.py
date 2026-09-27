@@ -69,6 +69,7 @@ class LeagueConfig(BaseModel):
     country: str
     football_data: str
     understat: str | None = None
+    odds_api: str | None = None
 
 
 class SeasonsConfig(BaseModel):
@@ -145,7 +146,7 @@ class FeaturesFile(BaseModel):
     groups: dict[str, list[str]]
 
 
-SourceName = Literal["football_data", "understat"]
+SourceName = Literal["football_data", "understat", "the_odds_api"]
 
 
 class TeamAliases(BaseModel):

@@ -12,23 +12,28 @@ leagues:
     country: England
     football_data: E0
     understat: EPL
+    odds_api: soccer_epl
   - code: SP1
     name: LaLiga
     country: Spain
     football_data: SP1
     understat: La_liga
+    odds_api: soccer_spain_la_liga
   - code: D1
     name: Bundesliga
     country: Germany
     football_data: D1
     understat: Bundesliga
+    odds_api: soccer_germany_bundesliga
   - code: I1
     name: Serie A
     country: Italy
     football_data: I1
     understat: Serie_A
+    odds_api: soccer_italy_serie_a
   - code: F1
     name: Ligue 1
     country: France
     football_data: F1
     understat: Ligue_1
+    odds_api: soccer_france_ligue_one

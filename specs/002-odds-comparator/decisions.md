@@ -96,3 +96,11 @@ Formato:
 - Decisión: `accessible: true` solo para casas que operan legalmente en Perú según su licencia MINCETUR, hasta donde se pudo determinar: Betsson y Coolbet (también en The Odds API), y las de ingreso manual (Te Apuesto, Inkabet, Doradobet, Apuesta Total, Betano, y Betsson/Coolbet Perú a mano). Pinnacle, los exchanges y el resto de casas europeas quedan como referencia (`accessible: false`).
 - Motivo: la mejor cuota "accesible" y la señal experimental no deben apuntar a casas donde no se puede apostar desde Perú.
 - Impacto: el dueño puede ajustar la lista a mano en `configs/bookmakers.yaml`. Las claves de The Odds API se verifican con una respuesta real en T011. Las cuotas de Betsson/Coolbet en la API (región eu) pueden no coincidir con las de su web peruana; por eso existen también como entrada manual.
+
+## 2026-09-27 — The Odds API verificada con una llamada real (T011)
+- `GET /v4/sports` (no consume créditos): los 5 `sport_key` existen y están activos: `soccer_epl`, `soccer_spain_la_liga`, `soccer_germany_bundesliga`, `soccer_italy_serie_a` y `soccer_france_ligue_one`. Se guardan en `configs/leagues.yaml` (`odds_api`).
+- Una sola llamada de cuotas (`soccer_epl`, regiones eu+uk, h2h) costó **2 créditos** (quedan 498 de 500). Es la **1.ª de las 3 llamadas con coste** que permite el dueño durante el desarrollo.
+- **Pinnacle sí está incluido en el plan gratis:** aparece en los 20 de 20 eventos. Pinnacle sigue como referencia; Betfair Exchange (eu/uk) queda como respaldo y también está presente.
+- La respuesta tiene 39 casas; 14 no estaban en el catálogo y se agregaron como no accesibles.
+- Nombres de equipos: 6 de la Premier League no resolvían con los alias existentes. Se agregan como alias `the_odds_api` verificados: Brighton and Hove Albion, Coventry City, Hull City, Ipswich Town, Leeds United y Tottenham Hotspur. Para las otras 4 ligas se usa la búsqueda flexible sobre todos los alias; lo que no resuelva aparece en `unmapped_teams` (error visible) en el primer refresco real, y se completa entonces.
+- Los fixtures grabados (`tests/fixtures/the_odds_api/`) no contienen la clave (verificado); los headers de créditos se guardan aparte.

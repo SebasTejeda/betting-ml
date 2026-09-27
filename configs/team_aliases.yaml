@@ -5,6 +5,7 @@
 #       <Nombre canónico>:
 #         football_data: [alias, ...]   # nombres tal como aparecen en football-data.co.uk
 #         understat: [alias, ...]       # nombres tal como aparecen en Understat
+#         the_odds_api: [alias, ...]    # nombres de The Odds API (si no coinciden con otro alias)
 # Si el nombre en una fuente es idéntico al canónico, basta con listar el equipo con `{}`.
 # Todo equipo que no resuelva a un canónico es un ERROR (spec §3).
 teams:
@@ -13,18 +14,23 @@ teams:
     Aston Villa: {}
     Bournemouth: {}
     Brentford: {}
-    Brighton: {}
+    Brighton:
+      the_odds_api: ['Brighton and Hove Albion']
     Burnley: {}
     Cardiff: {}
     Chelsea: {}
-    Coventry: {}
+    Coventry:
+      the_odds_api: ['Coventry City']
     Crystal Palace: {}
     Everton: {}
     Fulham: {}
     Huddersfield: {}
-    Hull: {}
-    Ipswich: {}
-    Leeds: {}
+    Hull:
+      the_odds_api: ['Hull City']
+    Ipswich:
+      the_odds_api: ['Ipswich Town']
+    Leeds:
+      the_odds_api: ['Leeds United']
     Leicester: {}
     Liverpool: {}
     Luton: {}
@@ -45,7 +51,8 @@ teams:
     Stoke: {}
     Sunderland: {}
     Swansea: {}
-    Tottenham: {}
+    Tottenham:
+      the_odds_api: ['Tottenham Hotspur']
     Watford: {}
     West Brom:
       understat: ['West Bromwich Albion']

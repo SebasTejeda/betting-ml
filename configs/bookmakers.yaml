@@ -39,6 +39,21 @@ bookmakers:
   - {key: leovegas, name: LeoVegas, role: soft, accessible: false, source: api}
   - {key: livescorebet_eu, name: LiveScore Bet (EU), role: soft, accessible: false, source: api}
   - {key: everygame, name: Everygame, role: soft, accessible: false, source: api}
+  # --- vistas en la respuesta real de The Odds API (T011), sin operación en Perú
+  - {key: betano_uk, name: Betano (UK), role: soft, accessible: false, source: api}
+  - {key: betclic_fr, name: Betclic (FR), role: soft, accessible: false, source: api}
+  - {key: betfred_uk, name: Betfred, role: soft, accessible: false, source: api}
+  - {key: betonlineag, name: BetOnline.ag, role: soft, accessible: false, source: api}
+  - {key: codere_it, name: Codere (IT), role: soft, accessible: false, source: api}
+  - {key: grosvenor, name: Grosvenor, role: soft, accessible: false, source: api}
+  - {key: leovegas_se, name: LeoVegas (SE), role: soft, accessible: false, source: api}
+  - {key: livescorebet, name: LiveScore Bet (UK), role: soft, accessible: false, source: api}
+  - {key: mybookieag, name: MyBookie.ag, role: soft, accessible: false, source: api}
+  - {key: pmu_fr, name: PMU (FR), role: soft, accessible: false, source: api}
+  - {key: unibet_fr, name: Unibet (FR), role: soft, accessible: false, source: api}
+  - {key: unibet_nl, name: Unibet (NL), role: soft, accessible: false, source: api}
+  - {key: unibet_se, name: Unibet (SE), role: soft, accessible: false, source: api}
+  - {key: virginbet, name: Virgin Bet, role: soft, accessible: false, source: api}
   # --- casas peruanas: cuota ingresada a mano en la calculadora (sin scraping, constitución §X)
   - {key: teapuesto, name: Te Apuesto, role: soft, accessible: true, source: manual}
   - {key: inkabet, name: Inkabet, role: soft, accessible: true, source: manual}

@@ -14,7 +14,7 @@ import pandas as pd
 from betting_ml.config import SourceName, TeamAliases
 from betting_ml.domain.entities import slugify
 
-SOURCES: tuple[SourceName, ...] = ("football_data", "understat")
+SOURCES: tuple[SourceName, ...] = ("football_data", "understat", "the_odds_api")
 
 
 class UnknownTeamError(ValueError):
