@@ -83,3 +83,13 @@ Bitácora del agente. Una línea por tarea: `AAAA-MM-DD · TXXX · qué se hizo 
 - **Holdout 2025-26 (evaluado una vez):** campeón 0.9810 frente al mercado Avg 0.9777. **Nivel Bueno, no concluyente:** la diferencia, +0.0033, tiene un IC [−0.0008, +0.0074] que contiene el umbral de +0.005. El modelo no le gana al mercado. Apuestas: ROI −5.7 % con IC [−15.8 %, +5.5 %] y CLV −6.3 %.
 - **Producción:** API FastAPI, colección de Postman, seguimiento en vivo y Dockerfile. Docker no se construyó porque no está instalado en esta máquina.
 - **Pendiente para el dueño:** `git push` (nunca lo hace el agente); instalar make y Docker si se quieren usar esos comandos; probar E13 (stacking con el mercado) en un nuevo ciclo con 2026-27 como holdout.
+
+---
+
+# Spec 002 — Comparador de cuotas con referencia Pinnacle
+
+Spec activa: [`specs/002-odds-comparator/`](specs/002-odds-comparator/). Una línea por tarea: `AAAA-MM-DD · TXXX · qué se hizo · resultado clave`.
+
+## Bitácora (spec 002)
+
+- 2026-09-27 · T001 · Spec 002 integrada: constitución IX–XI, CLAUDE.md con spec activa y reglas nuevas, /next y /status leen la spec activa, sección en PROGRESS, ml-reviewer con bloque de la spec 002

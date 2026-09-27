@@ -51,3 +51,18 @@ Nada de `train_test_split` aleatorio ni `KFold` mezclado. La validación es *wal
 1. Un commit por tarea completada, con *Conventional Commits* (`feat:`, `fix:`, `test:`, `docs:`, `refactor:`, `chore:`, `exp:` para experimentos).
 2. Nunca se suben al repo: `data/`, modelos binarios pesados (`models/*.joblib`), `.env`.
 3. El agente **no hace push**; eso lo hace el dueño del repo.
+
+## IX. Juego responsable
+
+1. El software no incluye funciones que incentiven perseguir pérdidas (martingala, subir stakes tras perder, "recuperar").
+2. Los límites de juego responsable (spec 002, US6) no se pueden desactivar ni saltar desde la API o el frontend; solo editando la configuración a mano.
+
+## X. Respeto a términos de uso
+
+1. No se hace scraping de casas de apuestas sin una spec que lo justifique y revise sus términos.
+2. Las APIs de terceros se usan dentro de sus límites (créditos, frecuencia) y sus claves viven solo en `.env`.
+
+## XI. Evidencia antes de construir
+
+1. Ninguna estrategia de apuesta se expone en el frontend sin un backtest que la respalde (puerta de la spec 002, US1).
+2. Si la evidencia es negativa, se detiene la construcción y se informa al dueño.

@@ -6,7 +6,7 @@ tools: Read, Grep, Glob, Bash
 
 Eres un revisor senior de proyectos de machine learning aplicado a apuestas deportivas. Tu trabajo es **encontrar problemas**, no aprobar. Asume que hay al menos un error hasta que demuestres lo contrario.
 
-Antes de revisar, lee `specs/constitution.md`, `specs/001-prediction-model/spec.md`, `plan.md` y `experiments.md`, y la sección de `PROGRESS.md` del checkpoint actual.
+Antes de revisar, lee `specs/constitution.md` y la spec del checkpoint: spec 001 (`specs/001-prediction-model/spec.md`, `plan.md`, `experiments.md`) o spec 002 (`specs/002-odds-comparator/spec.md`, `plan.md`, `contracts/api.md`, `decisions.md`), y la sección de `PROGRESS.md` del checkpoint actual.
 
 ## Qué revisar (según el checkpoint)
 
@@ -29,6 +29,14 @@ Antes de revisar, lee `specs/constitution.md`, `specs/001-prediction-model/spec.
 - Reproducibilidad: semillas, configs, comandos del README.
 - El `REPORT.md` es honesto: IC de ROI, nº de apuestas, nivel alcanzado bien justificado.
 - Contrato de la API vs implementación.
+
+**Spec 002 (T006, T019, T029)**
+- Backtest: la decisión usa solo Pinnacle **pre-cierre** (`ps_odds_*`); `psc_odds_*` solo para el CLV. El umbral se elige en F1–F3; el test 2025-26 se evalúa una sola vez con su propio lock (`reports/HOLDOUT_002_USED.lock`). El escenario de control `avg` debería dar CLV ≤ 0 aproximadamente; un CLV muy positivo es sospecha de error.
+- Variante con filtro del modelo: usa predicciones out-of-fold (nunca predicciones in-sample).
+- Dinero con `Decimal` en dominio, persistencia y API (nada de `float` para montos, stakes o bankroll).
+- Límites de juego responsable (US6): imposibles de saltar desde la API (403 con presupuesto superado, 409 sin `confirm`, subir el límite mensual solo aplica el mes siguiente, mes calendario en hora de Lima). Sin funciones de "recuperar pérdidas".
+- Seguridad: `ODDS_API_KEY` y `APP_API_KEY` solo en `.env`; nunca en el frontend, en fixtures grabados, en logs ni en el repo (`git log -p`). Escrituras protegidas con `X-API-Key`.
+- Créditos de The Odds API: control de presupuesto (reserva mínima), sin reintentos en 4xx, tests sin red con respuestas grabadas.
 
 ## Formato de respuesta
 

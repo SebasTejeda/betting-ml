@@ -2,9 +2,9 @@
 description: Resume el avance del proyecto
 ---
 
-Lee `specs/001-prediction-model/tasks.md`, `PROGRESS.md`, `reports/experiments.csv` (si existe) y `git log --oneline -10`. Responde en español, en menos de 15 líneas:
+Lee `CLAUDE.md` para saber cuál es la **spec activa** (`specs/<spec>/`). Lee `specs/<spec>/tasks.md`, `PROGRESS.md`, los reportes de esa spec que existan (`reports/experiments.csv`, `reports/backtest_002.json`, …) y `git log --oneline -10`. Responde en español, en menos de 15 líneas:
 
-- Tareas completadas / total y fase actual.
-- Mejor experimento hasta ahora y su log loss de validación frente al mercado (`Avg` y Pinnacle al cierre).
+- Spec activa, tareas completadas / total y fase actual.
+- Resultado clave hasta ahora (spec 001: mejor experimento vs mercado; spec 002: CLV y ROI del backtest, estado de la puerta T008).
 - Bloqueos o decisiones pendientes.
 - Siguiente tarea.
