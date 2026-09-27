@@ -43,7 +43,7 @@ serve:
 	@echo "pendiente"
 
 track:
-	@echo "pendiente"
+	$(CLI) track
 
 docker:
 	@echo "pendiente"

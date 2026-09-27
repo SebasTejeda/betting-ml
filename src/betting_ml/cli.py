@@ -129,5 +129,16 @@ def train_prod(verbose: bool = False) -> None:
     typer.echo(f"Modelos de producción: {versions}")
 
 
+@app.command()
+def track() -> None:
+    """Califica las predicciones servidas con los resultados reales (US6)."""
+    from betting_ml.container import Container
+
+    tracking = Container().tracking
+    graded = tracking.update()
+    typer.echo(f"Predicciones calificadas ahora: {graded}")
+    typer.echo(f"Resumen: {tracking.summary().to_dict()}")
+
+
 if __name__ == "__main__":  # pragma: no cover
     app()

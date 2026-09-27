@@ -5,9 +5,8 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Callable
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from zoneinfo import ZoneInfo
 
 import numpy as np
 import pandas as pd
@@ -15,7 +14,9 @@ import pandas as pd
 from betting_ml.adapters.football_data import _kickoff_utc, _parse_dates, _read_frame
 from betting_ml.adapters.http import HttpClient
 from betting_ml.adapters.team_names import TeamNameResolver
-from betting_ml.domain.entities import Fixture, OddsTriple, make_match_id
+from betting_ml.domain.entities import Fixture, OddsTriple, fixtures_on, make_match_id
+
+__all__ = ["FootballDataFixtures", "fixtures_on", "parse_fixtures"]
 
 logger = logging.getLogger(__name__)
 
@@ -70,15 +71,6 @@ def parse_fixtures(
     if unknown:
         logger.warning("Fixtures with unmapped teams (add them to team_aliases.yaml): %s", unknown)
     return fixtures, unknown
-
-
-def fixtures_on(fixtures: list[Fixture], day: date, timezone: str) -> list[Fixture]:
-    """Fixtures whose kick-off falls on ``day`` in ``timezone`` (e.g. America/Lima)."""
-    tz = ZoneInfo(timezone)
-    return sorted(
-        (f for f in fixtures if f.kickoff_utc.astimezone(tz).date() == day),
-        key=lambda f: (f.kickoff_utc, f.league, f.home_team),
-    )
 
 
 class FootballDataFixtures:

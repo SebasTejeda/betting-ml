@@ -106,7 +106,7 @@ Instrucciones para el agente:
 
 - [x] **T031** `make train-prod`: re-entrena campeón y `champion_no_odds` con todo lo disponible; versión con fecha.
 - [x] **T032** Adaptador `fixtures.py` (football-data `fixtures.csv` con caché de 6 h; conversión de horario a UTC y filtro por fecha en `America/Lima`).
-- [ ] **T033** Casos de uso `predict_matches` y `track_predictions` (US5 y US6).
+- [x] **T033** Casos de uso `predict_matches` y `track_predictions` (US5 y US6).
 - [ ] **T034** API FastAPI completa según `contracts/api.md`: routers, schemas, errores uniformes, inyección desde `container.py`, CORS abierto para `localhost`.
 - [ ] **T035** Tests de API con `TestClient` (todos los endpoints, casos de error, lista vacía, suma de probabilidades = 1).
 - [ ] **T036** Colección de Postman `postman/betting-ml.postman_collection.json` (ver contrato).

@@ -107,6 +107,17 @@ class ExperimentStore(Protocol):
 
 
 @runtime_checkable
+class TrackingStore(Protocol):
+    """Served predictions and their grading (US6)."""
+
+    def load(self) -> pd.DataFrame: ...
+
+    def save(self, frame: pd.DataFrame) -> None: ...
+
+    def append(self, records: pd.DataFrame) -> int: ...
+
+
+@runtime_checkable
 class Clock(Protocol):
     def now(self) -> datetime: ...
 

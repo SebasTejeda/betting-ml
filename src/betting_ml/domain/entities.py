@@ -8,6 +8,7 @@ import unicodedata
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from enum import StrEnum
+from zoneinfo import ZoneInfo
 
 
 class Outcome(StrEnum):
@@ -154,3 +155,12 @@ def slugify(text: str) -> str:
 def make_match_id(league: str, match_date: date, home_team: str, away_team: str) -> str:
     """Stable id: ``{league}-{YYYY-MM-DD}-{home}-{away}`` (see contracts/api.md)."""
     return f"{league}-{match_date.isoformat()}-{slugify(home_team)}-{slugify(away_team)}"
+
+
+def fixtures_on(fixtures: list[Fixture], day: date, timezone: str) -> list[Fixture]:
+    """Fixtures whose kick-off falls on ``day`` in ``timezone`` (e.g. America/Lima)."""
+    tz = ZoneInfo(timezone)
+    return sorted(
+        (f for f in fixtures if f.kickoff_utc.astimezone(tz).date() == day),
+        key=lambda f: (f.kickoff_utc, f.league, f.home_team),
+    )
