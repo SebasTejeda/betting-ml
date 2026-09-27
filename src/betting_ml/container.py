@@ -239,4 +239,11 @@ class Container:
             load_predictions=self.experiment_store.load_predictions,
             reports_dir=self.settings.reports_path,
             git_commit=current_commit,
+            load_holdout_predictions=lambda: pd.read_parquet(
+                self.settings.reports_path / "holdout_artifacts" / "holdout_predictions.parquet"
+            ),
         )
+
+    def backtest_pinnacle_final(self) -> BacktestPinnacle:
+        """Only place where the spec-002 final test opens the holdout season."""
+        return self.backtest_pinnacle(allow_holdout=True)

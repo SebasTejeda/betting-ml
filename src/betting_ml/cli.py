@@ -185,6 +185,20 @@ def backtest_002() -> None:
     typer.echo(f"Puerta (CLV medio > 0 en validación): {'PASA' if gate['passed'] else 'NO PASA'}")
 
 
+@app.command("backtest-002-final")
+def backtest_002_final() -> None:
+    """Test ÚNICO de la estrategia en la temporada de holdout (crea HOLDOUT_002_USED.lock)."""
+    from betting_ml.container import Container
+
+    payload = Container().backtest_pinnacle_final().run_final()
+    for key, result in payload["test"]["results"].items():
+        typer.echo(
+            f"{key:<26} u={result['threshold']:<5} apuestas={result['n_bets']:<5} "
+            f"ROI={_fmt(result['roi_flat'])} CLV={_fmt(result['clv_mean'])}"
+        )
+    typer.echo(f"Nivel: {payload['level']} — conclusión: {payload['conclusion']}")
+
+
 def _fmt(value: float | None) -> str:
     return "  —  " if value is None else f"{100 * value:+.2f}%"
 

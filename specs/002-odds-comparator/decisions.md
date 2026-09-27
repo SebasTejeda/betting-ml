@@ -39,3 +39,9 @@ Formato:
 - Variantes con filtro del modelo: usan las predicciones out-of-fold de F1–F3 guardadas por los experimentos de la spec 001 (E12 y E06, campeones de `models/champion.json`).
 - Advertencia: en el escenario `max`, el CLV positivo (+5.7 %) viene casi todo de apuestas a longshots (cuota mediana 6.7) donde la mejor cuota del mercado supera a Pinnacle en un 17 % de media (hasta +83 %). Son precios atípicos o desactualizados de alguna casa, a menudo inaccesibles o con límites bajos, y `Max*` de football-data puede incluir casas o exchanges que no se pueden usar desde Perú. El ROI del mismo escenario es −13 % (IC [−35 %, +14 %]). Se trata `max` como escenario optimista y dudoso; la referencia realista es `b365`.
 - Control: el escenario `avg` da CLV medio negativo (−11.7 % con apenas 10 apuestas), como se esperaba: sin precios por encima del mercado promedio no hay valor.
+
+## 2026-09-27 — Estrategia principal y reglas del test final, fijadas antes de verlo (T006/T007)
+- Estrategia principal del backtest: **Bet365 sin filtro del modelo** (`b365|none`). Es el escenario realista de "una casa blanda" (spec §6) y no depende del modelo. Decide el nivel de la spec §5 y la conclusión. Los demás escenarios se reportan igual.
+- Conclusión: **seguir** si la principal alcanza el nivel Bueno en el test (CLV > 0 y límite inferior del IC del ROI > −3 %); **seguir con cambios** si no, pero algún escenario que no sea el control `avg` tiene CLV > 0 en el test; **no seguir** en otro caso.
+- El test final usa los umbrales fijados en validación, las predicciones del holdout de la spec 001 (modelos entrenados sin ver 2025-26) y su propio lock (`reports/HOLDOUT_002_USED.lock`, reclamado antes de leer datos). Las apuestas del test se guardan en `reports/holdout_artifacts/backtest_002_test_bets.parquet`.
+- Solo hay cuotas de Pinnacle en ~55 % de 2025-26: en el resto no hay referencia y no se apuesta. Se reporta la cobertura.
