@@ -92,6 +92,12 @@ def holdout(verbose: bool = False, skip_if_done: bool = False) -> None:
     _setup_logging(verbose)
     use_case = Container().evaluate_holdout()
     if skip_if_done and use_case.lock_path.exists():
+        import json
+
+        status = json.loads(use_case.lock_path.read_text(encoding="utf-8")).get("status")
+        if status != "completed":
+            typer.echo(f"El lock del holdout quedó en estado {status!r}: revisar a mano.", err=True)
+            raise typer.Exit(code=1)
         typer.echo(f"Holdout ya evaluado ({use_case.lock_path}); se omite.")
         return
     report = use_case.run()

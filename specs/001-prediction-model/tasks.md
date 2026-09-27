@@ -93,7 +93,7 @@ Instrucciones para el agente:
 - [x] **T026** E07 → E15 (o hasta la regla de parada). E14 y E15: elige hipótesis según lo aprendido y justifícala.
 - [x] **T027** `make select`: aplica la regla de `experiments.md` §4 y escribe `models/champion.json`.
   - Commit: `feat(app): champion selection — <ID>`
-- [ ] 🔍 **T028** Checkpoint con `ml-reviewer` antes de tocar el holdout (última oportunidad de detectar problemas).
+- [x] 🔍 **T028** Checkpoint con `ml-reviewer` antes de tocar el holdout (última oportunidad de detectar problemas).
 
 ## Fase 6 — Evaluación final e informe
 
