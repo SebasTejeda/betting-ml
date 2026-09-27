@@ -106,6 +106,27 @@ def test_missing_holdout_predictions_do_not_burn_the_lock(use_case: BacktestPinn
     assert not use_case.lock_path.exists()
 
 
+def test_validation_mismatch_aborts_before_lock(use_case: BacktestPinnacle) -> None:
+    use_case.run_validation()
+    path = use_case.reports_dir / "backtest_002_validation.json"
+    data = json.loads(path.read_text(encoding="utf-8"))
+    data["results"]["b365|none"]["n_bets"] += 1
+    path.write_text(json.dumps(data), encoding="utf-8")
+    with pytest.raises(ValueError, match="do not match"):
+        use_case.run_final()
+    assert not use_case.lock_path.exists()
+
+
+def test_row_count_check_before_lock(use_case: BacktestPinnacle) -> None:
+    use_case.run_validation()
+    (use_case.reports_dir / "holdout_results.json").write_text(
+        '{"n_matches": 999}', encoding="utf-8"
+    )
+    with pytest.raises(ValueError, match="expected 999"):
+        use_case.run_final()
+    assert not use_case.lock_path.exists()
+
+
 def test_final_payload_has_irrecoverable_details(use_case: BacktestPinnacle) -> None:
     use_case.run_validation()
     payload = use_case.run_final()
@@ -129,13 +150,24 @@ def _result(clv: float | None, roi_low: float | None, n: int = 100) -> dict:
     return {"clv_mean": clv, "roi_ci_low": roi_low, "n_bets": n}
 
 
-def _pooled(low: float, n: int = 80, key: str = "b365|none") -> dict:
-    return {key: {"n": n, "clv_mean": low + 0.01, "clv_ci_low": low, "clv_ci_high": low + 0.02}}
+def _pooled(
+    low: float, n: int = 80, key: str = "b365|none", test_n: int = 10, test_clv: float = 0.01
+) -> dict:
+    return {
+        key: {
+            "n": n,
+            "clv_mean": low + 0.01,
+            "clv_ci_low": low,
+            "clv_ci_high": low + 0.02,
+            "test_n": test_n,
+            "test_clv_mean": test_clv,
+        }
+    }
 
 
 def test_level_and_conclusion_rules() -> None:
-    passed = {"gate": {"passed": True}}
-    failed = {"gate": {"passed": False}}
+    passed = {"results": {"b365|none": {"clv_mean": 0.01}, "max|none": {"clv_mean": 0.05}}}
+    failed = {"results": {"b365|none": {"clv_mean": -0.01}, "max|none": {"clv_mean": 0.05}}}
     base = {"max|none": _result(0.05, -0.2), "avg|none": _result(0.05, 0.0)}
     good = {**base, "b365|none": _result(0.01, -0.02)}
     assert level_and_conclusion(passed, good, _pooled(-0.01))[:2] == ("Bueno", "seguir")
@@ -154,4 +186,7 @@ def test_level_and_conclusion_rules() -> None:
     filtered = _pooled(0.004, key="b365|champion")
     assert level_and_conclusion(passed, weak, filtered)[1] == "seguir con cambios"
     assert level_and_conclusion(passed, weak, _pooled(0.01, key="max|none"))[1] == "no seguir"
+    # pooled CI above 0 but the test alone points the other way (or has too few bets)
+    assert level_and_conclusion(passed, weak, _pooled(0.002, test_clv=-0.01))[1] == "no seguir"
+    assert level_and_conclusion(passed, weak, _pooled(0.002, test_n=3))[1] == "no seguir"
     assert level_and_conclusion(failed, good)[0] == "No alcanzado"

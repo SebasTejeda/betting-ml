@@ -47,6 +47,7 @@ MIN_BETS_EXCELLENT = 300
 # the `avg` control are informative only; evidence must come from Bet365 (a real soft book).
 EVIDENCE_SCENARIO = "b365"
 MIN_POOLED_BETS = 50
+MIN_TEST_CLV_BETS = 5
 EXPECTED_TEST_BETS_PRIMARY = 23
 
 
@@ -65,7 +66,11 @@ def level_and_conclusion(
     for "seguir con cambios", since the test alone has little statistical power)."""
     primary = test[PRIMARY]
     checks = {
-        "minimo_clv_validacion": bool(validation["gate"]["passed"]),
+        "minimo_clv_validacion": any(
+            _positive(r["clv_mean"])
+            for k, r in validation["results"].items()
+            if k.startswith(f"{EVIDENCE_SCENARIO}|")
+        ),
         "bueno_clv_test": _positive(primary["clv_mean"]),
         "bueno_roi_ci_low": primary["roi_ci_low"] is not None
         and np.isfinite(primary["roi_ci_low"])
@@ -87,6 +92,9 @@ def level_and_conclusion(
         if key.startswith(f"{EVIDENCE_SCENARIO}|")
         and r["n"] >= MIN_POOLED_BETS
         and _positive(r["clv_ci_low"])
+        # the test alone must point the same way (not only the validation it should confirm)
+        and r.get("test_n", 0) >= MIN_TEST_CLV_BETS
+        and _positive(r.get("test_clv_mean"))
     ]
     checks["seguir_con_cambios_clv_b365_agrupado_ic_positivo"] = bool(solid)
     if level in ("Bueno", "Excelente"):
@@ -213,6 +221,27 @@ class BacktestPinnacle:
     def lock_path(self) -> Path:
         return self.reports_dir / LOCK_FILE
 
+    def _checked_validation(
+        self, validation: dict[str, Any]
+    ) -> tuple[pd.DataFrame, dict[str, np.ndarray]]:
+        """Recompute the Bet365 validation bets and check they match the stored JSON before
+        the lock is claimed (the pooled evidence must use the same bets)."""
+        frame, models = self.validation_frame()
+        for variant in VARIANTS:
+            key = _key(EVIDENCE_SCENARIO, variant)
+            stored = validation["results"][key]
+            proba = None if variant == "none" else models[variant]
+            bets = select_bets(frame, float(stored["threshold"]), EVIDENCE_SCENARIO, proba)  # type: ignore[arg-type]
+            clv = bets["clv"].to_numpy()
+            clv = clv[np.isfinite(clv)]
+            same_n = len(bets) == stored["n_bets"]
+            same_clv = stored["clv_mean"] is None or (
+                clv.size and abs(float(clv.mean()) - float(stored["clv_mean"])) < 1e-9
+            )
+            if not (same_n and same_clv):
+                raise ValueError(f"validation results of {key} do not match {VALIDATION_FILE}")
+        return frame, models
+
     def _precheck_holdout_predictions(self) -> pd.DataFrame:
         """Checks that do not open the holdout season, so a broken setup does not burn it."""
         if self.load_holdout_predictions is None:
@@ -224,6 +253,13 @@ class BacktestPinnacle:
         missing = [c for c in needed if c not in predictions.columns]
         if missing or predictions.empty or predictions["match_id"].duplicated().any():
             raise ValueError(f"holdout predictions are incomplete (missing columns: {missing})")
+        spec001 = self.reports_dir / "holdout_results.json"
+        if spec001.exists():
+            expected = json.loads(spec001.read_text(encoding="utf-8")).get("n_matches")
+            if expected is not None and len(predictions) != expected:
+                raise ValueError(
+                    f"holdout predictions are incomplete ({len(predictions)} rows, expected {expected})"
+                )
         return predictions
 
     def test_frame(
@@ -258,6 +294,7 @@ class BacktestPinnacle:
         validation_bytes = validation_path.read_bytes()
         validation = json.loads(validation_bytes.decode("utf-8"))
         predictions = self._precheck_holdout_predictions()
+        valid_frame, valid_models = self._checked_validation(validation)
         hashes = {
             "validation_json_sha256": hashlib.sha256(validation_bytes).hexdigest(),
             "holdout_predictions_sha256": _frame_hash(predictions),
@@ -285,7 +322,7 @@ class BacktestPinnacle:
         artifacts.mkdir(parents=True, exist_ok=True)
         bets_path = artifacts / "backtest_002_test_bets.parquet"
         pd.concat(bets, ignore_index=True).to_parquet(bets_path, index=False)
-        pooled = self._pooled_evidence(validation, frame, models)
+        pooled = self._pooled_evidence(validation, frame, models, valid_frame, valid_models)
         level, conclusion, checks = level_and_conclusion(validation, test, pooled)
         ps_ok = frame[["ps_odds_h", "ps_odds_d", "ps_odds_a"]].notna().all(axis=1)
         month = pd.to_datetime(frame["date"]).dt.strftime("%Y-%m")
@@ -328,9 +365,11 @@ class BacktestPinnacle:
         validation: dict[str, Any],
         test_frame: pd.DataFrame,
         test_models: dict[str, np.ndarray],
+        valid_frame: pd.DataFrame,
+        valid_models: dict[str, np.ndarray],
     ) -> dict[str, dict[str, Any]]:
-        """CLV of the Bet365 variants over validation + test (same fixed thresholds)."""
-        valid_frame, valid_models = self.validation_frame()
+        """CLV of the Bet365 variants over validation + test (same fixed thresholds), with
+        the test-only part reported separately."""
         out = {}
         for variant in VARIANTS:
             key = _key(EVIDENCE_SCENARIO, variant)
@@ -340,10 +379,13 @@ class BacktestPinnacle:
                 proba = None if variant == "none" else models[variant]
                 bets = select_bets(frame, threshold, EVIDENCE_SCENARIO, proba)  # type: ignore[arg-type]
                 clvs.append(bets["clv"].to_numpy())
+            test_values = clvs[1][np.isfinite(clvs[1])]
             values = np.concatenate(clvs)
             values = values[np.isfinite(values)]
             low, high = _bootstrap_mean(values)
             out[key] = {
+                "test_n": int(test_values.size),
+                "test_clv_mean": float(test_values.mean()) if test_values.size else float("nan"),
                 "n": int(values.size),
                 "clv_mean": float(values.mean()) if values.size else float("nan"),
                 "clv_ci_low": low,
