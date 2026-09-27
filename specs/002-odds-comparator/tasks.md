@@ -36,6 +36,8 @@ Mismas reglas de ejecución que la spec 001: en orden, una tarea a la vez, `lint
 
 - [x] **T008** 🚦 **Puerta.** Si ninguna variante tuvo CLV medio > 0 en validación: detener aquí, escribir el resumen en `PROGRESS.md` y avisar al dueño. Si pasa, continuar. Registrar la decisión en `decisions.md`.
 
+> **Reorientación tras la puerta T008 (2026-09-27, decisión del dueño):** producto principal = comparador de mejor cuota + calculadora + diario + límites; la señal de valor es **EXPERIMENTAL — solo papel**. Afecta a T013, T014, T016, T021–T024 (ver `spec.md` §1–§5, `contracts/api.md` y `decisions.md`).
+
 ## Fase 2 — Datos en vivo y persistencia
 
 - [ ] **T009** `configs/bookmakers.yaml` con las casas de The Odds API (regiones `eu`, `uk`) y las peruanas de ingreso manual (Betsson, Te Apuesto, Inkabet, Doradobet, Apuesta Total, Betano, Coolbet; ajustar la lista). Marcar `accessible: true` solo para las que operan en Perú. Test de esquema.
@@ -50,7 +52,7 @@ Mismas reglas de ejecución que la spec 001: en orden, una tarea a la vez, `lint
 ## Fase 3 — Casos de uso y API
 
 - [ ] **T013** `compare_matches` (US3) y `evaluate_manual_odds` (US4).
-- [ ] **T014** `domain/limits.py` + `manage_bets` (US5, US6) con tests exhaustivos de límites (incluido el cambio de mes en hora de Lima y la regla de subir el límite).
+- [ ] **T014** `domain/limits.py` + `manage_bets` (US5, US6) con tests exhaustivos de límites (incluido el cambio de mes en hora de Lima y la regla de subir el límite), `from_experimental_signal` y la confirmación 409 `EXPERIMENTAL_SIGNAL_UNPROVEN` para apuestas reales de la señal sin evidencia; contador de progreso 100 apuestas en papel.
 - [ ] **T015** `settle_bets` con CLV y `make settle`.
 - [ ] **T016** Routers nuevos según `contracts/api.md`, con `X-API-Key` en escrituras y errores uniformes.
 - [ ] **T017** Tests de API de todos los endpoints nuevos (incluidos 403/409/429).

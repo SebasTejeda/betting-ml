@@ -16,6 +16,7 @@ import pandas as pd
 from betting_ml.config import LeaguesFile
 from betting_ml.domain.ports import MatchRepository
 from betting_ml.ml.features.pipeline import RESULT_TO_TARGET
+from betting_ml.ml.market_margins import market_report
 from betting_ml.ml.pinnacle_backtest import (
     SCENARIOS,
     THRESHOLDS,
@@ -37,6 +38,7 @@ PROBA = ["p_home", "p_draw", "p_away"]
 VALIDATION_FILE = "backtest_002_validation.json"
 RESULTS_FILE = "backtest_002.json"
 REPORT_FILE = "REPORT_002_backtest.md"
+MARGINS_FILE = "margins_002.json"
 LOCK_FILE = "HOLDOUT_002_USED.lock"
 # Declared before looking at the test season (decisions.md, T006): the realistic single soft
 # bookmaker scenario without model filter decides the level and the conclusion.
@@ -394,6 +396,23 @@ class BacktestPinnacle:
             }
         return out
 
+    def refresh_report(self) -> Path:
+        """Re-render REPORT_002_backtest.md from the stored results (no holdout access), adding
+        the market-margin analysis that justifies the odds comparator."""
+        payload = json.loads((self.reports_dir / RESULTS_FILE).read_text(encoding="utf-8"))
+        frame, _ = self.validation_frame()
+        margins: dict[str, Any] = {"validation": market_report(frame)}
+        if self.repository.exists("current"):
+            margins["current"] = market_report(self.repository.load("current"))
+            margins["current_season"] = self.leagues.seasons.current
+        margins["validation_seasons"] = sorted(frame["season"].unique().tolist())
+        self._write(MARGINS_FILE, margins)
+        path = self.reports_dir / REPORT_FILE
+        path.write_text(
+            render_report(_clean(payload), _clean(margins)), encoding="utf-8", newline="\n"
+        )
+        return path
+
     def _lock(self, status: str, **extra: Any) -> None:
         body = {
             "status": status,
@@ -540,7 +559,70 @@ def _breakdown(result: dict[str, Any], key: str, title: str) -> str:
     return "\n".join(lines) + "\n"
 
 
-def render_report(payload: dict[str, Any]) -> str:
+def _margins_section(margins: dict[str, Any] | None) -> list[str]:
+    if not margins:
+        return []
+    names = {
+        "avg": "promedio del mercado",
+        "b365": "Bet365",
+        "ps": "Pinnacle",
+        "max": "mejor cuota disponible",
+    }
+    lines = [
+        "## Por qué un comparador: margen de las casas y ahorro de elegir la mejor cuota",
+        "",
+        "| Fuente | Margen medio (validación) | Margen medio (temporada en curso) |",
+        "|---|---|---|",
+    ]
+    current = (margins.get("current") or {}).get("margins", {})
+    for key, label in names.items():
+        v = margins["validation"]["margins"][key]
+        c = current.get(key, {})
+        cur = (
+            "—"
+            if not c or c.get("margin_mean") is None
+            else f"{100 * c['margin_mean']:.1f} % ({c['n_matches']} partidos)"
+        )
+        lines.append(
+            f"| {label} | {100 * v['margin_mean']:.1f} % ({v['n_matches']} partidos) | {cur} |"
+        )
+    va, vb = margins["validation"]["best_vs_avg"], margins["validation"]["best_vs_b365"]
+    ca = (margins.get("current") or {}).get("best_vs_avg") or {}
+    lines += [
+        "",
+        f"- Tomar la mejor cuota en vez de la cuota promedio paga de media **{100 * va['uplift_mean']:.1f} % más** por resultado "
+        f"(mediana {100 * va['uplift_median']:.1f} %) en validación"
+        + (
+            f", y {100 * ca['uplift_mean']:.1f} % en la temporada en curso"
+            if ca.get("uplift_mean") is not None
+            else ""
+        )
+        + f"; frente a Bet365, {100 * vb['uplift_mean']:.1f} %.",
+        "- Ese ahorro es seguro y no depende de predecir mejor que el mercado. Con un margen promedio de "
+        f"{100 * margins['validation']['margins']['avg']['margin_mean']:.1f} %, apostar siempre a la mejor cuota reduce el margen pagado a "
+        f"{100 * margins['validation']['margins']['max']['margin_mean']:.1f} %. Parte de la mejor cuota viene de casas o exchanges inaccesibles desde Perú, "
+        "así que el ahorro real depende de las casas que uno puede usar: por eso el comparador filtra por casas accesibles.",
+        "",
+    ]
+    return lines
+
+
+def _max_section(payload: dict[str, Any]) -> list[str]:
+    v = payload["validation"]["results"]["max|none"]
+    t = payload["test"]["results"]["max|none"]
+    return [
+        "## Escenario de mejor cuota (`max_odds`)",
+        "",
+        f"- Validación: {v['n_bets']} apuestas (umbral {v['threshold']:.2f}), CLV {_pct(v['clv_mean'], 2)} "
+        f"(IC {_ci(v['clv_ci_low'], v['clv_ci_high'])}), ROI {_pct(v['roi_flat'])} (IC {_ci(v['roi_ci_low'], v['roi_ci_high'])}).",
+        f"- Test: {t['n_bets']} apuestas, CLV {_pct(t['clv_mean'], 2)} (IC {_ci(t['clv_ci_low'], t['clv_ci_high'])}), "
+        f"ROI {_pct(t['roi_flat'])} (IC {_ci(t['roi_ci_low'], t['roi_ci_high'])}).",
+        "- El CLV positivo mide que el precio máximo supera a Pinnacle, no que se pueda apostar a él: el ROI es negativo en ambos periodos y el placebo es negativo. No sustenta una estrategia de value bets, pero sí confirma que la dispersión de precios entre casas es grande (ver la sección siguiente).",
+        "",
+    ]
+
+
+def render_report(payload: dict[str, Any], margins: dict[str, Any] | None = None) -> str:
     validation, test = payload["validation"], payload["test"]
     primary = test["results"][payload["primary_strategy"]]
     coverage = test["odds_coverage"]
@@ -566,6 +648,7 @@ def render_report(payload: dict[str, Any]) -> str:
             f"- Con {primary['n_bets']} apuestas el test **no tiene potencia estadística**: el ROI es casi puro ruido y "
             "ni el nivel Bueno ni su ausencia son concluyentes. La evidencia principal es el CLV sumando validación y test.",
             "- En validación, el ROI de Bet365 sin filtro (+31.5 % con 130 apuestas) fue suerte: su CLV era solo +0.9 % con un IC que incluía el 0.",
+            "- **La variante con filtro del campeón E12 NO está validada.** Sus 8 apuestas en el test no son evidencia, y es la única que queda en pie después de que fallara la estrategia principal: apoyarse en ella sería elegir a posteriori. Por eso la señal de valor se ofrece solo como **experimental y en papel**, y el producto principal es el comparador de mejor cuota (decisions.md, 2026-09-27).",
             "",
             "## Método",
             "",
@@ -600,6 +683,8 @@ def render_report(payload: dict[str, Any]) -> str:
             "",
             _breakdown(primary, "by_league", "Por liga"),
             _breakdown(primary, "by_odds_range", "Por rango de cuota"),
+            *_max_section(payload),
+            *_margins_section(margins),
             "## Nivel alcanzado",
             "",
             "| Condición | Cumple |",

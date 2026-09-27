@@ -1,0 +1,122 @@
+{
+  "validation": {
+    "margins": {
+      "avg": {
+        "n_matches": 5330,
+        "margin_mean": 0.04511864409136541
+      },
+      "b365": {
+        "n_matches": 5330,
+        "margin_mean": 0.05442340425282511
+      },
+      "ps": {
+        "n_matches": 5330,
+        "margin_mean": 0.03207837240973936
+      },
+      "max": {
+        "n_matches": 5321,
+        "margin_mean": 0.004699001664178458
+      }
+    },
+    "best_vs_avg": {
+      "n_quotes": 15963,
+      "uplift_mean": 0.049941153344530864,
+      "uplift_median": 0.04225352112676073
+    },
+    "best_vs_b365": {
+      "n_quotes": 15963,
+      "uplift_mean": 0.0615636776740307,
+      "uplift_median": 0.04938271604938271
+    },
+    "by_league": {
+      "D1": {
+        "avg_margin": 0.04386683122377395,
+        "best_margin": 0.004848398291146768,
+        "best_vs_avg": 0.04914786746578037
+      },
+      "E0": {
+        "avg_margin": 0.042333936085014276,
+        "best_margin": 0.004541068377507863,
+        "best_vs_avg": 0.04905598442937542
+      },
+      "F1": {
+        "avg_margin": 0.04826523194855823,
+        "best_margin": 0.004855818474172408,
+        "best_vs_avg": 0.05199761898506283
+      },
+      "I1": {
+        "avg_margin": 0.0464941063246411,
+        "best_margin": 0.004624888219955094,
+        "best_vs_avg": 0.05108311011907918
+      },
+      "SP1": {
+        "avg_margin": 0.04479784517857564,
+        "best_margin": 0.004674082176636773,
+        "best_vs_avg": 0.04853727121344065
+      }
+    }
+  },
+  "current": {
+    "margins": {
+      "avg": {
+        "n_matches": 250,
+        "margin_mean": 0.06470311665943936
+      },
+      "b365": {
+        "n_matches": 250,
+        "margin_mean": 0.05497856342607391
+      },
+      "ps": {
+        "n_matches": 0,
+        "margin_mean": null
+      },
+      "max": {
+        "n_matches": 242,
+        "margin_mean": 0.026685139102927784
+      }
+    },
+    "best_vs_avg": {
+      "n_quotes": 726,
+      "uplift_mean": 0.0485467021880166,
+      "uplift_median": 0.03603603603603589
+    },
+    "best_vs_b365": {
+      "n_quotes": 726,
+      "uplift_mean": 0.036783343763489906,
+      "uplift_median": 0.026315789473684292
+    },
+    "by_league": {
+      "D1": {
+        "avg_margin": 0.06769227728639987,
+        "best_margin": 0.027249326022674644,
+        "best_vs_avg": 0.05568184512046592
+      },
+      "E0": {
+        "avg_margin": 0.061271825559263186,
+        "best_margin": 0.025898898441551174,
+        "best_vs_avg": 0.044544562924141884
+      },
+      "F1": {
+        "avg_margin": 0.06678042652798348,
+        "best_margin": 0.026211970697691857,
+        "best_vs_avg": 0.046562921606657204
+      },
+      "I1": {
+        "avg_margin": 0.06398021329480426,
+        "best_margin": 0.02820381180493007,
+        "best_vs_avg": 0.044853196221297464
+      },
+      "SP1": {
+        "avg_margin": 0.06479907313169296,
+        "best_margin": 0.026081999886385376,
+        "best_vs_avg": 0.05125957880677312
+      }
+    }
+  },
+  "current_season": "2026-27",
+  "validation_seasons": [
+    "2022-23",
+    "2023-24",
+    "2024-25"
+  ]
+}

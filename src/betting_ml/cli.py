@@ -199,6 +199,14 @@ def backtest_002_final() -> None:
     typer.echo(f"Nivel: {payload['level']} — conclusión: {payload['conclusion']}")
 
 
+@app.command("backtest-002-report")
+def backtest_002_report() -> None:
+    """Regenera REPORT_002_backtest.md con el análisis de margen (no abre el holdout)."""
+    from betting_ml.container import Container
+
+    typer.echo(f"Informe escrito en {Container().backtest_pinnacle().refresh_report()}")
+
+
 def _fmt(value: float | None) -> str:
     return "  —  " if value is None else f"{100 * value:+.2f}%"
 

@@ -37,7 +37,7 @@ Query: `league` (opcional, por defecto todas).
 ## Comparador
 
 ### GET `/api/v1/comparator`
-Partidos de una fecha con la mejor cuota por resultado.
+Partidos de una fecha con la mejor cuota por resultado (producto principal) y, aparte, la señal experimental.
 
 Query: `date` (default hoy en `America/Lima`), `league`, `only_value` (bool), `min_edge` (default `0.02`), `accessible_only` (default `true`).
 
@@ -65,9 +65,13 @@ Query: `date` (default hoy en `America/Lima`), `league`, `only_value` (bool), `m
         "draw": { "bookmaker": "1xbet",   "odds": 3.95, "ev": 0.0112 },
         "away": { "bookmaker": "betsson", "odds": 4.60, "ev": 0.0580 }
       },
-      "value_bets": [
-        { "outcome": "away", "bookmaker": "betsson", "odds": 4.60, "ev": 0.0580, "model_agrees": true, "suggested_stake": 2.01 }
-      ]
+      "margins": { "best_combined": 0.0035, "average": 0.0480, "best_vs_average_uplift": 0.041 },
+      "experimental_signal": {
+        "label": "EXPERIMENTAL — solo papel",
+        "bets": [
+          { "outcome": "away", "bookmaker": "betsson", "odds": 4.60, "ev": 0.0580, "model_agrees": true, "suggested_stake": 2.01 }
+        ]
+      }
     }
   ]
 }
@@ -76,7 +80,9 @@ Query: `date` (default hoy en `America/Lima`), `league`, `only_value` (bool), `m
 - `ev = p_justa × cuota − 1`.
 - `model_agrees = p_modelo ≥ p_justa` para ese resultado.
 - `suggested_stake` en la moneda del bankroll (Kelly 25 % sobre `p_justa`, con tope).
-- Sin referencia disponible para un partido: `fair: null`, sin `value_bets`, y `warning: "Sin cuota de referencia"`.
+- `margins.best_combined` = margen de la combinación de mejores cuotas accesibles; `average` = margen de la cuota promedio; `best_vs_average_uplift` = cuánto más paga la mejor cuota que el promedio (media de los 3 resultados).
+- La señal de valor va **solo** dentro de `experimental_signal` y nunca se llama "recomendación" (reorientación 2026-09-27).
+- Sin referencia disponible para un partido: `fair: null`, `experimental_signal: null`, y `warning: "Sin cuota de referencia"`.
 
 ### GET `/api/v1/comparator/{match_id}`
 Detalle: todas las casas × resultados, margen de cada casa, mejor cuota resaltada y serie temporal de la cuota de referencia.
@@ -98,7 +104,7 @@ Request:
 ```
 Response:
 ```json
-{ "fair_probability": 0.2300, "fair_odds": 4.35, "ev": 0.0120, "verdict": "justo", "suggested_stake": 0.0, "model_probability": 0.2333, "model_agrees": true }
+{ "fair_probability": 0.2300, "fair_odds": 4.35, "ev": 0.0120, "verdict": "justo", "experimental": true, "suggested_stake": 0.0, "model_probability": 0.2333, "model_agrees": true, "best_available": { "bookmaker": "betsson", "odds": 4.60 } }
 ```
 Veredicto: `valor` si `ev ≥ min_edge`; `justo` si `0 ≤ ev < min_edge`; `evitar` si `ev < 0`.
 
@@ -108,9 +114,11 @@ Veredicto: `valor` si `ev ≥ min_edge`; `justo` si `0 ≤ ev < min_edge`; `evit
 
 ### POST `/api/v1/bets`
 ```json
-{ "match_id": "...", "outcome": "away", "bookmaker": "teapuesto", "odds": 4.40, "stake": 10.0, "kind": "paper", "note": "opcional" }
+{ "match_id": "...", "outcome": "away", "bookmaker": "teapuesto", "odds": 4.40, "stake": 10.0, "kind": "paper", "from_experimental_signal": false, "note": "opcional" }
 ```
-`201` con la apuesta creada. `kind`: `real` | `paper`.
+`201` con la apuesta creada. `kind`: `real` | `paper`. `from_experimental_signal` (default `false`) marca las apuestas que vienen de la señal experimental.
+
+Señal experimental sin evidencia: si `kind = real`, `from_experimental_signal = true` y aún no hay 100 apuestas en papel de la señal con CLV medio > 0, sin `"confirm": true` responde `409` con `code: "EXPERIMENTAL_SIGNAL_UNPROVEN"` y el mensaje "Esta señal aún no tiene evidencia (X/100 apuestas en papel, CLV actual Y). ¿Apostar dinero real igual?". Con `confirm: true` se registra (con la marca).
 
 Si viola un límite (US6):
 - Advertencia (stake alto o se acerca al límite mensual): `201` con `"warnings": ["..."]` **solo si** el request trae `"confirm": true`; si no, `409` con `code: "LIMIT_WARNING"` y el detalle.
@@ -138,6 +146,8 @@ Query: `kind` (default `real`), `from`, `to`.
   "by_league": [ { "league": "E0", "bets": 14, "roi": 0.05, "clv_mean": 0.03 } ],
   "by_bookmaker": [ { "bookmaker": "betsson", "bets": 20, "roi": -0.02, "clv_mean": 0.018 } ],
   "month": { "loss_limit": 100.0, "current_loss": 8.4, "remaining": 91.6 },
+  "experimental_signal": { "paper_bets": 23, "target": 100, "clv_mean": 0.012, "evidence_met": false },
+  "best_odds_uplift_mean": 0.038,
   "note": "Con menos de 300 apuestas el ROI es mayormente ruido; mira el CLV."
 }
 ```

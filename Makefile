@@ -63,3 +63,6 @@ backtest-002:
 
 backtest-002-final:
 	$(CLI) backtest-002-final
+
+backtest-002-report:
+	$(CLI) backtest-002-report

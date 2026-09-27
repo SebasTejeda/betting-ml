@@ -80,3 +80,14 @@ Formato:
 - Decisión: `settle_bets` calcula el CLV con las cuotas de cierre de Pinnacle de football-data (`psc_odds_*`, Shin) cuando existan para el partido, y solo si faltan usa el último snapshot de Pinnacle de The Odds API anterior al inicio (Betfair Exchange neto de comisión como respaldo si tampoco hay Pinnacle). Cada apuesta guarda la fuente del CLV usada.
 - Motivo: el cierre de football-data es una referencia de cierre real y homogénea con el backtest; el snapshot de la API puede ser anterior al cierre.
 - Impacto: en 2026-27 football-data no publica Pinnacle, así que en la práctica la mayoría del CLV vendrá del snapshot de la API.
+
+## 2026-09-27 — Reorientación de la spec tras la puerta T008 (decisión del dueño)
+- Contexto: la puerta pasó en lo formal, pero la estrategia principal falló en el test (Bet365 sin filtro: CLV −3.7 %, 27 apuestas) y la única variante con CLV positivo en el test (filtro del campeón E12) tiene 8 apuestas.
+- **La variante con filtro E12 NO se considera validada:** 8 apuestas no son evidencia, y apoyarse en ella después de ver fallar a la principal sería elegir a posteriori.
+- Decisiones (reemplazan los 4 cambios propuestos en la entrada de la puerta T008):
+  1. **Producto principal:** comparador de mejor cuota + calculadora + diario + límites. La UI destaca la mejor cuota disponible y el margen de cada casa, no las value bets. Justificación medida (`reports/REPORT_002_backtest.md`, `reports/margins_002.json`): la mejor cuota paga de media +5.0 % frente al promedio en validación (+4.9 % en 2026-27), y el margen pagado baja de 4.5 % a 0.5 %.
+  2. **La señal de valor (con o sin filtro del modelo) es "EXPERIMENTAL — solo papel":** lleva la etiqueta visible y nunca se muestra como "recomendado". El registro rápido desde la señal crea apuestas `paper` por defecto.
+  3. **Contador de progreso** en el panel del diario: apuestas en papel de la señal sobre 100, con su CLV acumulado. Si llega a 100 con CLV > 0, esa será la evidencia real.
+  4. **Las apuestas reales no se bloquean en general** (el diario debe registrar todo lo que se apuesta). Si una apuesta **real** viene de la señal experimental y aún no se cumple la condición, la API pide confirmación explícita (409 `EXPERIMENTAL_SIGNAL_UNPROVEN` → `confirm: true`) con el mensaje "Esta señal aún no tiene evidencia (X/100 apuestas en papel, CLV actual Y). ¿Apostar dinero real igual?". La apuesta queda marcada `from_experimental_signal = true`, para analizarla aparte. Las apuestas reales que no vienen de la señal se registran normal.
+  5. Los límites de US6 (pérdida mensual, stake máximo y bloqueo al superar el presupuesto mensual) se mantienen tal cual.
+  6. Se actualizan `spec.md` (§1, §2, US3–US6, §5), `contracts/api.md` y `tasks.md` (nota de reorientación y T014). `REPORT_002_backtest.md` incluye el escenario `max_odds`, el ahorro de margen de la mejor casa frente al promedio y la nota de que E12 no está validada.

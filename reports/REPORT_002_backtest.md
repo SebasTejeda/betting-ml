@@ -7,6 +7,7 @@
 - Estrategia principal (declarada antes del test): Bet365 sin filtro. En el test 2025-26: **27 apuestas** (se esperaban ~23), ROI -10.0 % (IC 95 % [-77.0 %, +83.7 %]), CLV medio -3.74 % (IC 95 % [-8.0 %, +0.3 %], 27 apuestas con cierre de Pinnacle).
 - Con 27 apuestas el test **no tiene potencia estadística**: el ROI es casi puro ruido y ni el nivel Bueno ni su ausencia son concluyentes. La evidencia principal es el CLV sumando validación y test.
 - En validación, el ROI de Bet365 sin filtro (+31.5 % con 130 apuestas) fue suerte: su CLV era solo +0.9 % con un IC que incluía el 0.
+- **La variante con filtro del campeón E12 NO está validada.** Sus 8 apuestas en el test no son evidencia, y es la única que queda en pie después de que fallara la estrategia principal: apoyarse en ella sería elegir a posteriori. Por eso la señal de valor se ofrece solo como **experimental y en papel**, y el producto principal es el comparador de mejor cuota (decisions.md, 2026-09-27).
 
 ## Método
 
@@ -86,6 +87,24 @@ Si se apostara a todos los resultados a esa cuota. La diferencia con la tabla an
 | [2, 3) | 1 | -100.0 % | +5.16 % |
 | [3, 5) | 6 | +14.2 % | +0.47 % |
 | ≥ 5 | 18 | -19.4 % | -6.01 % |
+
+## Escenario de mejor cuota (`max_odds`)
+
+- Validación: 323 apuestas (umbral 0.05), CLV +5.66 % (IC [+3.9 %, +7.5 %]), ROI -13.0 % (IC [-35.3 %, +13.5 %]).
+- Test: 39 apuestas, CLV +2.49 % (IC [-1.9 %, +6.8 %]), ROI -51.5 % (IC [-95.4 %, +10.4 %]).
+- El CLV positivo mide que el precio máximo supera a Pinnacle, no que se pueda apostar a él: el ROI es negativo en ambos periodos y el placebo es negativo. No sustenta una estrategia de value bets, pero sí confirma que la dispersión de precios entre casas es grande (ver la sección siguiente).
+
+## Por qué un comparador: margen de las casas y ahorro de elegir la mejor cuota
+
+| Fuente | Margen medio (validación) | Margen medio (temporada en curso) |
+|---|---|---|
+| promedio del mercado | 4.5 % (5330 partidos) | 6.5 % (250 partidos) |
+| Bet365 | 5.4 % (5330 partidos) | 5.5 % (250 partidos) |
+| Pinnacle | 3.2 % (5330 partidos) | — |
+| mejor cuota disponible | 0.5 % (5321 partidos) | 2.7 % (242 partidos) |
+
+- Tomar la mejor cuota en vez de la cuota promedio paga de media **5.0 % más** por resultado (mediana 4.2 %) en validación, y 4.9 % en la temporada en curso; frente a Bet365, 6.2 %.
+- Ese ahorro es seguro y no depende de predecir mejor que el mercado. Con un margen promedio de 4.5 %, apostar siempre a la mejor cuota reduce el margen pagado a 0.5 %. Parte de la mejor cuota viene de casas o exchanges inaccesibles desde Perú, así que el ahorro real depende de las casas que uno puede usar: por eso el comparador filtra por casas accesibles.
 
 ## Nivel alcanzado
 

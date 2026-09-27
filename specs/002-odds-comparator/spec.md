@@ -16,6 +16,8 @@ La spec 001 demostró que el modelo predice casi igual que el mercado, pero no m
 
 Objetivo: ser **relativamente mejor que un apostador promedio**, no infalible.
 
+> **Reorientación (2026-09-27, tras la puerta T008).** El backtest (US1) no validó la estrategia de valor: la estrategia principal (Bet365 sin filtro) tuvo CLV −3.7 % en el test y la única variante que sobrevive (filtro del campeón E12) tiene 8 apuestas de test. En cambio, elegir la mejor cuota paga ~5 % más que la cuota promedio, un ahorro seguro. Por eso el **producto principal es el comparador de mejor cuota + calculadora + diario + límites**, y la señal de valor queda como **experimental, solo en papel** hasta acumular evidencia propia. Ver `decisions.md` (2026-09-27) y `reports/REPORT_002_backtest.md`.
+
 ## 2. Alcance
 
 ### Dentro
@@ -26,6 +28,8 @@ Objetivo: ser **relativamente mejor que un apostador promedio**, no infalible.
 | Mercado | 1X2. Over/Under 2.5 como P3. |
 | Fuente de cuotas en vivo | **The Odds API** (regiones `eu` y `uk`, que incluyen Pinnacle, Betfair Exchange, Betsson, 1xBet, William Hill, etc.). Plan gratis de 500 créditos/mes; el sistema debe funcionar dentro de ese límite. |
 | Casas peruanas | **Ingreso manual de cuotas** desde el frontend (la mayoría no está en ninguna API). El scraping de casas peruanas queda **fuera** por defecto (términos de uso y fragilidad); se deja el puerto preparado. |
+| **Producto principal** | Comparador de **mejor cuota disponible** por resultado y del **margen de cada casa**, calculadora con cuota manual, diario de apuestas y límites de juego responsable. |
+| **Señal de valor** | **EXPERIMENTAL — solo papel.** Se muestra con esa etiqueta, nunca como "recomendado"; el registro rápido desde la señal crea apuestas `paper` por defecto. Su evidencia real se acumula en el diario (100 apuestas en papel con CLV > 0). |
 | Referencia de probabilidad | Pinnacle sin margen (método de Shin, con el método de potencia como alternativa). Si Pinnacle no tiene la cuota, se usa Betfair Exchange (ajustado por comisión) y se indica. |
 | Segunda opinión | Probabilidad del modelo campeón de la spec 001. Se muestra si coincide o no con la señal de valor. |
 | Diario de apuestas | Registro de apuestas reales o en papel, cálculo de CLV, ROI y evolución del bankroll. |
@@ -66,7 +70,8 @@ Criterios de aceptación:
 **Como** apostador **quiero** ver, para cada partido del día, la mejor cuota por resultado, la probabilidad justa y si hay valor **para** decidir rápido.
 
 Criterios de aceptación:
-- Lista de partidos por fecha (hoy en `America/Lima` por defecto) con: mejor cuota por resultado y su casa, cuota justa de Pinnacle, EV de la mejor cuota, probabilidad del modelo y bandera "el modelo coincide".
+- La UI destaca la **mejor cuota disponible** por resultado (y su casa) y el **margen** de cada casa y de la combinación de mejores cuotas; no destaca "value bets".
+- Lista de partidos por fecha (hoy en `America/Lima` por defecto) con: mejor cuota por resultado y su casa, margen, cuota justa de Pinnacle y, en una zona marcada **EXPERIMENTAL — solo papel**, el EV de la mejor cuota, la probabilidad del modelo y la bandera "el modelo coincide".
 - Detalle de partido: tabla casas × resultados con la mejor cuota resaltada, margen de cada casa y evolución de la cuota de Pinnacle entre snapshots.
 - Solo se consideran casas marcadas como **accesibles** en `configs/bookmakers.yaml` para la recomendación (el resto se muestra como referencia). Así la recomendación no apunta a casas donde no se puede apostar desde Perú.
 
@@ -74,8 +79,8 @@ Criterios de aceptación:
 **Como** apostador **quiero** escribir la cuota que veo en una casa peruana **para** saber al instante si tiene valor y cuánto apostar.
 
 Criterios de aceptación:
-- Entrada: partido, resultado, casa, cuota. Salida: probabilidad justa (Pinnacle), EV, stake sugerido (Kelly fraccional 25 % con tope de 2 % del bankroll) y veredicto (`valor` / `justo` / `evitar`).
-- Botón para registrar la apuesta en el diario directamente desde el resultado.
+- Entrada: partido, resultado, casa, cuota. Salida: probabilidad justa (Pinnacle), comparación con la mejor cuota disponible, EV, stake sugerido (Kelly fraccional 25 % con tope de 2 % del bankroll) y veredicto (`valor` / `justo` / `evitar`). El veredicto `valor` se etiqueta **EXPERIMENTAL — solo papel**.
+- Botón para registrar la apuesta en el diario directamente desde el resultado; si viene de la señal experimental, el tipo por defecto es `paper`.
 - Las cuotas manuales se guardan como snapshots de la casa (fuente `manual`).
 
 ### US5 — Diario de apuestas y bankroll (P1)
@@ -87,6 +92,7 @@ Criterios de aceptación:
 - CLV automático: comparación con la última cuota de Pinnacle antes del inicio del partido.
 - Panel: ROI, beneficio, nº de apuestas, CLV medio, curva de bankroll, rendimiento por liga y por casa, filtro real/papel.
 - Mensaje permanente en el panel: con menos de 300 apuestas el ROI es mayormente ruido y el indicador fiable es el CLV.
+- **Contador de progreso de la señal experimental:** apuestas en papel que vienen de la señal (`from_experimental_signal = true`) sobre 100 y su CLV acumulado. Si llega a 100 con CLV medio > 0, esa es la evidencia real de la señal.
 
 ### US6 — Límites de juego responsable (P1)
 **Como** apostador **quiero** que la herramienta me ayude a respetar mis límites **para** no apostar de más.
@@ -95,6 +101,7 @@ Criterios de aceptación:
 - Configuración de bankroll inicial, presupuesto mensual máximo de pérdida y stake máximo por apuesta.
 - Al registrar una apuesta real que supere el stake máximo o haga superar la pérdida mensual, la API responde con advertencia y el frontend pide confirmación explícita. Si el presupuesto mensual ya se superó, se bloquea el registro de apuestas reales hasta el mes siguiente (las de papel siguen permitidas).
 - No hay funciones para "recuperar pérdidas" (martingala, subir stakes tras perder).
+- El diario registra **todas** las apuestas reales (no se bloquean en general, para que los datos estén completos). Si una apuesta **real** viene de la señal experimental y aún no hay 100 apuestas en papel con CLV > 0, la API pide confirmación explícita (409 → `confirm: true`) con el mensaje "Esta señal aún no tiene evidencia (X/100 apuestas en papel, CLV actual Y). ¿Apostar dinero real igual?", y la apuesta queda marcada `from_experimental_signal = true`. Las apuestas reales que no vienen de la señal se registran normal. Los límites de pérdida mensual y stake máximo (incluido el bloqueo al superar el presupuesto mensual) no cambian.
 
 ### US7 — Over/Under 2.5 (P3, opcional)
 Misma lógica que US3–US4 para el mercado de totales.
@@ -111,11 +118,11 @@ Misma lógica que US3–US4 para el mercado de totales.
 
 | Nivel | Condición |
 |---|---|
-| **Mínimo** | Backtest US1 con CLV medio > 0 en validación, y el sistema completo (US2–US6) funcionando de punta a punta. |
-| **Bueno** | Lo anterior + en el test 2025-26 la estrategia tiene CLV > 0 y ROI con IC 95 % cuyo límite inferior es > −3 % (pierde poco en el peor caso razonable). |
-| **Excelente** | ROI en el test 2025-26 con IC 95 % que no incluye el 0, con ≥ 300 apuestas. |
+| **Mínimo** | Backtest US1 documentado (hecho: CLV medio > 0 en validación; la estrategia principal falló en el test) y el **comparador + calculadora + diario + límites** (US2–US6) funcionando de punta a punta con cuotas reales. |
+| **Bueno** | Lo anterior + el diario muestra, para las apuestas registradas, cuánto se ganó en cuota frente al promedio del mercado (ahorro de elegir la mejor casa accesible) y el contador de la señal experimental funciona. |
+| **Excelente** | La señal experimental llega a **100 apuestas en papel con CLV medio > 0** (evidencia propia, fuera de muestra); solo entonces se podría dejar de marcar como experimental, con una nueva decisión registrada. |
 
-Fuera del backtest, el éxito real se mide después con el diario: **CLV medio positivo en las primeras 100 apuestas en papel** antes de apostar dinero real (recomendación, no requisito de código).
+Resultado del backtest (T007): nivel "Mínimo (backtest)", conclusión "seguir con cambios". La variante con filtro E12 **no está validada** (8 apuestas de test, y es la única que quedó tras el fallo de la principal).
 
 ## 6. Riesgos
 

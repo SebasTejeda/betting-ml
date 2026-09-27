@@ -191,3 +191,15 @@ def test_level_and_conclusion_rules() -> None:
     assert level_and_conclusion(passed, weak, _pooled(0.002, test_clv=-0.01))[1] == "no seguir"
     assert level_and_conclusion(passed, weak, _pooled(0.002, test_n=3))[1] == "no seguir"
     assert level_and_conclusion(failed, good)[0] == "No alcanzado"
+
+
+def test_refresh_report_adds_margins_without_holdout(use_case: BacktestPinnacle) -> None:
+    use_case.run_validation()
+    use_case.run_final()
+    use_case.repository.allow_holdout = False  # type: ignore[attr-defined]
+    path = use_case.refresh_report()
+    text = path.read_text(encoding="utf-8")
+    assert "Por qué un comparador" in text and "`max_odds`" in text
+    assert "NO está validada" in text
+    margins = json.loads((use_case.reports_dir / "margins_002.json").read_text(encoding="utf-8"))
+    assert margins["validation"]["best_vs_avg"]["uplift_mean"] > 0
