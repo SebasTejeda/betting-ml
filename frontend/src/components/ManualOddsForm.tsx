@@ -1,11 +1,15 @@
 import { zodResolver } from "@hookform/resolvers/zod";
+import { CircleCheck, CircleX, type LucideIcon, Scale } from "lucide-react";
+import type { ReactNode } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
 import { useBookmakers, useCalculator } from "../api/hooks";
 import { OUTCOME_LABEL, OUTCOMES, type CalculatorResult, type Outcome } from "../api/types";
 import { odds as fmtOdds, pct } from "../lib/format";
-import { ErrorBox, ExperimentalBadge } from "./common";
+import { cn } from "../lib/utils";
+import { ErrorBox, EvValue, ExperimentalBadge, ModelBadge } from "./common";
+import { Button } from "./ui/button";
 
 const schema = z.object({
   outcome: z.enum(["home", "draw", "away"]),
@@ -60,11 +64,15 @@ export function ManualOddsForm({
   );
 
   return (
-    <div className="flex flex-col gap-3">
-      <form className="flex flex-wrap items-end gap-3" onSubmit={submit} noValidate>
-        <label className="flex flex-col text-sm">
+    <div className="flex flex-col gap-4">
+      <form
+        className="grid grid-cols-2 items-end gap-3 sm:grid-cols-[1fr_1.4fr_0.8fr_auto]"
+        onSubmit={submit}
+        noValidate
+      >
+        <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
           Resultado
-          <select className="rounded border border-slate-300 px-2 py-1" {...register("outcome")}>
+          <select className="field" {...register("outcome")}>
             {OUTCOMES.map((o) => (
               <option key={o} value={o}>
                 {OUTCOME_LABEL[o]}
@@ -72,9 +80,9 @@ export function ManualOddsForm({
             ))}
           </select>
         </label>
-        <label className="flex flex-col text-sm">
+        <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
           Casa
-          <select className="rounded border border-slate-300 px-2 py-1" {...register("bookmaker")}>
+          <select className="field" {...register("bookmaker")}>
             <option value="">Elige…</option>
             {manual.map((b) => (
               <option key={b.key} value={b.key}>
@@ -83,25 +91,20 @@ export function ManualOddsForm({
             ))}
           </select>
           {errors.bookmaker && (
-            <span className="text-xs text-red-700">{errors.bookmaker.message}</span>
+            <span className="text-xs font-normal text-negative">{errors.bookmaker.message}</span>
           )}
         </label>
-        <label className="flex flex-col text-sm">
+        <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
           Cuota
-          <input
-            inputMode="decimal"
-            className="w-24 rounded border border-slate-300 px-2 py-1"
-            {...register("odds")}
-          />
-          {errors.odds && <span className="text-xs text-red-700">{errors.odds.message}</span>}
+          <input inputMode="decimal" className="field tabular-nums" {...register("odds")} />
+          {errors.odds && (
+            <span className="text-xs font-normal text-negative">{errors.odds.message}</span>
+          )}
         </label>
-        <button
-          type="submit"
-          className="rounded bg-slate-900 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"
-          disabled={calculator.isPending}
-        >
+        <Button type="submit" size="lg" disabled={calculator.isPending}>
+          <Scale aria-hidden />
           Evaluar
-        </button>
+        </Button>
       </form>
       {calculator.isError && <ErrorBox error={calculator.error} />}
       {calculator.data && <CalculationResult result={calculator.data} />}
@@ -109,31 +112,64 @@ export function ManualOddsForm({
   );
 }
 
+const VERDICT_STYLE: Record<
+  CalculatorResult["verdict"],
+  { icon: LucideIcon; tone: string; box: string }
+> = {
+  valor: {
+    icon: CircleCheck,
+    tone: "text-positive",
+    box: "border-positive/40 bg-positive-soft/60",
+  },
+  justo: { icon: Scale, tone: "text-info", box: "border-info/40 bg-info-soft/60" },
+  evitar: { icon: CircleX, tone: "text-negative", box: "border-negative/40 bg-negative-soft/60" },
+};
+
+function Stat({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="flex flex-col gap-0.5">
+      <dt className="text-xs text-muted-foreground">{label}</dt>
+      <dd className="text-xl font-semibold tabular-nums">{children}</dd>
+    </div>
+  );
+}
+
 export function CalculationResult({ result }: { result: CalculatorResult }) {
+  const style = VERDICT_STYLE[result.verdict];
+  const Icon = style.icon;
   return (
     <div
-      className="rounded border border-slate-200 bg-slate-50 p-3 text-sm"
+      className={cn("flex flex-col gap-4 rounded-xl border p-4", style.box)}
       aria-label="Resultado"
       role="region"
     >
-      <p>
-        Cuota justa ({result.reference}): <strong>{fmtOdds(result.fair_odds)}</strong> ·
-        probabilidad {pct(result.fair_probability)} · EV {pct(result.ev, 1, true)}
-      </p>
-      {result.best_available && (
-        <p>
-          Mejor cuota disponible: <strong>{fmtOdds(result.best_available.odds)}</strong> en{" "}
-          {result.best_available.bookmaker}
-        </p>
-      )}
-      <p className="mt-2 flex flex-wrap items-center gap-2">
-        <ExperimentalBadge />
-        <span>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className={cn("flex items-center gap-2 text-lg font-semibold", style.tone)}>
+          <Icon aria-hidden className="size-6" />
           Tu cuota está {VERDICT_TEXT[result.verdict]}
-          {result.model_agrees !== null &&
-            ` · el modelo ${result.model_agrees ? "coincide" : "no coincide"}`}
-        </span>
-      </p>
+        </p>
+        <ExperimentalBadge />
+      </div>
+      <dl className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <Stat label={`Cuota justa (${result.reference})`}>{fmtOdds(result.fair_odds)}</Stat>
+        <Stat label="Probabilidad justa">{pct(result.fair_probability)}</Stat>
+        <Stat label="EV">
+          <EvValue ev={result.ev} className="text-xl" />
+        </Stat>
+        <Stat label="Stake sugerido">
+          {result.suggested_stake > 0 ? result.suggested_stake.toFixed(2) : "—"}
+        </Stat>
+      </dl>
+      <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+        {result.best_available && (
+          <span>
+            Mejor cuota disponible:{" "}
+            <strong className="text-foreground">{fmtOdds(result.best_available.odds)}</strong> en{" "}
+            {result.best_available.bookmaker}
+          </span>
+        )}
+        <ModelBadge agrees={result.model_agrees} />
+      </div>
     </div>
   );
 }

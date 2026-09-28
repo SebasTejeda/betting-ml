@@ -29,12 +29,12 @@ export function NoReferenceBet({ defaultDate }: { defaultDate: string }) {
     Number.isFinite(price) &&
     price > 1;
   const accessible = (bookmakers.data ?? []).filter((b) => b.accessible);
-  const select = "rounded border border-slate-300 px-2 py-1";
+  const select = "field";
 
   return (
     <div className="flex flex-col gap-3">
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <label className="flex flex-col text-sm">
+        <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
           Liga
           <select
             className={select}
@@ -53,7 +53,7 @@ export function NoReferenceBet({ defaultDate }: { defaultDate: string }) {
             ))}
           </select>
         </label>
-        <label className="flex flex-col text-sm">
+        <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
           Fecha del partido
           <input
             type="date"
@@ -62,7 +62,7 @@ export function NoReferenceBet({ defaultDate }: { defaultDate: string }) {
             onChange={(e) => setDate(e.target.value)}
           />
         </label>
-        <label className="flex flex-col text-sm">
+        <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
           Local
           <select className={select} value={home} onChange={(e) => setHome(e.target.value)}>
             <option value="">Elige…</option>
@@ -73,7 +73,7 @@ export function NoReferenceBet({ defaultDate }: { defaultDate: string }) {
             ))}
           </select>
         </label>
-        <label className="flex flex-col text-sm">
+        <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
           Visita
           <select className={select} value={away} onChange={(e) => setAway(e.target.value)}>
             <option value="">Elige…</option>
@@ -84,7 +84,7 @@ export function NoReferenceBet({ defaultDate }: { defaultDate: string }) {
             ))}
           </select>
         </label>
-        <label className="flex flex-col text-sm">
+        <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
           Resultado
           <select
             className={select}
@@ -98,7 +98,7 @@ export function NoReferenceBet({ defaultDate }: { defaultDate: string }) {
             ))}
           </select>
         </label>
-        <label className="flex flex-col text-sm">
+        <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
           Casa
           <select
             className={select}
@@ -113,7 +113,7 @@ export function NoReferenceBet({ defaultDate }: { defaultDate: string }) {
             ))}
           </select>
         </label>
-        <label className="flex flex-col text-sm">
+        <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
           Cuota
           <input
             inputMode="decimal"
@@ -124,7 +124,7 @@ export function NoReferenceBet({ defaultDate }: { defaultDate: string }) {
         </label>
       </div>
       {home && away && home === away && (
-        <p className="text-xs text-red-700">Local y visita deben ser distintos.</p>
+        <p className="text-xs text-negative">Local y visita deben ser distintos.</p>
       )}
       {ready ? (
         <RegisterBetForm
@@ -136,7 +136,7 @@ export function NoReferenceBet({ defaultDate }: { defaultDate: string }) {
           noReference
         />
       ) : (
-        <p className="text-sm text-slate-600">
+        <p className="text-sm text-muted-foreground">
           Completa el partido, la casa y la cuota para registrar la apuesta.
         </p>
       )}

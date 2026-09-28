@@ -1,4 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Ban, CircleCheck, NotebookPen, TriangleAlert } from "lucide-react";
 import { useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { Link } from "react-router-dom";
@@ -9,6 +10,7 @@ import { useCreateBet } from "../api/hooks";
 import { OUTCOME_LABEL, type Bet, type BetIn, type Outcome } from "../api/types";
 import { odds as fmtOdds } from "../lib/format";
 import { ErrorBox, ExperimentalBadge } from "./common";
+import { Button } from "./ui/button";
 
 const schema = z.object({
   kind: z.enum(["paper", "real"]),
@@ -89,18 +91,22 @@ export function RegisterBetForm({
 
   if (saved) {
     return (
-      <div role="status" className="rounded border border-emerald-300 bg-emerald-50 p-3 text-sm">
-        <p className="font-medium text-emerald-900">
+      <div
+        role="status"
+        className="flex flex-col gap-2 rounded-xl border border-positive/40 bg-positive-soft/60 p-4 text-sm"
+      >
+        <p className="flex items-center gap-2 font-medium">
+          <CircleCheck aria-hidden className="size-5 text-positive" />
           Apuesta {saved.kind === "paper" ? "en papel" : "real"} registrada (#{saved.id}).
         </p>
         {saved.warnings.length > 0 && (
-          <ul className="mt-1 list-disc pl-5 text-amber-900">
+          <ul className="flex flex-col gap-1 pl-7 text-experimental">
             {saved.warnings.map((w) => (
               <li key={w}>{w}</li>
             ))}
           </ul>
         )}
-        <Link to="/bets" className="mt-2 inline-block text-sky-800 underline">
+        <Link to="/bets" className="pl-7 text-primary underline-offset-2 hover:underline">
           Ver mis apuestas
         </Link>
       </div>
@@ -109,56 +115,66 @@ export function RegisterBetForm({
 
   const blocked =
     create.error instanceof ApiError && create.error.status === 403 ? create.error : null;
+  const radio =
+    "flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors duration-150 has-checked:border-ring has-checked:bg-accent has-checked:text-accent-foreground";
 
   return (
     <form
-      className="flex flex-col gap-3"
+      className="flex flex-col gap-4"
       onSubmit={submit}
       noValidate
       aria-label="Registrar apuesta"
     >
-      <p className="text-sm">
-        {OUTCOME_LABEL[outcome]} a <strong>{fmtOdds(odds)}</strong> en {bookmaker}
-        {fromSignal && (
-          <span className="ml-2">
-            <ExperimentalBadge />
-          </span>
-        )}
-      </p>
+      <div className="flex flex-wrap items-center gap-2 text-sm">
+        <span>
+          {OUTCOME_LABEL[outcome]} a <strong className="tabular-nums">{fmtOdds(odds)}</strong> en{" "}
+          {bookmaker}
+        </span>
+        {fromSignal && <ExperimentalBadge />}
+      </div>
       {noReference && <NoReferenceNotice />}
-      <fieldset className="flex gap-4 text-sm">
-        <legend className="mb-1 text-sm">Tipo</legend>
-        <label className="flex items-center gap-1">
-          <input type="radio" value="paper" {...register("kind")} /> En papel
-        </label>
-        <label className="flex items-center gap-1">
-          <input type="radio" value="real" {...register("kind")} /> Real (dinero)
-        </label>
+      <fieldset className="flex flex-col gap-2">
+        <legend className="mb-1 text-xs font-medium text-muted-foreground">Tipo</legend>
+        <div className="grid grid-cols-2 gap-2">
+          <label className={radio}>
+            <input
+              type="radio"
+              value="paper"
+              className="accent-(--primary)"
+              {...register("kind")}
+            />{" "}
+            En papel
+          </label>
+          <label className={radio}>
+            <input type="radio" value="real" className="accent-(--primary)" {...register("kind")} />{" "}
+            Real (dinero)
+          </label>
+        </div>
       </fieldset>
-      <div className="flex flex-wrap items-end gap-3">
-        <label className="flex flex-col text-sm">
+      <div className="grid gap-3 sm:grid-cols-[8rem_1fr_auto] sm:items-end">
+        <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
           Stake
-          <input
-            inputMode="decimal"
-            className="w-28 rounded border border-slate-300 px-2 py-1"
-            {...register("stake")}
-          />
-          {errors.stake && <span className="text-xs text-red-700">{errors.stake.message}</span>}
+          <input inputMode="decimal" className="field tabular-nums" {...register("stake")} />
+          {errors.stake && (
+            <span className="text-xs font-normal text-negative">{errors.stake.message}</span>
+          )}
         </label>
-        <label className="flex flex-1 flex-col text-sm">
+        <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
           Nota
-          <input className="rounded border border-slate-300 px-2 py-1" {...register("note")} />
+          <input className="field" {...register("note")} />
         </label>
-        <button
+        <Button
           type="submit"
-          className="rounded bg-sky-700 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"
+          size="lg"
+          variant="secondary"
           disabled={create.isPending || pending !== null}
         >
+          <NotebookPen aria-hidden />
           Registrar apuesta
-        </button>
+        </Button>
       </div>
       {suggestedStake !== undefined && suggestedStake > 0 && (
-        <p className="text-xs text-slate-600">
+        <p className="text-xs text-muted-foreground">
           Stake sugerido (Kelly fraccional, con tope): {suggestedStake.toFixed(2)}. Es orientativo.
         </p>
       )}
@@ -166,49 +182,53 @@ export function RegisterBetForm({
         <div
           role="alertdialog"
           aria-label="Confirmación"
-          className="rounded border border-amber-300 bg-amber-50 p-3 text-sm"
+          className="flex flex-col gap-3 rounded-xl border border-experimental-border bg-experimental-soft/70 p-4 text-sm"
         >
-          <ul className="list-disc pl-5 text-amber-900">
+          <p className="flex items-center gap-2 font-medium text-experimental">
+            <TriangleAlert aria-hidden className="size-4" />
+            Antes de registrar
+          </p>
+          <ul className="flex list-disc flex-col gap-1 pl-5">
             {messages(pending.error).map((m) => (
               <li key={m}>{m}</li>
             ))}
           </ul>
-          <div className="mt-2 flex gap-2">
-            <button
-              type="button"
-              className="rounded border border-slate-300 bg-white px-3 py-1"
-              onClick={() => setPending(null)}
-            >
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" variant="secondary" onClick={() => setPending(null)}>
               Cancelar
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
-              className="rounded bg-amber-700 px-3 py-1 text-white"
+              variant="outline"
               onClick={() => send({ ...pending.body, confirm: true })}
             >
               Confirmar y registrar
-            </button>
+            </Button>
           </div>
         </div>
       )}
       {blocked && (
         <div
           role="alert"
-          className="rounded border border-red-300 bg-red-50 p-3 text-sm text-red-900"
+          className="flex flex-col gap-2 rounded-xl border border-negative/40 bg-negative-soft/70 p-4 text-sm"
         >
-          <p className="font-medium">Apuestas reales bloqueadas este mes.</p>
+          <p className="flex items-center gap-2 font-medium text-negative">
+            <Ban aria-hidden className="size-4" />
+            Apuestas reales bloqueadas este mes.
+          </p>
           <p>{blocked.message}</p>
           {kind === "real" && (
-            <button
+            <Button
               type="button"
-              className="mt-2 rounded border border-slate-300 bg-white px-3 py-1 text-slate-900"
+              variant="outline"
+              className="w-fit"
               onClick={() => {
                 create.reset();
                 setValue("kind", "paper");
               }}
             >
               Cambiar a papel
-            </button>
+            </Button>
           )}
         </div>
       )}
@@ -226,11 +246,15 @@ export function NoReferenceNotice() {
   return (
     <p
       role="note"
-      className="rounded border border-amber-300 bg-amber-50 p-2 text-sm text-amber-900"
+      className="flex items-start gap-2 rounded-lg border border-experimental-border bg-experimental-soft/70 p-3 text-sm"
     >
-      <strong>Sin cuota de referencia.</strong> Este partido no tiene cuotas de la API: la apuesta
-      cuenta para todos los límites, queda fuera de la señal de valor y su CLV se calculará después
-      con el cierre de Pinnacle de football-data si está disponible.
+      <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0 text-experimental" />
+      <span>
+        <strong className="text-experimental">Sin cuota de referencia.</strong> Este partido no
+        tiene cuotas de la API: la apuesta cuenta para todos los límites, queda fuera de la señal de
+        valor y su CLV se calculará después con el cierre de Pinnacle de football-data si está
+        disponible.
+      </span>
     </p>
   );
 }

@@ -42,7 +42,7 @@ test("quick calculator only offers manual bookmakers and shows the result", asyn
   await userEvent.type(screen.getByLabelText("Cuota"), "4.4");
   await userEvent.click(screen.getByRole("button", { name: "Evaluar" }));
   const result = await screen.findByRole("region", { name: "Resultado" });
-  expect(result).toHaveTextContent("Cuota justa (pinnacle): 4.35");
+  expect(within(result).getByText("Cuota justa (pinnacle)").nextSibling).toHaveTextContent("4.35");
   expect(result).toHaveTextContent("cerca de la cuota justa");
   expect(body).toEqual({ match_id: MATCH_ID, outcome: "away", bookmaker: "teapuesto", odds: 4.4 });
 });

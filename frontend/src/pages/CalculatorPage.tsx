@@ -1,3 +1,12 @@
+import {
+  Calculator as CalculatorIcon,
+  CalendarDays,
+  ChevronDown,
+  CircleHelp,
+  MousePointerClick,
+  NotebookPen,
+  Scale,
+} from "lucide-react";
 import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
 
@@ -6,7 +15,14 @@ import type { CalculatorResult, Outcome } from "../api/types";
 import { ManualOddsForm } from "../components/ManualOddsForm";
 import { NoReferenceBet } from "../components/NoReferenceBet";
 import { RegisterBetForm } from "../components/RegisterBetForm";
-import { Card, Empty, ErrorBox, Loading, PageTitle } from "../components/common";
+import {
+  Empty,
+  ErrorBox,
+  ExperimentalBadge,
+  Loading,
+  PageTitle,
+  Panel,
+} from "../components/common";
 import { kickoff, todayLima } from "../lib/format";
 import { readDraft } from "../lib/links";
 
@@ -32,18 +48,19 @@ export function CalculatorPage() {
 
   return (
     <>
-      <PageTitle>Calculadora</PageTitle>
-      <p className="mb-4 text-sm text-slate-600">
-        Escribe la cuota que ves en una casa peruana y compárala con la cuota justa de la
-        referencia. Después puedes registrar la apuesta en tu diario.
-      </p>
-      <Card className="mb-4">
-        <div className="flex flex-wrap items-end gap-3">
-          <label className="flex flex-col text-sm">
+      <PageTitle
+        icon={CalculatorIcon}
+        description="Escribe la cuota que ves en una casa peruana y compárala con la cuota justa de la referencia. Después puedes registrar la apuesta en tu diario."
+      >
+        Calculadora
+      </PageTitle>
+      <Panel title="Partido" icon={CalendarDays} className="mb-4">
+        <div className="grid gap-3 sm:grid-cols-[12rem_1fr]">
+          <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
             Fecha
             <input
               type="date"
-              className="rounded border border-slate-300 px-2 py-1"
+              className="field"
               value={date}
               onChange={(event) => {
                 setDate(event.target.value || todayLima());
@@ -52,10 +69,10 @@ export function CalculatorPage() {
               }}
             />
           </label>
-          <label className="flex min-w-64 flex-1 flex-col text-sm">
+          <label className="flex min-w-0 flex-col gap-1 text-xs font-medium text-muted-foreground">
             Partido
             <select
-              className="rounded border border-slate-300 px-2 py-1"
+              className="field"
               value={matchId}
               onChange={(event) => {
                 setMatchId(event.target.value);
@@ -74,24 +91,41 @@ export function CalculatorPage() {
             </select>
           </label>
         </div>
-        {matches.isPending && <Loading what="partidos" />}
-        {matches.isError && <ErrorBox error={matches.error} />}
-      </Card>
+        {matches.isPending && (
+          <div className="mt-3">
+            <Loading what="partidos" variant="table" />
+          </div>
+        )}
+        {matches.isError && (
+          <div className="mt-3">
+            <ErrorBox error={matches.error} />
+          </div>
+        )}
+      </Panel>
       <details
-        className="mb-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm"
+        className="group mb-4 rounded-xl border bg-card p-4 shadow-sm transition-colors duration-150"
         onToggle={(event) => setNoReferenceOpen(event.currentTarget.open)}
       >
-        <summary className="cursor-pointer text-sm font-medium">
+        <summary className="flex cursor-pointer list-none items-center gap-2 text-sm font-medium">
+          <CircleHelp aria-hidden className="size-4 text-muted-foreground" />
           ¿El partido no aparece? Registrar una apuesta sin cuota de referencia
+          <ChevronDown
+            aria-hidden
+            className="ml-auto size-4 text-muted-foreground transition-transform duration-150 group-open:rotate-180"
+          />
         </summary>
-        <div className="mt-3">{noReferenceOpen && <NoReferenceBet defaultDate={date} />}</div>
+        <div className="mt-4">{noReferenceOpen && <NoReferenceBet defaultDate={date} />}</div>
       </details>
       {!matchId ? (
-        <Empty>Elige un partido para evaluar una cuota.</Empty>
+        <Empty icon={MousePointerClick}>Elige un partido para evaluar una cuota.</Empty>
       ) : fromSignal && draft?.outcome && draft.bookmaker && draft.odds ? (
-        <Card>
-          <h2 className="mb-2 font-semibold">Anotar la señal experimental</h2>
-          <p className="mb-3 text-sm text-slate-600">
+        <Panel
+          title="Anotar la señal experimental"
+          icon={NotebookPen}
+          action={<ExperimentalBadge />}
+          className="border border-experimental-border"
+        >
+          <p className="mb-4 text-sm text-muted-foreground">
             La señal todavía no tiene evidencia: por defecto se registra en papel. Hacen falta 100
             apuestas en papel con CLV positivo para considerarla.
           </p>
@@ -103,11 +137,10 @@ export function CalculatorPage() {
             odds={draft.odds}
             fromSignal
           />
-        </Card>
+        </Panel>
       ) : (
-        <div className="grid gap-4 lg:grid-cols-2">
-          <Card>
-            <h2 className="mb-2 font-semibold">Evaluar cuota</h2>
+        <div className="grid gap-4 lg:grid-cols-5">
+          <Panel title="Evaluar cuota" icon={Scale} className="lg:col-span-3">
             <ManualOddsForm
               key={matchId}
               matchId={matchId}
@@ -116,9 +149,8 @@ export function CalculatorPage() {
               defaultOdds={draft?.matchId === matchId ? draft.odds : undefined}
               onEvaluated={(input, result) => setEvaluated({ ...input, result })}
             />
-          </Card>
-          <Card>
-            <h2 className="mb-2 font-semibold">Registrar apuesta</h2>
+          </Panel>
+          <Panel title="Registrar apuesta" icon={NotebookPen} className="lg:col-span-2">
             {evaluated ? (
               <RegisterBetForm
                 key={`${evaluated.bookmaker}-${evaluated.outcome}-${evaluated.odds}`}
@@ -131,9 +163,9 @@ export function CalculatorPage() {
                 fromSignal={evaluated.result.verdict === "valor"}
               />
             ) : (
-              <p className="text-sm text-slate-600">Evalúa primero la cuota.</p>
+              <p className="text-sm text-muted-foreground">Evalúa primero la cuota.</p>
             )}
-          </Card>
+          </Panel>
         </div>
       )}
     </>
