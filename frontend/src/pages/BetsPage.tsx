@@ -1,10 +1,29 @@
-import { useState } from "react";
 import {
+  Ban,
+  ChartColumn,
+  CircleCheck,
+  CircleMinus,
+  CircleX,
+  Coins,
+  FlaskConical,
+  Gauge,
+  Hash,
+  Hourglass,
+  Info,
+  type LucideIcon,
+  Percent,
+  RefreshCw,
+  Trash2,
+  TrendingUp,
+  Wallet,
+} from "lucide-react";
+import { useId, useState } from "react";
+import {
+  Area,
+  AreaChart,
   Bar,
   BarChart,
   CartesianGrid,
-  Line,
-  LineChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -22,14 +41,50 @@ import {
   type SummaryKind,
 } from "../api/hooks";
 import { OUTCOME_LABEL, type Bet, type Summary } from "../api/types";
-import { Card, Empty, ErrorBox, ExperimentalBadge, Loading, PageTitle } from "../components/common";
+import {
+  Empty,
+  ErrorBox,
+  evTone,
+  ExperimentalBadge,
+  Loading,
+  Meter,
+  PageTitle,
+  Panel,
+} from "../components/common";
+import { Badge } from "../components/ui/badge";
+import { Button } from "../components/ui/button";
+import { Card } from "../components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "../components/ui/table";
 import { kickoff, money, odds, pct } from "../lib/format";
+import { cn } from "../lib/utils";
 
 const STATUS_LABEL: Record<string, string> = {
   pendiente: "Pendiente",
   ganada: "Ganada",
   perdida: "Perdida",
   nula: "Nula",
+};
+
+const STATUS_STYLE: Record<string, { icon: LucideIcon; className: string }> = {
+  pendiente: { icon: Hourglass, className: "bg-info-soft text-info" },
+  ganada: { icon: CircleCheck, className: "bg-positive-soft text-positive" },
+  perdida: { icon: CircleX, className: "bg-negative-soft text-negative" },
+  nula: { icon: CircleMinus, className: "bg-secondary text-muted-foreground" },
+};
+
+const TOOLTIP_STYLE = {
+  background: "var(--popover)",
+  border: "1px solid var(--border)",
+  borderRadius: 8,
+  color: "var(--popover-foreground)",
 };
 
 export function BetsPage() {
@@ -44,18 +99,20 @@ export function BetsPage() {
   return (
     <>
       <PageTitle
+        icon={Wallet}
         aside={
-          <div className="flex flex-col items-end gap-1 text-sm">
-            <button
+          <div className="flex flex-col items-start gap-1 text-sm sm:items-end">
+            <Button
               type="button"
-              className="rounded bg-slate-900 px-3 py-1.5 font-medium text-white disabled:opacity-50"
+              variant="outline"
               disabled={settle.isPending}
               onClick={() => settle.mutate()}
             >
+              <RefreshCw aria-hidden className={settle.isPending ? "animate-spin" : undefined} />
               Liquidar con resultados oficiales
-            </button>
+            </Button>
             {settle.isSuccess && (
-              <span role="status" className="text-xs text-emerald-800">
+              <span role="status" className="text-xs text-positive">
                 {settle.data.settled} liquidadas · {settle.data.clv_computed} con CLV ·{" "}
                 {settle.data.still_pending} pendientes
                 {settle.data.corrected > 0 && ` · ${settle.data.corrected} corregidas`}
@@ -67,15 +124,22 @@ export function BetsPage() {
       >
         Mis apuestas
       </PageTitle>
-      <div role="group" aria-label="Tipo de apuestas" className="mb-4 flex gap-1">
+      <div
+        role="group"
+        aria-label="Tipo de apuestas"
+        className="mb-4 inline-flex rounded-lg border bg-card p-1 shadow-sm"
+      >
         {(["real", "paper", "all"] as const).map((value) => (
           <button
             key={value}
             type="button"
             aria-pressed={kind === value}
-            className={`rounded px-3 py-1 text-sm ${
-              kind === value ? "bg-slate-900 text-white" : "border border-slate-300 bg-white"
-            }`}
+            className={cn(
+              "rounded-md px-3 py-1.5 text-sm transition-colors duration-150",
+              kind === value
+                ? "bg-secondary font-medium text-foreground shadow-xs"
+                : "text-muted-foreground hover:text-foreground",
+            )}
             onClick={() => {
               setKind(value);
               setPage(1);
@@ -85,24 +149,29 @@ export function BetsPage() {
           </button>
         ))}
       </div>
-      <p className="mb-4 rounded border border-sky-200 bg-sky-50 p-2 text-sm text-sky-900">
-        Con menos de 300 apuestas el ROI es mayormente ruido: mira el CLV (si le ganas a la cuota de
-        cierre de la referencia).
+      <p className="mb-4 flex items-start gap-2 rounded-lg border border-info/30 bg-info-soft/60 p-3 text-sm">
+        <Info aria-hidden className="mt-0.5 size-4 shrink-0 text-info" />
+        <span>
+          Con menos de 300 apuestas el ROI es mayormente ruido: mira el CLV (si le ganas a la cuota
+          de cierre de la referencia).
+        </span>
       </p>
       {summary.isPending ? (
-        <Loading what="el resumen" />
+        <Loading what="el resumen" variant="cards" />
       ) : summary.isError ? (
         <ErrorBox error={summary.error} />
       ) : (
         <SummaryPanel summary={summary.data} currency={currency} />
       )}
-      <Card className="mt-4">
-        <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
-          <h2 className="font-semibold">Apuestas</h2>
-          <label className="flex flex-col text-sm">
+      <Panel
+        title="Apuestas"
+        icon={Hash}
+        className="mt-4"
+        action={
+          <label className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
             Estado
             <select
-              className="rounded border border-slate-300 px-2 py-1"
+              className="field h-8 w-36"
               value={status ?? ""}
               onChange={(event) => {
                 setStatus((event.target.value || undefined) as BetsParams["status"]);
@@ -117,30 +186,47 @@ export function BetsPage() {
               ))}
             </select>
           </label>
-        </div>
+        }
+      >
         <BetsTable
           params={{ kind: kind === "all" ? undefined : kind, status, page }}
           currency={currency}
           onPage={setPage}
         />
-        <p className="mt-3 text-xs text-slate-600">
+        <p className="mt-4 text-xs text-muted-foreground">
           Liquidar a mano solo es posible después del inicio del partido, y borrar solo antes. Una
           apuesta marcada a mano como ganada o nula cuenta como perdida para el límite mensual hasta
           que se confirme con el resultado oficial, y una apuesta real sin liquidar de un partido ya
           terminado (más de 3 h) también cuenta como perdida hasta liquidarla. Si un partido se
           aplaza, márcala como nula.
         </p>
-      </Card>
+      </Panel>
     </>
   );
 }
 
-function Kpi({ label, value }: { label: string; value: string }) {
+function Kpi({
+  label,
+  value,
+  icon: Icon,
+  tone,
+  hint,
+}: {
+  label: string;
+  value: string;
+  icon: LucideIcon;
+  tone?: string;
+  hint?: string;
+}) {
   return (
-    <div className="rounded border border-slate-200 bg-white p-3">
-      <dt className="text-xs text-slate-600">{label}</dt>
-      <dd className="text-lg font-semibold tabular-nums">{value}</dd>
-    </div>
+    <Card className="gap-1 px-4 shadow-sm">
+      <dt className="flex items-center gap-1.5 text-xs text-muted-foreground">
+        <Icon aria-hidden className="size-3.5" />
+        {label}
+      </dt>
+      <dd className={cn("text-2xl font-semibold tracking-tight tabular-nums", tone)}>{value}</dd>
+      {hint && <dd className="text-xs text-muted-foreground">{hint}</dd>}
+    </Card>
   );
 }
 
@@ -149,92 +235,141 @@ function SummaryPanel({ summary, currency }: { summary: Summary; currency: strin
   const used = month.loss_limit > 0 ? Math.min(1, month.current_loss / month.loss_limit) : 1;
   const signal = summary.experimental_signal;
   return (
-    <div className="grid gap-4 lg:grid-cols-3">
-      <dl className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:col-span-2" aria-label="Indicadores">
-        <Kpi label="Apuestas (liquidadas)" value={`${summary.bets} (${summary.settled})`} />
-        <Kpi label="CLV medio" value={pct(summary.clv_mean, 2, true)} />
-        <Kpi label="% CLV positivo" value={pct(summary.clv_positive_rate, 0)} />
-        <Kpi label="Beneficio" value={money(summary.profit, currency)} />
-        <Kpi label="ROI" value={pct(summary.roi, 1, true)} />
-        <Kpi label="Mejor cuota vs promedio" value={pct(summary.best_odds_uplift_mean, 1, true)} />
+    <div className="flex flex-col gap-4">
+      <dl className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6" aria-label="Indicadores">
+        <Kpi
+          label="Apuestas (liquidadas)"
+          icon={Hash}
+          value={`${summary.bets} (${summary.settled})`}
+        />
+        <Kpi
+          label="CLV medio"
+          icon={TrendingUp}
+          value={pct(summary.clv_mean, 2, true)}
+          tone={evTone(summary.clv_mean)}
+        />
+        <Kpi label="% CLV positivo" icon={Percent} value={pct(summary.clv_positive_rate, 0)} />
+        <Kpi
+          label="Beneficio"
+          icon={Coins}
+          value={money(summary.profit, currency)}
+          tone={evTone(summary.profit)}
+        />
+        <Kpi
+          label="ROI"
+          icon={ChartColumn}
+          value={pct(summary.roi, 1, true)}
+          tone={evTone(summary.roi)}
+          hint="ruido con pocas apuestas"
+        />
+        <Kpi
+          label="Mejor cuota vs promedio"
+          icon={Gauge}
+          value={pct(summary.best_odds_uplift_mean, 1, true)}
+        />
       </dl>
-      <Card>
-        <h2 className="mb-2 font-semibold">Límite mensual</h2>
-        <p className="text-sm">
-          Pérdida del mes: <strong>{money(month.current_loss, currency)}</strong> de{" "}
-          {money(month.loss_limit, currency)}
-        </p>
-        <div
-          role="progressbar"
-          aria-label="Uso del límite mensual"
-          aria-valuemin={0}
-          aria-valuemax={100}
-          aria-valuenow={Math.round(used * 100)}
-          className="mt-2 h-2 w-full rounded bg-slate-200"
-        >
-          <div
-            className={`h-2 rounded ${used >= 1 ? "bg-red-600" : used >= 0.8 ? "bg-amber-500" : "bg-emerald-600"}`}
-            style={{ width: `${used * 100}%` }}
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Panel title="Límite mensual" icon={Ban}>
+          <p className="mb-3 text-sm">
+            Pérdida del mes: <strong>{money(month.current_loss, currency)}</strong> de{" "}
+            {money(month.loss_limit, currency)}
+          </p>
+          <Meter
+            label="Uso del límite mensual"
+            value={Math.round(used * 100)}
+            tone={used >= 1 ? "negative" : used >= 0.8 ? "experimental" : "positive"}
           />
-        </div>
-        <p className="mt-1 text-xs text-slate-600">
-          Disponible: {money(month.remaining, currency)}
-          {month.remaining <= 0 && " · apuestas reales bloqueadas hasta el mes siguiente"}
-        </p>
-      </Card>
-      <Card className="lg:col-span-3">
-        <h2 className="mb-1 flex flex-wrap items-center gap-2 font-semibold">
-          Progreso de la señal <ExperimentalBadge />
-        </h2>
-        <p className="text-sm">
-          <strong>
-            {signal.paper_bets}/{signal.target}
-          </strong>{" "}
-          apuestas en papel liquidadas · CLV acumulado{" "}
-          <strong>{pct(signal.clv_mean, 2, true)}</strong>
-        </p>
-        <div
-          role="progressbar"
-          aria-label="Apuestas en papel de la señal"
-          aria-valuemin={0}
-          aria-valuemax={signal.target}
-          aria-valuenow={signal.paper_bets}
-          className="mt-2 h-2 w-full rounded bg-slate-200"
+          <p className="mt-2 text-xs text-muted-foreground">
+            Disponible: {money(month.remaining, currency)}
+            {month.remaining <= 0 && " · apuestas reales bloqueadas hasta el mes siguiente"}
+          </p>
+        </Panel>
+        <Panel
+          title="Progreso de la señal"
+          icon={FlaskConical}
+          action={<ExperimentalBadge />}
+          className="border border-experimental-border"
         >
-          <div
-            className="h-2 rounded bg-sky-700"
-            style={{ width: `${Math.min(100, (100 * signal.paper_bets) / signal.target)}%` }}
+          <p className="mb-3 text-sm">
+            <strong className="text-2xl font-semibold tabular-nums">
+              {signal.paper_bets}/{signal.target}
+            </strong>{" "}
+            apuestas en papel liquidadas · CLV acumulado{" "}
+            <strong className={evTone(signal.clv_mean)}>{pct(signal.clv_mean, 2, true)}</strong>
+          </p>
+          <Meter
+            label="Apuestas en papel de la señal"
+            value={signal.paper_bets}
+            max={signal.target}
+            tone="experimental"
           />
-        </div>
-        <p className="mt-1 text-xs text-slate-600">
-          {signal.evidence_met
-            ? "Condición cumplida: 100 apuestas en papel con CLV medio positivo."
-            : "Sin evidencia todavía. Al llegar a 100 apuestas en papel con CLV positivo habrá evidencia real."}
-        </p>
-      </Card>
-      <Card className="lg:col-span-2">
-        <h2 className="mb-2 font-semibold">Bankroll</h2>
-        {summary.bankroll.series.length < 2 ? (
-          <Empty>Aún no hay apuestas liquidadas.</Empty>
-        ) : (
-          <div className="h-56" role="img" aria-label="Curva de bankroll">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={summary.bankroll.series}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="date" fontSize={11} />
-                <YAxis domain={["auto", "auto"]} fontSize={11} />
-                <Tooltip formatter={(v) => money(Number(v), currency)} />
-                <Line type="monotone" dataKey="value" name="Bankroll" stroke="#0369a1" />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        )}
-      </Card>
-      <Card>
-        <h2 className="mb-2 font-semibold">Por liga y casa (CLV medio)</h2>
-        <GroupBars groups={summary.by_league} name="league" label="Por liga" />
-        <GroupBars groups={summary.by_bookmaker} name="bookmaker" label="Por casa" />
-      </Card>
+          <p className="mt-2 text-xs text-muted-foreground">
+            {signal.evidence_met
+              ? "Condición cumplida: 100 apuestas en papel con CLV medio positivo."
+              : "Sin evidencia todavía. Al llegar a 100 apuestas en papel con CLV positivo habrá evidencia real."}
+          </p>
+        </Panel>
+      </div>
+      <div className="grid gap-4 lg:grid-cols-3">
+        <Panel title="Bankroll" icon={Wallet} className="lg:col-span-2">
+          {summary.bankroll.series.length < 2 ? (
+            <Empty icon={ChartColumn}>Aún no hay apuestas liquidadas.</Empty>
+          ) : (
+            <BankrollChart series={summary.bankroll.series} currency={currency} />
+          )}
+        </Panel>
+        <Panel title="Por liga y casa (CLV medio)" icon={ChartColumn}>
+          {summary.by_league.length === 0 && summary.by_bookmaker.length === 0 ? (
+            <Empty>Sin apuestas liquidadas con CLV.</Empty>
+          ) : (
+            <>
+              <GroupBars groups={summary.by_league} name="league" label="Por liga" />
+              <GroupBars groups={summary.by_bookmaker} name="bookmaker" label="Por casa" />
+            </>
+          )}
+        </Panel>
+      </div>
+    </div>
+  );
+}
+
+function BankrollChart({
+  series,
+  currency,
+}: {
+  series: Summary["bankroll"]["series"];
+  currency: string;
+}) {
+  const gradient = useId().replace(/:/g, "");
+  return (
+    <div className="h-60" role="img" aria-label="Curva de bankroll">
+      <ResponsiveContainer width="100%" height="100%">
+        <AreaChart data={series} margin={{ left: -8, right: 8, top: 8 }}>
+          <defs>
+            <linearGradient id={gradient} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="var(--chart-1)" stopOpacity={0.45} />
+              <stop offset="100%" stopColor="var(--chart-1)" stopOpacity={0} />
+            </linearGradient>
+          </defs>
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" vertical={false} />
+          <XAxis dataKey="date" fontSize={11} stroke="var(--chart-text)" tickLine={false} />
+          <YAxis
+            domain={["auto", "auto"]}
+            fontSize={11}
+            stroke="var(--chart-text)"
+            tickLine={false}
+          />
+          <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v) => money(Number(v), currency)} />
+          <Area
+            type="monotone"
+            dataKey="value"
+            name="Bankroll"
+            stroke="var(--chart-1)"
+            strokeWidth={2}
+            fill={`url(#${gradient})`}
+          />
+        </AreaChart>
+      </ResponsiveContainer>
     </div>
   );
 }
@@ -254,16 +389,34 @@ function GroupBars({
     clv: typeof g["clv_mean"] === "number" ? 100 * g["clv_mean"] : 0,
   }));
   return (
-    <div className="mb-2 h-32" role="img" aria-label={label}>
-      <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={data}>
-          <XAxis dataKey="name" fontSize={11} />
-          <YAxis fontSize={11} unit="%" />
-          <Tooltip formatter={(v) => `${Number(v).toFixed(2)} %`} />
-          <Bar dataKey="clv" name="CLV medio" fill="#0369a1" />
-        </BarChart>
-      </ResponsiveContainer>
+    <div className="mb-3">
+      <p className="mb-1 text-xs font-medium text-muted-foreground">{label}</p>
+      <div className="h-28" role="img" aria-label={label}>
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={data} margin={{ left: -20, right: 4 }}>
+            <XAxis dataKey="name" fontSize={11} stroke="var(--chart-text)" tickLine={false} />
+            <YAxis fontSize={11} unit="%" stroke="var(--chart-text)" tickLine={false} />
+            <Tooltip
+              contentStyle={TOOLTIP_STYLE}
+              cursor={{ fill: "var(--muted)" }}
+              formatter={(v) => `${Number(v).toFixed(2)} %`}
+            />
+            <Bar dataKey="clv" name="CLV medio" fill="var(--chart-2)" radius={[4, 4, 0, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
     </div>
+  );
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const style = STATUS_STYLE[status] ?? STATUS_STYLE["nula"]!;
+  const Icon = style.icon;
+  return (
+    <Badge className={cn("gap-1 border-transparent", style.className)}>
+      <Icon aria-hidden />
+      {STATUS_LABEL[status] ?? status}
+    </Badge>
   );
 }
 
@@ -280,7 +433,7 @@ function BetsTable({
   const update = useUpdateBet();
   const remove = useDeleteBet();
 
-  if (bets.isPending) return <Loading what="apuestas" />;
+  if (bets.isPending) return <Loading what="apuestas" variant="table" />;
   if (bets.isError) return <ErrorBox error={bets.error} />;
   if (bets.data.items.length === 0) return <Empty>No hay apuestas con estos filtros.</Empty>;
   const pages = Math.max(1, Math.ceil(bets.data.total / bets.data.size));
@@ -288,69 +441,55 @@ function BetsTable({
     <>
       {update.isError && <ErrorBox error={update.error} />}
       {remove.isError && <ErrorBox error={remove.error} />}
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse text-sm">
-          <caption className="sr-only">Apuestas registradas</caption>
-          <thead>
-            <tr className="border-b border-slate-200 text-left text-slate-700">
-              <th scope="col" className="p-2">
-                Partido
-              </th>
-              <th scope="col" className="p-2">
-                Apuesta
-              </th>
-              <th scope="col" className="p-2">
-                Stake
-              </th>
-              <th scope="col" className="p-2">
-                Estado
-              </th>
-              <th scope="col" className="p-2">
-                Beneficio
-              </th>
-              <th scope="col" className="p-2">
-                CLV
-              </th>
-              <th scope="col" className="p-2">
-                Acciones
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {bets.data.items.map((bet) => (
-              <BetRow
-                key={bet.id}
-                bet={bet}
-                currency={currency}
-                busy={update.isPending || remove.isPending}
-                onSettle={(status) => update.mutate({ id: bet.id, patch: { status } })}
-                onDelete={() => remove.mutate(bet.id)}
-              />
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <Table>
+        <TableCaption className="sr-only">Apuestas registradas</TableCaption>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Partido</TableHead>
+            <TableHead>Apuesta</TableHead>
+            <TableHead className="text-right">Stake</TableHead>
+            <TableHead>Estado</TableHead>
+            <TableHead className="text-right">Beneficio</TableHead>
+            <TableHead className="text-right">CLV</TableHead>
+            <TableHead>Acciones</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {bets.data.items.map((bet) => (
+            <BetRow
+              key={bet.id}
+              bet={bet}
+              currency={currency}
+              busy={update.isPending || remove.isPending}
+              onSettle={(status) => update.mutate({ id: bet.id, patch: { status } })}
+              onDelete={() => remove.mutate(bet.id)}
+            />
+          ))}
+        </TableBody>
+      </Table>
       {pages > 1 && (
         <nav aria-label="Páginas" className="mt-3 flex items-center gap-2 text-sm">
-          <button
+          <Button
             type="button"
-            className="rounded border border-slate-300 px-2 py-1 disabled:opacity-50"
+            variant="outline"
+            size="sm"
             disabled={params.page <= 1}
             onClick={() => onPage(params.page - 1)}
           >
             Anterior
-          </button>
-          <span>
+          </Button>
+          <span className="text-muted-foreground">
             Página {params.page} de {pages}
           </span>
-          <button
+          <Button
             type="button"
-            className="rounded border border-slate-300 px-2 py-1 disabled:opacity-50"
+            variant="outline"
+            size="sm"
             disabled={params.page >= pages}
             onClick={() => onPage(params.page + 1)}
           >
             Siguiente
-          </button>
+          </Button>
         </nav>
       )}
     </>
@@ -373,31 +512,40 @@ function BetRow({
   const [choice, setChoice] = useState<"" | "ganada" | "perdida" | "nula">("");
   const started = bet.kickoff ? new Date(bet.kickoff) <= new Date() : false;
   return (
-    <tr className="border-b border-slate-100 align-top">
-      <td className="p-2">
-        {bet.home_team && bet.away_team ? `${bet.home_team} – ${bet.away_team}` : bet.match_id}
-        <div className="text-xs text-slate-600">
+    <TableRow className="align-top">
+      <TableCell className="min-w-44 whitespace-normal">
+        <span className="font-medium">
+          {bet.home_team && bet.away_team ? `${bet.home_team} – ${bet.away_team}` : bet.match_id}
+        </span>
+        <div className="text-xs text-muted-foreground">
           {bet.league} · {kickoff(bet.kickoff)}
         </div>
-      </td>
-      <td className="p-2">
-        {OUTCOME_LABEL[bet.outcome]} {odds(bet.odds)} · {bet.bookmaker}
-        <div className="flex flex-wrap gap-1 text-xs text-slate-600">
-          {bet.kind === "paper" ? "Papel" : "Real"}
+      </TableCell>
+      <TableCell className="min-w-40 whitespace-normal">
+        {OUTCOME_LABEL[bet.outcome]} <span className="tabular-nums">{odds(bet.odds)}</span> ·{" "}
+        {bet.bookmaker}
+        <div className="mt-1 flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
+          <Badge variant="outline" className="font-normal">
+            {bet.kind === "paper" ? "Papel" : "Real"}
+          </Badge>
           {bet.from_experimental_signal && <ExperimentalBadge />}
-          {bet.sin_referencia && <span className="text-amber-800">sin cuota de referencia</span>}
+          {bet.sin_referencia && <span className="text-experimental">sin cuota de referencia</span>}
         </div>
-      </td>
-      <td className="p-2 tabular-nums">{money(bet.stake, currency)}</td>
-      <td className="p-2">
-        {STATUS_LABEL[bet.status] ?? bet.status}
+      </TableCell>
+      <TableCell className="text-right tabular-nums">{money(bet.stake, currency)}</TableCell>
+      <TableCell className="whitespace-normal">
+        <StatusBadge status={bet.status} />
         {bet.result_source === "manual" && (
-          <div className="text-xs text-amber-800">a mano, sin confirmar</div>
+          <div className="mt-1 text-xs text-experimental">a mano, sin confirmar</div>
         )}
-      </td>
-      <td className="p-2 tabular-nums">{money(bet.profit, currency)}</td>
-      <td className="p-2 tabular-nums">{pct(bet.clv, 2, true)}</td>
-      <td className="p-2">
+      </TableCell>
+      <TableCell className={cn("text-right tabular-nums", evTone(bet.profit))}>
+        {money(bet.profit, currency)}
+      </TableCell>
+      <TableCell className={cn("text-right tabular-nums", evTone(bet.clv))}>
+        {pct(bet.clv, 2, true)}
+      </TableCell>
+      <TableCell>
         {bet.status === "pendiente" && started && (
           <form
             className="flex items-center gap-1"
@@ -411,7 +559,7 @@ function BetRow({
             </label>
             <select
               id={`settle-${bet.id}`}
-              className="rounded border border-slate-300 px-1 py-0.5 text-xs"
+              className="field h-7 w-28 px-2 text-xs"
               value={choice}
               onChange={(event) => setChoice(event.target.value as typeof choice)}
             >
@@ -420,27 +568,25 @@ function BetRow({
               <option value="perdida">Perdida</option>
               <option value="nula">Nula</option>
             </select>
-            <button
-              type="submit"
-              className="rounded border border-slate-300 px-2 py-0.5 text-xs disabled:opacity-50"
-              disabled={!choice || busy}
-            >
+            <Button type="submit" variant="outline" size="sm" disabled={!choice || busy}>
               Guardar
-            </button>
+            </Button>
           </form>
         )}
         {bet.status === "pendiente" && !started && (
-          <button
+          <Button
             type="button"
-            className="rounded border border-red-300 px-2 py-0.5 text-xs text-red-800 disabled:opacity-50"
+            variant="destructive"
+            size="sm"
             disabled={busy}
             onClick={onDelete}
             aria-label={`Borrar apuesta ${bet.id}`}
           >
+            <Trash2 aria-hidden />
             Borrar
-          </button>
+          </Button>
         )}
-      </td>
-    </tr>
+      </TableCell>
+    </TableRow>
   );
 }
