@@ -1,6 +1,8 @@
+import { Suspense } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 
 import { ApiKeyButton } from "./ApiKeyButton";
+import { Loading } from "./ui";
 
 const LINKS = [
   { to: "/", label: "Hoy", end: true },
@@ -40,7 +42,9 @@ export function Layout() {
         </div>
       </header>
       <main className="mx-auto max-w-6xl px-4 py-6">
-        <Outlet />
+        <Suspense fallback={<Loading what="la página" />}>
+          <Outlet />
+        </Suspense>
       </main>
       <footer className="mx-auto max-w-6xl px-4 pb-8 text-xs text-slate-600">
         Juego responsable: apuesta solo lo que puedas perder. Los límites mensuales no se pueden

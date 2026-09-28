@@ -1,12 +1,15 @@
+import { lazy } from "react";
 import { Route, Routes } from "react-router-dom";
 
 import { Layout } from "./components/Layout";
 import { BacktestPage } from "./pages/BacktestPage";
-import { BetsPage } from "./pages/BetsPage";
 import { CalculatorPage } from "./pages/CalculatorPage";
-import { MatchPage } from "./pages/MatchPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { TodayPage } from "./pages/TodayPage";
+
+// Pages with charts (Recharts) load on demand, keeping the first load small.
+const MatchPage = lazy(() => import("./pages/MatchPage").then((m) => ({ default: m.MatchPage })));
+const BetsPage = lazy(() => import("./pages/BetsPage").then((m) => ({ default: m.BetsPage })));
 
 export function App() {
   return (
