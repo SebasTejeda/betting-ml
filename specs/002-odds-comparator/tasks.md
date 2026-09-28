@@ -59,7 +59,7 @@ Mismas reglas de ejecución que la spec 001: en orden, una tarea a la vez, `lint
 - [x] **T018** Actualizar la colección de Postman con una carpeta "Spec 002".
   - Commits: uno por tarea.
 
-- [ ] 🔍 **T019** Checkpoint `ml-reviewer` del backend (límites no evitables, dinero en `Decimal`, créditos, contrato).
+- [x] 🔍 **T019** Checkpoint `ml-reviewer` del backend (límites no evitables, dinero en `Decimal`, créditos, contrato).
 
 ## Fase 4 — Frontend
 
