@@ -1,6 +1,6 @@
 # betting-ml
 
-Modelo de machine learning que estima las probabilidades 1X2 (local / empate / visita) de los partidos de las 5 grandes ligas europeas, las compara con las cuotas para detectar *value bets* y las sirve con una API REST. Construido con **Spec-Driven Development** (especificaciones en [`specs/`](specs/), bitácora en [`PROGRESS.md`](PROGRESS.md), decisiones en [`decisions.md`](specs/001-prediction-model/decisions.md)).
+Modelo de machine learning que estima las probabilidades 1X2 (local / empate / visita) de los partidos de las 5 grandes ligas europeas, las compara con las cuotas para detectar *value bets* y las sirve con una API REST. La spec 002 le suma un **comparador de mejor cuota** con Pinnacle como referencia, una calculadora para casas peruanas, un **diario de apuestas con límites de juego responsable** y un frontend web. Construido con **Spec-Driven Development** (especificaciones en [`specs/`](specs/), bitácora en [`PROGRESS.md`](PROGRESS.md), decisiones en [`decisions.md`](specs/001-prediction-model/decisions.md)).
 
 > **Juego responsable.** Proyecto educativo. Apostar implica riesgo de pérdida. Este modelo **no** muestra ventaja frente al mercado: no lo uses para apostar dinero real.
 
@@ -99,6 +99,58 @@ curl -X POST http://localhost:8000/api/v1/predictions -H "Content-Type: applicat
 
 `fixtures.csv` de football-data se actualiza unas dos veces por semana. Si no hay partidos de las 5 ligas para la fecha pedida, `/matches` responde `200` con una lista vacía y un mensaje.
 
+## Spec 002 — Comparador de cuotas, diario y frontend
+
+Especificación en [`specs/002-odds-comparator/`](specs/002-odds-comparator/) y decisiones en [`decisions.md`](specs/002-odds-comparator/decisions.md).
+
+**Qué hace.** Para cada partido del día muestra la **mejor cuota disponible** por resultado, la casa que la paga y el **margen** de cada casa, con la cuota justa de Pinnacle (sin margen, método de Shin) como referencia. Incluye una calculadora para cuotas escritas a mano (Te Apuesto, Inkabet y otras casas peruanas que no están en The Odds API), un diario de apuestas reales y en papel con CLV y curva de bankroll, y límites de pérdida mensual y stake máximo que no se pueden saltar ni desde la API ni desde el frontend.
+
+**Resultados del backtest** ([`reports/REPORT_002_backtest.md`](reports/REPORT_002_backtest.md)). Conclusión: *seguir con cambios*, nivel **Mínimo (backtest)**.
+
+| | Validación 2022-25 | Temporada 2026-27 |
+|---|---|---|
+| Margen medio de la cuota promedio | 4.5 % | 6.5 % |
+| Margen medio de la mejor cuota | 0.5 % | 2.7 % |
+| La mejor cuota paga más que el promedio | +5.0 % | +4.9 % |
+
+- **Eso justifica el comparador:** elegir la mejor casa ahorra unos 4 puntos de margen por apuesta. Es la única ventaja medida.
+- **La señal de valor no está validada.** La estrategia principal (Bet365 sin filtro) tuvo un CLV de −3.7 % en la prueba 2025-26 (27 apuestas). La variante con el filtro del modelo E12 tiene solo 8 apuestas y se eligió después de ver el fallo: no es evidencia. Por eso la señal se muestra como **"EXPERIMENTAL — solo papel"**. El diario cuenta el progreso hacia 100 apuestas en papel con CLV positivo, que sería la evidencia real.
+
+### Configuración
+
+1. Crea una cuenta gratis en [the-odds-api.com](https://the-odds-api.com). El plan gratis da 500 créditos al mes, y cada refresco cuesta unos 2 créditos por liga (regiones eu+uk, mercado 1X2).
+2. En `.env` (copiado de `.env.example`) pon `ODDS_API_KEY=<tu clave>` y `APP_API_KEY=<una clave larga inventada por ti>`. Las claves viven solo en `.env`: nunca en el repo, en los fixtures ni en los logs.
+3. Ajusta, si quieres, `ODDS_MIN_CREDITS_RESERVE` (reserva que no se gasta, 50 por defecto) y `ODDS_AUTO_REFRESH=true` con `ODDS_AUTO_REFRESH_TIMES=10:00,16:00` (hora de Lima) para refrescar solo en días con partidos. Con el refresco automático activado, levanta la API con un solo worker y sin `--reload`.
+4. Requisitos del frontend: Node.js 20 o superior (probado con 24). Instala con `cd frontend && npm ci`.
+5. Crea la base de datos: `uv run betting-ml db-upgrade` (la API también aplica las migraciones al arrancar).
+
+### Comandos
+
+| make | sin make | Qué hace |
+|---|---|---|
+| `make db-upgrade` | `uv run betting-ml db-upgrade` | Migraciones de la base SQLite (`data/app.db`) |
+| `make odds` | `uv run betting-ml odds` | Refresca cuotas de The Odds API (**consume créditos**) |
+| `make settle` | `uv run betting-ml settle` | Liquida apuestas con resultados oficiales y calcula el CLV |
+| `make backtest-002` | `uv run betting-ml backtest-002` | Backtest en validación (repetible) |
+| `make backtest-002-final` | `uv run betting-ml backtest-002-final` | Prueba única en 2025-26 (ya hecha: el lock impide repetirla) |
+| `make web-api` | `uv run betting-ml openapi` y luego `cd frontend && npm run gen:api` | Exporta el contrato OpenAPI y regenera los tipos del frontend |
+| `make web` | `cd frontend && npm run dev` | Frontend en `http://localhost:5173` (con proxy de `/api` a `:8000`) |
+| `make web-test` | `cd frontend && npm run lint && npm run typecheck && npm test` | Calidad y tests del frontend (MSW, sin red) |
+| `make dev` | dos terminales: `uv run betting-ml serve` y `cd frontend && npm run dev` | API y frontend juntos |
+
+### Cómo usar cada página
+
+- **Hoy** (`/`): elige fecha y liga. Para cada partido verás la mejor cuota por resultado y su casa, y el margen de la mejor combinación frente al promedio. Por defecto solo cuentan las casas accesibles desde Perú (se puede desmarcar). El botón **Actualizar cuotas** gasta créditos y muestra cuántos quedan; bajo la reserva, el refresco se bloquea. En el celular, la tabla se ve como tarjetas.
+- **Partido** (`/match/:id`): todas las casas × resultados con la mejor cuota resaltada, el margen de cada casa, el gráfico de la cuota de referencia en el tiempo y una calculadora rápida.
+- **Calculadora** (`/calculator`): elige el partido, el resultado, una casa de ingreso manual y la cuota que ves. Te dice la cuota justa, el EV y la mejor cuota disponible, y te deja registrar la apuesta. Si la API pide confirmación (stake alto, cerca del límite o dinero real sobre la señal experimental), la app muestra el motivo y solo registra si confirmas. Si el presupuesto mensual está agotado, las apuestas reales quedan **bloqueadas** hasta el mes siguiente (en papel se puede seguir).
+- **Mis apuestas** (`/bets`): tabla filtrable (real, papel o todas; por estado) con liquidación a mano (solo después del inicio del partido) y borrado (solo antes). El panel muestra el CLV medio, el % de CLV positivo, el beneficio, el ROI, el uso del límite mensual, el progreso de la señal experimental (X/100), la curva de bankroll y el CLV por liga y casa. **Liquidar con resultados oficiales** confirma o corrige lo marcado a mano. Una apuesta real marcada a mano como ganada o nula cuenta como perdida para el límite hasta que se confirme. Si un partido se aplaza, márcala como nula.
+- **Backtest** (`/backtest`): conclusión, margen pagado por tipo de cuota y resultados de la prueba con sus intervalos de confianza.
+- **Ajustes** (`/settings`): bankroll, moneda, límite de pérdida mensual (bajarlo aplica al instante; subirlo, desde el mes siguiente), stake máximo, fracción de Kelly y umbral de la señal.
+
+La primera vez, pulsa **Configurar clave** (arriba a la derecha) y pega tu `APP_API_KEY`: sin ella no se puede escribir (refrescar, registrar, liquidar ni guardar ajustes). La clave se guarda solo en el `localStorage` de tu navegador, porque es una herramienta personal que corre en tu máquina. No uses la app en un equipo compartido.
+
+> **Juego responsable.** Apuesta solo lo que puedas perder. Esta app no encontró una ventaja que permita ganar apostando: su valor es ahorrar margen eligiendo la mejor cuota y **medir** con honestidad. Los límites mensuales existen para que no persigas pérdidas. Si sientes que pierdes el control, pide ayuda.
+
 ## Limitaciones
 
 - El campeón es **peor que el mercado solo** en validación y en el holdout. El nivel "Bueno" depende de la tolerancia de +0.005 y no es estadísticamente firme.
@@ -107,5 +159,8 @@ curl -X POST http://localhost:8000/api/v1/predictions -H "Content-Type: applicat
 - Solo hay datos de liga. No se incluyen copas, competiciones europeas, lesiones ni alineaciones.
 - Las temporadas 2014-15 a 2018-19 no traen hora de inicio (se imputa 15:00 hora del Reino Unido).
 - La bandera de valor de la API compara con la mejor cuota de `fixtures.csv`. No es una recomendación de apuesta.
+
+- Spec 002: la señal de valor no tiene evidencia (ver arriba). Las cuotas de Betsson y Coolbet que llegan de The Odds API (región eu) pueden no coincidir con las de su web peruana. Las casas peruanas se ingresan a mano.
+- Spec 002: el CLV de 2026-27 sale casi siempre del último snapshot de Pinnacle antes del inicio, no de su cierre real, porque football-data ya no publica Pinnacle.
 
 Más detalle en [`reports/REPORT.md`](reports/REPORT.md) §9.
