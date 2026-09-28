@@ -5,7 +5,7 @@ import { z } from "zod";
 import { useBookmakers, useCalculator } from "../api/hooks";
 import { OUTCOME_LABEL, OUTCOMES, type CalculatorResult, type Outcome } from "../api/types";
 import { odds as fmtOdds, pct } from "../lib/format";
-import { ErrorBox, ExperimentalBadge } from "./ui";
+import { ErrorBox, ExperimentalBadge } from "./common";
 
 const schema = z.object({
   outcome: z.enum(["home", "draw", "away"]),

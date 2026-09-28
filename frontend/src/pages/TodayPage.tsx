@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import { ApiError } from "../api/client";
 import { useBudget, useComparator, useLeagues, useRefreshOdds } from "../api/hooks";
 import { OUTCOME_LABEL, OUTCOMES, type ComparatorMatch } from "../api/types";
-import { Card, Empty, ErrorBox, ExperimentalBadge, Loading, PageTitle } from "../components/ui";
+import { Card, Empty, ErrorBox, ExperimentalBadge, Loading, PageTitle } from "../components/common";
 import { kickoff, odds, pct, todayLima } from "../lib/format";
 import { calculatorLink } from "../lib/links";
 

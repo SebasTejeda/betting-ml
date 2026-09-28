@@ -8,6 +8,10 @@ import { server } from "./server";
 configure({ asyncUtilTimeout: 5000 });
 
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
+// Warm up the lazily loaded chart pages once, so no test pays their first compile.
+beforeAll(async () => {
+  await Promise.all([import("../pages/MatchPage"), import("../pages/BetsPage")]);
+}, 60_000);
 afterEach(() => {
   cleanup();
   server.resetHandlers();

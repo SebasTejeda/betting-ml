@@ -1,11 +1,22 @@
 <!doctype html>
-<html lang="es">
+<html lang="es" class="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="dark light" />
     <title>betting-ml · Comparador de cuotas</title>
+    <script>
+      // Apply the saved theme before the first paint (dark by default).
+      try {
+        if (localStorage.getItem("betting-ml.theme") === "light") {
+          document.documentElement.classList.remove("dark");
+        }
+      } catch (e) {
+        /* storage unavailable: keep the dark default */
+      }
+    </script>
   </head>
-  <body class="bg-slate-50 text-slate-900">
+  <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

@@ -22,7 +22,7 @@ import {
   type SummaryKind,
 } from "../api/hooks";
 import { OUTCOME_LABEL, type Bet, type Summary } from "../api/types";
-import { Card, Empty, ErrorBox, ExperimentalBadge, Loading, PageTitle } from "../components/ui";
+import { Card, Empty, ErrorBox, ExperimentalBadge, Loading, PageTitle } from "../components/common";
 import { kickoff, money, odds, pct } from "../lib/format";
 
 const STATUS_LABEL: Record<string, string> = {

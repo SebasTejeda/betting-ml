@@ -8,7 +8,7 @@ import { ApiError } from "../api/client";
 import { useCreateBet } from "../api/hooks";
 import { OUTCOME_LABEL, type Bet, type BetIn, type Outcome } from "../api/types";
 import { odds as fmtOdds } from "../lib/format";
-import { ErrorBox, ExperimentalBadge } from "./ui";
+import { ErrorBox, ExperimentalBadge } from "./common";
 
 const schema = z.object({
   kind: z.enum(["paper", "real"]),

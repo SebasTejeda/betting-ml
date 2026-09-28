@@ -4,7 +4,7 @@ import { z } from "zod";
 
 import { useSaveSettings, useSettings } from "../api/hooks";
 import type { Settings } from "../api/types";
-import { Card, ErrorBox, Loading, PageTitle } from "../components/ui";
+import { Card, ErrorBox, Loading, PageTitle } from "../components/common";
 import { money } from "../lib/format";
 
 const amount = z

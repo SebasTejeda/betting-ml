@@ -1,6 +1,9 @@
+import { Check, KeyRound } from "lucide-react";
 import { useState } from "react";
 
-import { getApiKey, setApiKey } from "../lib/apiKey";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { getApiKey, setApiKey } from "@/lib/apiKey";
 
 /** The write key is asked once and stored in this browser (personal, local tool). */
 export function ApiKeyButton() {
@@ -23,35 +26,34 @@ export function ApiKeyButton() {
         <label className="sr-only" htmlFor="api-key">
           Clave de escritura (APP_API_KEY)
         </label>
-        <input
+        <Input
           id="api-key"
           type="password"
           autoComplete="off"
-          className="w-40 rounded border border-slate-300 px-2 py-1 text-sm"
+          className="h-8 w-36 sm:w-44"
           placeholder="APP_API_KEY"
           value={value}
           onChange={(event) => setValue(event.target.value)}
         />
-        <button type="submit" className="rounded bg-slate-900 px-2 py-1 text-sm text-white">
+        <Button type="submit" size="sm">
           Guardar
-        </button>
-        <button
-          type="button"
-          className="text-sm text-slate-700 underline"
-          onClick={() => setEditing(false)}
-        >
+        </Button>
+        <Button type="button" size="sm" variant="ghost" onClick={() => setEditing(false)}>
           Cancelar
-        </button>
+        </Button>
       </form>
     );
   }
   return (
-    <button
+    <Button
       type="button"
-      className="rounded border border-slate-300 px-2 py-1 text-sm text-slate-700 hover:bg-slate-100"
+      variant="outline"
+      size="sm"
       onClick={() => setEditing(true)}
+      aria-label={hasKey ? "Clave configurada ✓" : "Configurar clave"}
     >
-      {hasKey ? "Clave configurada ✓" : "Configurar clave"}
-    </button>
+      {hasKey ? <Check aria-hidden className="text-positive" /> : <KeyRound aria-hidden />}
+      <span className="hidden sm:inline">{hasKey ? "Clave configurada" : "Configurar clave"}</span>
+    </Button>
   );
 }

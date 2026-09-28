@@ -1,6 +1,6 @@
 import { ApiError } from "../api/client";
 import { useBacktest } from "../api/hooks";
-import { Card, Empty, ErrorBox, Loading, PageTitle } from "../components/ui";
+import { Card, Empty, ErrorBox, Loading, PageTitle } from "../components/common";
 import { pct } from "../lib/format";
 
 type Result = {

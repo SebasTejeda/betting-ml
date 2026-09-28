@@ -6,7 +6,7 @@ import type { CalculatorResult, Outcome } from "../api/types";
 import { ManualOddsForm } from "../components/ManualOddsForm";
 import { NoReferenceBet } from "../components/NoReferenceBet";
 import { RegisterBetForm } from "../components/RegisterBetForm";
-import { Card, Empty, ErrorBox, Loading, PageTitle } from "../components/ui";
+import { Card, Empty, ErrorBox, Loading, PageTitle } from "../components/common";
 import { kickoff, todayLima } from "../lib/format";
 import { readDraft } from "../lib/links";
 

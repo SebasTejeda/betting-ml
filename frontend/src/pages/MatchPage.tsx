@@ -14,7 +14,7 @@ import { ApiError } from "../api/client";
 import { useMatchDetail } from "../api/hooks";
 import { OUTCOME_LABEL, OUTCOMES, type ComparatorDetail } from "../api/types";
 import { ManualOddsForm } from "../components/ManualOddsForm";
-import { Card, Empty, ErrorBox, ExperimentalBadge, Loading, PageTitle } from "../components/ui";
+import { Card, Empty, ErrorBox, ExperimentalBadge, Loading, PageTitle } from "../components/common";
 import { kickoff, odds, pct } from "../lib/format";
 import { calculatorLink } from "../lib/links";
 

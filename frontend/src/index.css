@@ -1,8 +1,163 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "@fontsource-variable/inter";
+
+/* Dark theme is the default (html.dark); the light theme is html without .dark. */
+@custom-variant dark (&:is(.dark *));
+
+/* ---------------------------------------------------------------- design tokens
+   Every color used by the app is a token here (no loose values in components).
+   Semantic tokens: positive (EV > 0, won), negative (EV < 0, lost), experimental
+   (the "EXPERIMENTAL — solo papel" label). All pairs meet WCAG AA (≥ 4.5:1 text). */
+:root {
+  --radius: 0.75rem;
+
+  --background: oklch(0.975 0.005 250);
+  --foreground: oklch(0.21 0.03 255);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.21 0.03 255);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.21 0.03 255);
+  --primary: oklch(0.5 0.13 152);
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.94 0.01 250);
+  --secondary-foreground: oklch(0.25 0.03 255);
+  --muted: oklch(0.95 0.008 250);
+  --muted-foreground: oklch(0.47 0.03 255);
+  --accent: oklch(0.94 0.02 152);
+  --accent-foreground: oklch(0.3 0.08 152);
+  --destructive: oklch(0.52 0.19 27);
+  --border: oklch(0.9 0.01 250);
+  --input: oklch(0.88 0.012 250);
+  --ring: oklch(0.55 0.13 152);
+
+  --positive: oklch(0.48 0.13 152);
+  --positive-soft: oklch(0.95 0.04 152);
+  --negative: oklch(0.52 0.17 25);
+  --negative-soft: oklch(0.96 0.025 25);
+  --experimental: oklch(0.45 0.1 65);
+  --experimental-soft: oklch(0.95 0.06 85);
+  --experimental-border: oklch(0.8 0.12 80);
+  --info: oklch(0.47 0.12 250);
+  --info-soft: oklch(0.95 0.025 250);
+
+  --chart-1: oklch(0.55 0.13 152);
+  --chart-2: oklch(0.55 0.13 250);
+  --chart-3: oklch(0.62 0.13 65);
+  --chart-grid: oklch(0.9 0.01 250);
+  --chart-text: oklch(0.47 0.03 255);
+}
+
+.dark {
+  --background: oklch(0.19 0.02 255);
+  --foreground: oklch(0.95 0.01 250);
+  --card: oklch(0.235 0.022 255);
+  --card-foreground: oklch(0.95 0.01 250);
+  --popover: oklch(0.25 0.022 255);
+  --popover-foreground: oklch(0.95 0.01 250);
+  --primary: oklch(0.74 0.16 152);
+  --primary-foreground: oklch(0.2 0.04 152);
+  --secondary: oklch(0.29 0.022 255);
+  --secondary-foreground: oklch(0.93 0.01 250);
+  --muted: oklch(0.28 0.02 255);
+  --muted-foreground: oklch(0.74 0.02 255);
+  --accent: oklch(0.3 0.05 152);
+  --accent-foreground: oklch(0.9 0.08 152);
+  --destructive: oklch(0.7 0.16 25);
+  --border: oklch(1 0 0 / 9%);
+  --input: oklch(1 0 0 / 14%);
+  --ring: oklch(0.74 0.16 152);
+
+  --positive: oklch(0.78 0.15 152);
+  --positive-soft: oklch(0.3 0.06 152);
+  --negative: oklch(0.74 0.13 25);
+  --negative-soft: oklch(0.3 0.05 25);
+  --experimental: oklch(0.84 0.13 80);
+  --experimental-soft: oklch(0.3 0.06 75);
+  --experimental-border: oklch(0.55 0.1 75);
+  --info: oklch(0.78 0.1 250);
+  --info-soft: oklch(0.29 0.04 250);
+
+  --chart-1: oklch(0.74 0.16 152);
+  --chart-2: oklch(0.72 0.12 250);
+  --chart-3: oklch(0.8 0.13 75);
+  --chart-grid: oklch(1 0 0 / 8%);
+  --chart-text: oklch(0.74 0.02 255);
+}
+
+@theme inline {
+  --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-heading: var(--font-sans);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-positive: var(--positive);
+  --color-positive-soft: var(--positive-soft);
+  --color-negative: var(--negative);
+  --color-negative-soft: var(--negative-soft);
+  --color-experimental: var(--experimental);
+  --color-experimental-soft: var(--experimental-soft);
+  --color-experimental-border: var(--experimental-border);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+}
 
 @layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    @apply font-sans antialiased;
+    color-scheme: light;
+  }
+  html.dark {
+    color-scheme: dark;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "tnum" 0;
+  }
   :focus-visible {
-    outline: 2px solid var(--color-sky-600);
+    outline: 2px solid var(--ring);
     outline-offset: 2px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      transition-duration: 0ms !important;
+      animation-duration: 0ms !important;
+    }
+  }
+}
+
+/* Native form controls share the input look (native selects keep keyboard/screen-reader support). */
+@layer components {
+  .field {
+    @apply h-9 w-full rounded-md border border-input bg-card px-3 text-sm text-foreground shadow-xs transition-colors duration-150 outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/40;
   }
 }
