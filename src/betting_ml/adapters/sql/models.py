@@ -90,6 +90,7 @@ class BetRow(Base):
     profit: Mapped[Decimal | None] = mapped_column(MONEY, nullable=True)
     settled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     result_source: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    no_reference: Mapped[bool] = mapped_column(Boolean, default=False)
 
 
 class SettingsRow(Base):

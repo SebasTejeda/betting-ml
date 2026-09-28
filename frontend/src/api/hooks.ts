@@ -31,6 +31,16 @@ export function useLeagues() {
   });
 }
 
+export function useTeams(league: string) {
+  return useQuery({
+    queryKey: ["teams", league],
+    queryFn: () =>
+      unwrap(api.GET("/api/v1/leagues/{code}/teams", { params: { path: { code: league } } })),
+    enabled: Boolean(league),
+    staleTime: Infinity,
+  });
+}
+
 export function useBudget() {
   return useQuery({
     queryKey: keys.budget,

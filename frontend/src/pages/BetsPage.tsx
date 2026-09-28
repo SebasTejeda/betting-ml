@@ -385,6 +385,7 @@ function BetRow({
         <div className="flex flex-wrap gap-1 text-xs text-slate-600">
           {bet.kind === "paper" ? "Papel" : "Real"}
           {bet.from_experimental_signal && <ExperimentalBadge />}
+          {bet.sin_referencia && <span className="text-amber-800">sin cuota de referencia</span>}
         </div>
       </td>
       <td className="p-2 tabular-nums">{money(bet.stake, currency)}</td>

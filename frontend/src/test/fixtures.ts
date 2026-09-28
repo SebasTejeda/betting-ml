@@ -146,6 +146,7 @@ export function bet(overrides: Partial<Bet> = {}): Bet {
     profit: null,
     settled_at: null,
     result_source: null,
+    sin_referencia: false,
     warnings: [],
     ...overrides,
   };

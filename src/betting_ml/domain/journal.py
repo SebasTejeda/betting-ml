@@ -78,6 +78,9 @@ class Bet:
     settled_at: datetime | None = None
     # Who settled it: "manual" (by hand, not yet confirmed) or "official" (result checked).
     result_source: str | None = None
+    # No reference price was available when it was registered (no API odds for the match):
+    # it counts for every limit but is left out of the value signal.
+    no_reference: bool = False
     id: int | None = None
 
     def __post_init__(self) -> None:

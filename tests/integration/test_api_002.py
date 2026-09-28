@@ -519,13 +519,43 @@ def test_lifespan_starts_and_stops_the_auto_refresh(ctx) -> None:  # type: ignor
     assert events == ["start", "stop"]
 
 
-def test_real_bet_on_a_match_without_odds_is_rejected(ctx) -> None:  # type: ignore[no-untyped-def]
-    client, *_ = ctx
-    body = _bet("E0-2026-10-01-foo-bar", odds=50, stake=10, confirm=True)
-    error = _error(client.post("/api/v1/bets", json=body, headers=AUTH), 422, "MATCH_WITHOUT_ODDS")
-    assert error["details"]["match_id"] == "E0-2026-10-01-foo-bar"
-    paper = client.post("/api/v1/bets", json={**body, "kind": "paper"}, headers=AUTH)
-    assert paper.status_code == 201 and paper.json()["kickoff"] is None
+def test_real_bet_without_reference_gets_clv_from_football_data(ctx) -> None:  # type: ignore[no-untyped-def]
+    client, _, clock, _, results, _ = ctx
+    match_id = "E0-2026-10-01-arsenal-chelsea"  # no API odds for this date
+    created = client.post(
+        "/api/v1/bets", json=_bet(match_id, odds=4.4, stake=10, confirm=True), headers=AUTH
+    )
+    assert created.status_code == 201, created.text
+    bet = created.json()
+    assert bet["sin_referencia"] is True and bet["kind"] == "real" and bet["kickoff"] is None
+    assert any("Sin cuota de referencia" in w for w in bet["warnings"])
+    # without "confirm", the max-stake limit still applies
+    _error(
+        client.post("/api/v1/bets", json=_bet(match_id, stake=25), headers=AUTH),
+        409,
+        "LIMIT_WARNING",
+    )
+    results.frame = pd.DataFrame(
+        [
+            {
+                "league": "E0",
+                "date": pd.Timestamp("2026-10-01"),
+                "home_team": "Arsenal",
+                "away_team": "Chelsea",
+                "home_goals": 0.0,
+                "away_goals": 1.0,
+                "psc_odds_h": 1.9,
+                "psc_odds_d": 3.8,
+                "psc_odds_a": 4.2,
+            }
+        ]
+    )
+    clock.now = datetime(2026, 10, 2, 12, tzinfo=UTC)
+    settled = client.post("/api/v1/bets/settle", headers=AUTH).json()
+    assert settled["settled"] == 1 and settled["clv_computed"] == 1
+    item = client.get("/api/v1/bets", params={"status": "ganada"}).json()["items"][0]
+    assert item["sin_referencia"] and item["clv"] is not None
+    assert item["clv_source"] == "football_data_psc"
 
 
 def test_unsettled_finished_bets_count_for_the_403(ctx) -> None:  # type: ignore[no-untyped-def]

@@ -479,6 +479,11 @@ export interface components {
             settled_at: string | null;
             /** Result Source */
             result_source?: ("manual" | "official") | null;
+            /**
+             * Sin Referencia
+             * @default false
+             */
+            sin_referencia: boolean;
             /** Warnings */
             warnings: string[];
         };

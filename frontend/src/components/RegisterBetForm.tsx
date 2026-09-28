@@ -29,6 +29,8 @@ type Props = {
   odds: number;
   fromSignal?: boolean;
   suggestedStake?: number;
+  /** The match has no reference price (no API odds): shown before registering. */
+  noReference?: boolean;
 };
 
 /** Registers a bet in the journal. Limits (US6) are enforced by the API:
@@ -40,6 +42,7 @@ export function RegisterBetForm({
   odds,
   fromSignal = false,
   suggestedStake,
+  noReference = false,
 }: Props) {
   const create = useCreateBet();
   const [pending, setPending] = useState<{ body: BetIn; error: ApiError } | null>(null);
@@ -122,6 +125,7 @@ export function RegisterBetForm({
           </span>
         )}
       </p>
+      {noReference && <NoReferenceNotice />}
       <fieldset className="flex gap-4 text-sm">
         <legend className="mb-1 text-sm">Tipo</legend>
         <label className="flex items-center gap-1">
@@ -215,6 +219,19 @@ export function RegisterBetForm({
           <ErrorBox error={create.error} />
         )}
     </form>
+  );
+}
+
+export function NoReferenceNotice() {
+  return (
+    <p
+      role="note"
+      className="rounded border border-amber-300 bg-amber-50 p-2 text-sm text-amber-900"
+    >
+      <strong>Sin cuota de referencia.</strong> Este partido no tiene cuotas de la API: la apuesta
+      cuenta para todos los límites, queda fuera de la señal de valor y su CLV se calculará después
+      con el cierre de Pinnacle de football-data si está disponible.
+    </p>
   );
 }
 

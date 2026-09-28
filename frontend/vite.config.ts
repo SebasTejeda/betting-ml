@@ -14,6 +14,7 @@ export default defineConfig({
     setupFiles: ["./src/test/setup.ts"],
     css: false,
     globals: true,
+    testTimeout: 15_000, // user-event flows on a busy machine (CI) can exceed 5 s
     coverage: {
       include: ["src/**/*.{ts,tsx}"],
       exclude: ["src/test/**", "src/**/*.test.tsx", "src/main.tsx", "src/api/schema.d.ts"],

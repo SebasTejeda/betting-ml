@@ -15,9 +15,10 @@
 
 from __future__ import annotations
 
+import re
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import UTC, date, datetime, time, timedelta
 from decimal import Decimal
 from enum import StrEnum
 from zoneinfo import ZoneInfo
@@ -28,6 +29,7 @@ LIMA = ZoneInfo("America/Lima")
 NEAR_LIMIT_SHARE = Decimal("0.8")
 SIGNAL_TARGET_BETS = 100
 OVERDUE_AFTER = timedelta(hours=3)
+MATCH_DATE = re.compile(r"^[A-Z0-9]+-(\d{4}-\d{2}-\d{2})-")
 
 
 class LimitStatus(StrEnum):
@@ -118,29 +120,40 @@ def unconfirmed_manual(bet: Bet) -> bool:
     return bet.result_source == "manual" and bet.status in (BetStatus.WON, BetStatus.VOID)
 
 
+def latest_start(bet: Bet) -> datetime | None:
+    """Kick-off, or, when it is unknown (bet without reference), the end of the match day
+    taken from the ``match_id`` (worst case for "the match is surely over")."""
+    if bet.kickoff_utc is not None:
+        return bet.kickoff_utc
+    found = MATCH_DATE.match(bet.match_id)
+    if found is None:
+        return None
+    day = date.fromisoformat(found.group(1))
+    return datetime.combine(day, time(0), tzinfo=UTC) + timedelta(days=1)
+
+
 def overdue_pending(bets: Iterable[Bet], now: datetime) -> Decimal:
     """Stakes of real bets still pending more than ``OVERDUE_AFTER`` after kick-off (the match
-    is over but nobody settled them)."""
-    return sum(
-        (
-            b.stake
-            for b in bets
-            if b.kind is BetKind.REAL
-            and b.status is BetStatus.PENDING
-            and b.kickoff_utc is not None
-            and now - b.kickoff_utc > OVERDUE_AFTER
-        ),
-        Decimal("0.00"),
-    )
+    is over but nobody settled them). Without a known kick-off, the end of the match day."""
+    total = Decimal("0.00")
+    for b in bets:
+        if b.kind is not BetKind.REAL or b.status is not BetStatus.PENDING:
+            continue
+        start = latest_start(b)
+        if start is not None and now - start > OVERDUE_AFTER:
+            total += b.stake
+    return total
 
 
 def signal_progress(bets: Iterable[Bet]) -> SignalProgress:
-    """Settled paper bets from the experimental signal with a CLV."""
+    """Settled paper bets from the experimental signal with a CLV (bets registered without a
+    reference price are not part of the signal)."""
     clvs = [
         b.clv
         for b in bets
         if b.kind is BetKind.PAPER
         and b.from_experimental_signal
+        and not b.no_reference
         and b.clv is not None
         and b.status is not BetStatus.PENDING
     ]

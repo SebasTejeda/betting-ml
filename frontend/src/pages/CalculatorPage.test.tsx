@@ -1,4 +1,4 @@
-import { screen, within } from "@testing-library/react";
+import { fireEvent, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 
@@ -238,3 +238,61 @@ test("a 'valor' verdict is the experimental signal: paper by default and flagged
   expect(await screen.findByRole("alertdialog")).toHaveTextContent("0/100 apuestas en papel");
   expect(bodies[0]).toMatchObject({ kind: "real", from_experimental_signal: true, confirm: false });
 });
+
+test("a bet on a match without odds is registered with the no-reference notice", async () => {
+  base();
+  server.use(
+    http.get(`${API}/leagues`, () =>
+      HttpResponse.json([{ code: "SP1", name: "LaLiga", country: "Spain", teams: 20 }]),
+    ),
+    http.get(`${API}/leagues/SP1/teams`, () =>
+      HttpResponse.json([
+        { name: "Alaves", elo: 1500 },
+        { name: "Ath Madrid", elo: 1700 },
+      ]),
+    ),
+  );
+  let body: Record<string, unknown> = {};
+  server.use(
+    http.post(`${API}/bets`, async ({ request }) => {
+      body = (await request.json()) as Record<string, unknown>;
+      return HttpResponse.json(
+        bet({
+          id: 11,
+          sin_referencia: true,
+          warnings: ["Sin cuota de referencia: el partido no tiene cuotas de la API."],
+        }),
+        { status: 201 },
+      );
+    }),
+  );
+  renderApp("/calculator");
+  // jsdom does not toggle <details> on click: open it and fire the event the page listens to
+  const details = (await screen.findByText(/El partido no aparece/)).closest("details")!;
+  details.open = true;
+  fireEvent(details, new Event("toggle"));
+  await screen.findByRole("option", { name: "LaLiga" });
+  await userEvent.selectOptions(screen.getAllByLabelText("Liga")[0]!, "SP1");
+  await within(screen.getByLabelText("Local")).findByRole("option", { name: "Ath Madrid" });
+  fireEvent.change(screen.getByLabelText("Fecha del partido"), { target: { value: "2026-10-10" } });
+  await userEvent.selectOptions(screen.getByLabelText("Local"), "Alaves");
+  await userEvent.selectOptions(screen.getByLabelText("Visita"), "Ath Madrid");
+  await userEvent.selectOptions(screen.getAllByLabelText("Resultado")[0]!, "away");
+  await userEvent.selectOptions(screen.getAllByLabelText("Casa")[0]!, "teapuesto");
+  await userEvent.type(screen.getAllByLabelText("Cuota")[0]!, "2.1");
+  const form = await screen.findByRole("form", { name: "Registrar apuesta" });
+  expect(within(form).getByRole("note")).toHaveTextContent("Sin cuota de referencia");
+  expect(within(form).getByLabelText(/Real/)).toBeChecked();
+  await userEvent.type(within(form).getByLabelText("Stake"), "5");
+  await userEvent.click(within(form).getByRole("button", { name: "Registrar apuesta" }));
+  expect(await screen.findByText(/registrada \(#11\)/)).toBeInTheDocument();
+  expect(screen.getByText(/Sin cuota de referencia: el partido/)).toBeInTheDocument();
+  expect(body).toMatchObject({
+    match_id: "SP1-2026-10-10-alaves-ath-madrid",
+    outcome: "away",
+    bookmaker: "teapuesto",
+    odds: 2.1,
+    kind: "real",
+    from_experimental_signal: false,
+  });
+}, 20_000);

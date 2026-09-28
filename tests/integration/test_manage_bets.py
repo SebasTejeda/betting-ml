@@ -18,7 +18,6 @@ from betting_ml.application.manage_bets import (
     BetStateError,
     LimitWarningError,
     ManageBets,
-    MatchWithoutOddsError,
     MonthlyLimitReachedError,
     NewBet,
 )
@@ -234,11 +233,44 @@ def test_manual_quotes_do_not_change_fair_probability(env) -> None:  # type: ign
     assert use_case.create(_new(kind=BetKind.PAPER)).fair_probability == pytest.approx(before)
 
 
-def test_real_bets_need_a_known_kickoff(env) -> None:  # type: ignore[no-untyped-def]
+NO_ODDS = "E0-2026-10-11-foo-bar"
+
+
+def test_real_bet_without_reference_is_registered_and_flagged(env) -> None:  # type: ignore[no-untyped-def]
+    use_case, _ = env
+    bet = use_case.create(_new(match_id=NO_ODDS, odds=D("50.00")), confirm=True)
+    assert bet.kind is BetKind.REAL and bet.no_reference and bet.kickoff_utc is None
+    assert bet.fair_probability is None and bet.ev is None
+    assert any("Sin cuota de referencia" in w for w in bet.warnings)
+    assert use_case.get(bet.id).no_reference  # persisted
+    # bets with a reference are not flagged
+    assert not use_case.create(_new(kind=BetKind.PAPER)).no_reference
+
+
+def test_bets_without_reference_count_for_every_limit(env) -> None:  # type: ignore[no-untyped-def]
     use_case, clock = env
-    with pytest.raises(MatchWithoutOddsError):
-        use_case.create(_new(match_id="E0-2026-10-11-foo-bar", odds=D("50.00")), confirm=True)
-    paper = use_case.create(_new(kind=BetKind.PAPER, match_id="E0-2026-10-11-foo-bar"))
+    with pytest.raises(LimitWarningError):  # max stake (2 % of 500 = 10)
+        use_case.create(_new(match_id=NO_ODDS, stake=D("25.00")))
+    for _ in range(7):
+        use_case.create(_new(match_id=NO_ODDS, stake=D("10.00")))
+    with pytest.raises(LimitWarningError) as near:  # pending exposure
+        use_case.create(_new(match_id=NO_ODDS, stake=D("10.00")))
+    assert "pendientes 70.00" in near.value.check.messages[0]
+    for _ in range(3):
+        use_case.create(_new(match_id=NO_ODDS, stake=D("10.00")), confirm=True)
+    # unknown kick-off: overdue once the match day is over (+3 h) -> counts as lost for the 403
+    clock.now = datetime(2026, 10, 12, 2, tzinfo=UTC)
+    use_case.create(_new(stake=D("1.00")), confirm=True)  # 12 Oct 02:00 UTC: not overdue yet
+    clock.now = datetime(2026, 10, 12, 4, tzinfo=UTC)
+    with pytest.raises(MonthlyLimitReachedError):
+        use_case.create(_new(stake=D("1.00")), confirm=True)
+    # 100 without reference + the 1.00 bet on the earlier match, both over and unsettled
+    assert use_case.summary().month_loss == D("101.00")
+
+
+def test_manual_settlement_of_a_bet_without_kickoff(env) -> None:  # type: ignore[no-untyped-def]
+    use_case, clock = env
+    paper = use_case.create(_new(kind=BetKind.PAPER, match_id=NO_ODDS))
     assert paper.kickoff_utc is None
     with pytest.raises(BetStateError) as early:  # the match day has not started yet
         use_case.update(paper.id, status=BetStatus.WON)

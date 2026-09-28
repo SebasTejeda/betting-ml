@@ -186,6 +186,7 @@ class BetOut(BaseModel):
     profit: Money | None
     settled_at: datetime | None
     result_source: Literal["manual", "official"] | None = None
+    sin_referencia: bool = False
     warnings: list[str]
 
 

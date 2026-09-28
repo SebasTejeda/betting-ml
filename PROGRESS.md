@@ -132,3 +132,4 @@ Spec activa: [`specs/002-odds-comparator/`](specs/002-odds-comparator/). Una lí
   - El próximo refresco mapeará los 4 equipos de LaLiga nuevos; conviene revisar `unmapped_teams` en D1, I1 y F1 en su primer refresco.
   - En `data/app.db` queda la apuesta en papel #1 de la verificación, que se puede borrar antes del inicio del partido.
   - El navegador usado para la prueba guardó una clave temporal: pulsa "Clave configurada" y pega tu `APP_API_KEY`.
+- 2026-09-28 · Cambio del dueño · Apuestas reales sin cuota de referencia: ya no se rechazan (422); se registran con sin_referencia=true (migración 0003), cuentan para todos los límites de US6 (vencidas desde el final del día del partido + 3 h), quedan fuera de la señal y su CLV sale del cierre de Pinnacle de football-data. Calculadora con '¿El partido no aparece?' y aviso; Mis apuestas las marca. CLAUDE.md empieza con 'Responde siempre al usuario en español.'

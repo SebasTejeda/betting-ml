@@ -117,14 +117,14 @@ Veredicto: `valor` si `ev ≥ min_edge`; `justo` si `0 ≤ ev < min_edge`; `evit
 ```json
 { "match_id": "...", "outcome": "away", "bookmaker": "teapuesto", "odds": 4.40, "stake": 10.0, "kind": "paper", "from_experimental_signal": false, "note": "opcional" }
 ```
-`201` con la apuesta creada. `kind`: `real` | `paper`. `from_experimental_signal` (default `false`) marca las apuestas que vienen de la señal experimental.
+`201` con la apuesta creada. `kind`: `real` | `paper`. `from_experimental_signal` (default `false`) marca las apuestas que vienen de la señal experimental. La respuesta incluye `sin_referencia` (bool) y `result_source` (`manual` | `official` | `null`).
 
 Señal experimental sin evidencia: si `kind = real`, `from_experimental_signal = true` y aún no hay 100 apuestas en papel de la señal con CLV medio > 0, sin `"confirm": true` responde `409` con `code: "EXPERIMENTAL_SIGNAL_UNPROVEN"` y el mensaje "Esta señal aún no tiene evidencia (X/100 apuestas en papel, CLV actual Y). ¿Apostar dinero real igual?". Con `confirm: true` se registra (con la marca).
 
 Si viola un límite (US6):
 - Advertencia (stake alto o se acerca al límite mensual): `201` con `"warnings": ["..."]` **solo si** el request trae `"confirm": true`; si no, `409` con `code: "LIMIT_WARNING"` y el detalle. El "peor caso" suma la pérdida del mes + el stake de las apuestas reales pendientes + el stake nuevo.
 - Presupuesto mensual superado y `kind = real`: `403` con `code: "MONTHLY_LIMIT_REACHED"`. Para el bloqueo, las apuestas reales pendientes de partidos que empezaron hace más de 3 h cuentan como perdidas hasta que se liquidan.
-- Apuesta `real` sobre un partido sin cuotas de la API (hora de inicio desconocida): `422` con `code: "MATCH_WITHOUT_ODDS"`. En papel se acepta; sin hora de inicio conocida, se usa el inicio del día del `match_id` para liquidar o borrar.
+- Apuesta sobre un partido sin cuota de referencia (sin cuotas de la API): se registra (`201`) con `"sin_referencia": true` y un aviso en `warnings`. Cuenta para todos los límites (pérdida mensual, stake máximo y pendientes) y queda fuera de la señal de valor. Su CLV se calcula al liquidar con el cierre de Pinnacle de football-data (`psc_odds_*`) si está disponible. Sin hora de inicio conocida, para liquidar o borrar se usa el inicio del día del `match_id`, y para contarla como pendiente vencida, el final de ese día (+3 h).
 - Una apuesta registrada después del inicio del partido se acepta pero lleva un aviso en `warnings`, y su probabilidad justa usa solo cuotas anteriores al inicio.
 
 ### GET `/api/v1/bets`

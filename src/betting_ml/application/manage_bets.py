@@ -38,6 +38,11 @@ from betting_ml.domain.value import reference_probabilities
 
 MATCH_ID = re.compile(r"^(?P<league>[A-Z0-9]+)-(?P<date>\d{4}-\d{2}-\d{2})-[a-z0-9-]+$")
 ROI_NOTE = "Con menos de 300 apuestas el ROI es mayormente ruido; mira el CLV."
+NO_REFERENCE_WARNING = (
+    "Sin cuota de referencia: el partido no tiene cuotas de la API. Cuenta para los límites, "
+    "queda fuera de la señal de valor y su CLV se calculará con el cierre de Pinnacle de "
+    "football-data si está disponible."
+)
 
 
 class LimitError(Exception):
@@ -62,18 +67,6 @@ class BetNotFoundError(LookupError):
 
 class BetNotPendingError(ValueError):
     code = "BET_NOT_PENDING"
-
-
-class MatchWithoutOddsError(ValueError):
-    """422: a real bet needs a match with API odds (known kick-off), so that it can be settled
-    with the official result and never by hand at any time."""
-
-    def __init__(self, match_id: str) -> None:
-        super().__init__(
-            f"El partido {match_id} no tiene cuotas de la API (hora de inicio desconocida): "
-            "no se pueden registrar apuestas reales sobre él; usa una apuesta en papel."
-        )
-        self.match_id = match_id
 
 
 class BetStateError(BetNotPendingError):
@@ -246,8 +239,6 @@ class ManageBets:
         if request.stake <= 0 or request.odds <= 1:
             raise ValueError("stake > 0 y cuota > 1")
         info = self._match_info(request.match_id)
-        if request.kind is BetKind.REAL and info["kickoff_utc"] is None:
-            raise MatchWithoutOddsError(request.match_id)
         result = self.check(request)
         if result.status is LimitStatus.BLOCKED:
             raise MonthlyLimitReachedError(result)
@@ -255,6 +246,8 @@ class ManageBets:
             raise LimitWarningError(result)
         fair, ev = self._fair(request.match_id, request.outcome, request.odds, info["kickoff_utc"])
         warnings = result.messages
+        if fair is None:
+            warnings = (*warnings, NO_REFERENCE_WARNING)
         if info["kickoff_utc"] is not None and self.clock() >= info["kickoff_utc"]:
             warnings = (
                 *warnings,
@@ -277,6 +270,7 @@ class ManageBets:
             fair_probability=fair,
             ev=ev,
             warnings=warnings,
+            no_reference=fair is None,
         )
         return self.bets.add(bet)
 

@@ -1,3 +1,5 @@
+Responde siempre al usuario en español.
+
 # CLAUDE.md — Guía para el agente
 
 Proyecto: modelo de ML para predecir partidos de fútbol (1X2), detectar value bets y servirlo con una API REST; comparador de cuotas con referencia Pinnacle, diario de apuestas y frontend. Se construye con **Spec-Driven Development (SDD)**.

@@ -4,6 +4,7 @@ import { useSearchParams } from "react-router-dom";
 import { useComparator } from "../api/hooks";
 import type { CalculatorResult, Outcome } from "../api/types";
 import { ManualOddsForm } from "../components/ManualOddsForm";
+import { NoReferenceBet } from "../components/NoReferenceBet";
 import { RegisterBetForm } from "../components/RegisterBetForm";
 import { Card, Empty, ErrorBox, Loading, PageTitle } from "../components/ui";
 import { kickoff, todayLima } from "../lib/format";
@@ -19,6 +20,7 @@ export function CalculatorPage() {
   );
   const [matchId, setMatchId] = useState(draft?.matchId ?? "");
   const [evaluated, setEvaluated] = useState<Evaluated | null>(null);
+  const [noReferenceOpen, setNoReferenceOpen] = useState(false);
   const matches = useComparator({ date, accessibleOnly: true });
   const fromSignal = Boolean(
     draft?.fromSignal &&
@@ -75,6 +77,15 @@ export function CalculatorPage() {
         {matches.isPending && <Loading what="partidos" />}
         {matches.isError && <ErrorBox error={matches.error} />}
       </Card>
+      <details
+        className="mb-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm"
+        onToggle={(event) => setNoReferenceOpen(event.currentTarget.open)}
+      >
+        <summary className="cursor-pointer text-sm font-medium">
+          ¿El partido no aparece? Registrar una apuesta sin cuota de referencia
+        </summary>
+        <div className="mt-3">{noReferenceOpen && <NoReferenceBet defaultDate={date} />}</div>
+      </details>
       {!matchId ? (
         <Empty>Elige un partido para evaluar una cuota.</Empty>
       ) : fromSignal && draft?.outcome && draft.bookmaker && draft.odds ? (

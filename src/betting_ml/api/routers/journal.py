@@ -41,7 +41,7 @@ from betting_ml.api.schemas_002 import (
     Triple,
 )
 from betting_ml.application.compare_matches import EXPERIMENTAL_LABEL, MatchComparison
-from betting_ml.application.manage_bets import MatchWithoutOddsError, NewBet
+from betting_ml.application.manage_bets import NewBet
 from betting_ml.domain.entities import OUTCOMES, Outcome
 from betting_ml.domain.journal import BankrollSettings, Bet, BetFilters, BetKind, BetStatus
 
@@ -158,6 +158,7 @@ def _bet_out(bet: Bet) -> BetOut:
         clv=bet.clv,
         clv_source=bet.clv_source,
         result_source=bet.result_source,
+        sin_referencia=bet.no_reference,
         profit=bet.profit,
         settled_at=bet.settled_at,
         warnings=list(bet.warnings),
@@ -277,8 +278,6 @@ def calculator(body: CalculatorIn, container: Any = Depends(get_container)) -> C
 def create_bet(body: BetIn, container: Any = Depends(get_container)) -> BetOut:
     try:
         bet = _create(container, body)
-    except MatchWithoutOddsError:
-        raise  # 422 MATCH_WITHOUT_ODDS (api/errors.py)
     except ValueError as exc:
         raise ApiError(422, "VALIDATION_ERROR", str(exc)) from exc
     return _bet_out(bet)

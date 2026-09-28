@@ -1,3 +1,4 @@
+from dataclasses import replace
 from datetime import UTC, datetime
 from decimal import Decimal
 
@@ -13,6 +14,7 @@ from betting_ml.domain.limits import (
     check_bet,
     effective_from_for,
     effective_monthly_limit,
+    latest_start,
     month_key,
     monthly_loss,
     next_month_key,
@@ -179,3 +181,22 @@ def test_manual_wins_count_as_lost_until_confirmed() -> None:
     assert monthly_loss([manual_win, manual_void], "2026-10") == D("20.00")
     assert monthly_loss([manual_loss], "2026-10") == D("10.00")
     assert monthly_loss([official_win], "2026-10") == D("0.00")
+
+
+def test_bets_without_reference_are_out_of_the_signal() -> None:
+    at = datetime(2026, 10, 10, tzinfo=UTC)
+    base = _bet(BetKind.PAPER, BetStatus.PENDING, None, "10", from_experimental_signal=True)
+    counted = replace(base.settle(BetStatus.WON, at), clv=0.05)
+    excluded = replace(counted, no_reference=True, clv=-0.5)
+    progress = signal_progress([counted, excluded])
+    assert progress.paper_bets == 1 and progress.clv_mean == pytest.approx(0.05)
+
+
+def test_latest_start_without_kickoff_is_the_end_of_the_match_day() -> None:
+    no_kickoff = _bet(BetKind.REAL, BetStatus.PENDING, None, "10")  # E0-2026-10-03-a-b
+    assert latest_start(no_kickoff) == datetime(2026, 10, 4, tzinfo=UTC)
+    known = replace(no_kickoff, kickoff_utc=datetime(2026, 10, 3, 14, tzinfo=UTC))
+    assert latest_start(known) == datetime(2026, 10, 3, 14, tzinfo=UTC)
+    assert latest_start(replace(no_kickoff, match_id="weird")) is None
+    assert overdue_pending([no_kickoff], datetime(2026, 10, 4, 2, tzinfo=UTC)) == D("0.00")
+    assert overdue_pending([no_kickoff], datetime(2026, 10, 4, 4, tzinfo=UTC)) == D("10")

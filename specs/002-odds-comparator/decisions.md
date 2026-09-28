@@ -137,3 +137,16 @@ Formato:
   - Subir `bankroll_initial` o `max_stake_pct` aplica de inmediato. No relaja el límite de pérdida mensual, que sigue la regla del mes siguiente.
   - `from_experimental_signal` lo declara el cliente; el frontend lo envía siempre desde la señal.
   - La última cuota de una casa que retiró el partido se conserva.
+
+## 2026-09-28 — Apuestas reales sin cuota de referencia (decisión del dueño)
+- Cambio: se deja de rechazar con `422 MATCH_WITHOUT_ODDS` las apuestas reales sobre partidos sin cuotas de la API. Se registran marcadas `sin_referencia = true` (campo de dominio `no_reference`; migración `0003`). Reemplaza la decisión de la segunda revisión de T019.
+- **Motivo: el diario debe reflejar todas las apuestas reales para que el CLV y los límites sean fiables.** Rechazarlas dejaba fuera del diario dinero realmente apostado, y los límites y el CLV quedaban calculados sobre datos incompletos.
+- Reglas:
+  - Cuentan para todos los límites de US6: pérdida mensual (incluido el bloqueo 403), stake máximo y exposición pendiente.
+  - Se excluyen de la señal de valor: no suman al progreso X/100.
+  - Su CLV se calcula al liquidar con el cierre de Pinnacle de football-data (`psc_odds_*`) si está disponible. Sin kick-off no hay respaldo con The Odds API.
+- Por qué no se reabre el agujero que cerró el 422:
+  - Una victoria o nula marcada a mano cuenta como pérdida para el límite hasta que `settle` la confirma con el resultado oficial.
+  - Sin kick-off conocido, liquidar a mano exige que haya empezado el día del partido (según el `match_id`).
+  - Una pendiente real sin liquidar cuenta como perdida para el 403 desde el final del día del partido más 3 h (`latest_start`).
+- Frontend: la Calculadora tiene la sección "¿El partido no aparece?" (liga, fecha, equipos con nombres canónicos, casa accesible y cuota). Construye el `match_id` con las mismas reglas que el backend, para que `settle` encuentre el resultado oficial. Antes de registrar muestra el aviso "Sin cuota de referencia", y "Mis apuestas" marca estas apuestas.

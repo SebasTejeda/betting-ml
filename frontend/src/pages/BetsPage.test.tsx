@@ -104,6 +104,12 @@ test("API refusal when settling is shown", async () => {
   expect(await screen.findByRole("alert")).toHaveTextContent("el partido aún no empieza");
 });
 
+test("bets without reference are flagged", async () => {
+  base([bet({ id: 4, sin_referencia: true, kickoff: null })]);
+  renderApp("/bets");
+  expect(await screen.findByText("sin cuota de referencia")).toBeInTheDocument();
+});
+
 test("manual results are flagged until confirmed", async () => {
   base([bet({ id: 3, status: "ganada", result_source: "manual", profit: 17, kickoff: PAST })]);
   renderApp("/bets");
