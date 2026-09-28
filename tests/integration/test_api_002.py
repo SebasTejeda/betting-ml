@@ -434,6 +434,11 @@ def test_settle_settings_and_backtest(ctx) -> None:  # type: ignore[no-untyped-d
         '{"conclusion": "seguir con cambios"}', encoding="utf-8"
     )
     assert client.get("/api/v1/backtest/pinnacle").json()["conclusion"] == "seguir con cambios"
+    (journal.reports_path / "margins_002.json").write_text(
+        '{"current_season": "2026-27"}', encoding="utf-8"
+    )
+    report = client.get("/api/v1/backtest/pinnacle").json()
+    assert report["margins"]["current_season"] == "2026-27"
 
 
 def test_writes_disabled_with_default_key_and_missing_services(ctx, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]

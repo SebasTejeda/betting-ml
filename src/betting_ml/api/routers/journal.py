@@ -424,7 +424,11 @@ def backtest(container: Any = Depends(get_container)) -> dict[str, Any]:
             "BACKTEST_NOT_FOUND",
             "Aún no se ha ejecutado el backtest final (make backtest-002-final)",
         )
-    return json.loads(path.read_text(encoding="utf-8"))  # type: ignore[no-any-return]
+    report: dict[str, Any] = json.loads(path.read_text(encoding="utf-8"))
+    margins = path.with_name("margins_002.json")  # justifies the comparator (best vs average)
+    if margins.exists():
+        report["margins"] = json.loads(margins.read_text(encoding="utf-8"))
+    return report
 
 
 def _start(day: dt.date | None) -> dt.datetime | None:

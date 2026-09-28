@@ -173,4 +173,4 @@ Query: `kind` (`real` por defecto, `paper` o `all`), `from`, `to`.
 ## Backtest
 
 ### GET `/api/v1/backtest/pinnacle`
-Devuelve `reports/backtest_002.json` (resultados de US1) para mostrarlos en el frontend.
+Devuelve `reports/backtest_002.json` (resultados de US1) para mostrarlos en el frontend, con `margins` (contenido de `reports/margins_002.json`: margen medio por escenario y cuánto más paga la mejor cuota que el promedio) si existe. `404 BACKTEST_NOT_FOUND` si aún no se corrió el backtest final.
