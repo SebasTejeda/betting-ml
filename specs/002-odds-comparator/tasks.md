@@ -66,7 +66,7 @@ Mismas reglas de ejecución que la spec 001: en orden, una tarea a la vez, `lint
 - [x] **T020** Proyecto `frontend/` con Vite + React + TS + Tailwind + TanStack Query + React Router + ESLint/Prettier + Vitest. Generación de tipos desde `/openapi.json` (`npm run gen:api`). `make web`, `make dev`.
   - Commit: `feat(web): frontend skeleton`
 - [x] **T021** Página **Hoy** (tabla y tarjetas en el celular, botón de refresco con créditos).
-- [ ] **T022** Página **Partido** (tabla casas × resultados, margen, gráfico de referencia, calculadora rápida).
+- [x] **T022** Página **Partido** (tabla casas × resultados, margen, gráfico de referencia, calculadora rápida).
 - [ ] **T023** Página **Calculadora** + registrar apuesta (con el flujo de confirmación de límites).
 - [ ] **T024** Página **Mis apuestas** (tabla, liquidación y panel con KPIs y gráficos).
 - [ ] **T025** Páginas **Backtest** y **Ajustes**.
