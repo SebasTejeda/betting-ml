@@ -67,7 +67,7 @@ Mismas reglas de ejecución que la spec 001: en orden, una tarea a la vez, `lint
   - Commit: `feat(web): frontend skeleton`
 - [x] **T021** Página **Hoy** (tabla y tarjetas en el celular, botón de refresco con créditos).
 - [x] **T022** Página **Partido** (tabla casas × resultados, margen, gráfico de referencia, calculadora rápida).
-- [ ] **T023** Página **Calculadora** + registrar apuesta (con el flujo de confirmación de límites).
+- [x] **T023** Página **Calculadora** + registrar apuesta (con el flujo de confirmación de límites).
 - [ ] **T024** Página **Mis apuestas** (tabla, liquidación y panel con KPIs y gráficos).
 - [ ] **T025** Páginas **Backtest** y **Ajustes**.
 - [ ] **T026** Tests de frontend con MSW: cada página renderiza datos, estados vacíos, errores y el flujo de límites (409 → confirmación; 403 → bloqueo).
