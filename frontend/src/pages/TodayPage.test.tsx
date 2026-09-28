@@ -23,13 +23,13 @@ test("shows the best odds, margins and the experimental label", async () => {
     }),
   );
   renderApp("/");
-  const table = await screen.findByRole("table");
+  const table = await screen.findByRole("list", { name: "Partidos" });
   expect(within(table).getAllByText("Arsenal – Chelsea")[0]).toBeInTheDocument();
   expect(within(table).getAllByText("4.60")).toHaveLength(2);
   expect(within(table).getAllByText("Pagan +4.1 % vs promedio")).toHaveLength(2);
   expect(within(table).getByText("EXPERIMENTAL — solo papel")).toBeInTheDocument();
   expect(within(table).getAllByText("justa 4.35")).toHaveLength(1);
-  expect(within(table).getByRole("link", { name: /el modelo coincide/ })).toBeInTheDocument();
+  expect(within(table).getByText("el modelo coincide")).toBeInTheDocument();
   expect(within(table).getByText("Sin cuota de referencia")).toBeInTheDocument();
   expect(screen.queryByText(/recomendad/i)).not.toBeInTheDocument();
   const signal = within(table).getByRole("link", { name: /anotar en papel/ });
@@ -84,7 +84,7 @@ test("refresh sends the write key and reports a low budget (429)", async () => {
   );
   window.localStorage.setItem("betting-ml.apiKey", "k-123");
   renderApp("/");
-  await screen.findByRole("table");
+  await screen.findByRole("list", { name: "Partidos" });
   await userEvent.click(screen.getByRole("button", { name: "Actualizar cuotas" }));
   await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("Quedan 42 créditos"));
   expect(key).toBe("k-123");
@@ -100,7 +100,7 @@ test("the accessible filter can be turned off", async () => {
     }),
   );
   renderApp("/");
-  await screen.findByRole("table");
+  await screen.findByRole("list", { name: "Partidos" });
   await userEvent.click(screen.getByLabelText("Solo casas accesibles desde Perú"));
   await waitFor(() => expect(seen).toContain("false"));
 });
