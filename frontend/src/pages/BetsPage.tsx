@@ -44,7 +44,6 @@ import { OUTCOME_LABEL, type Bet, type Summary } from "../api/types";
 import {
   Empty,
   ErrorBox,
-  evTone,
   ExperimentalBadge,
   Loading,
   Meter,
@@ -64,6 +63,7 @@ import {
   TableRow,
 } from "../components/ui/table";
 import { kickoff, money, odds, pct } from "../lib/format";
+import { evTone } from "../lib/tone";
 import { cn } from "../lib/utils";
 
 const STATUS_LABEL: Record<string, string> = {

@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card as UiCard, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { pct } from "@/lib/format";
+import { evTone } from "@/lib/tone";
 import { cn } from "@/lib/utils";
 
 export const EXPERIMENTAL_LABEL = "EXPERIMENTAL — solo papel";
@@ -168,11 +169,6 @@ export function ExperimentalBadge({ className }: { className?: string }) {
       {EXPERIMENTAL_LABEL}
     </span>
   );
-}
-
-export function evTone(ev: number | null | undefined): string {
-  if (ev === null || ev === undefined) return "text-muted-foreground";
-  return ev > 0 ? "text-positive" : ev < 0 ? "text-negative" : "text-foreground";
 }
 
 /** EV with its sign, color and an icon (never color alone). */

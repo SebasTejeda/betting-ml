@@ -2,7 +2,7 @@ import { ChartLine, FileWarning, Scale, SearchX, TableProperties } from "lucide-
 
 import { ApiError } from "../api/client";
 import { useBacktest } from "../api/hooks";
-import { Empty, ErrorBox, evTone, Loading, PageTitle, Panel } from "../components/common";
+import { Empty, ErrorBox, Loading, PageTitle, Panel } from "../components/common";
 import { Badge } from "../components/ui/badge";
 import {
   Table,
@@ -14,6 +14,7 @@ import {
   TableRow,
 } from "../components/ui/table";
 import { pct } from "../lib/format";
+import { evTone } from "../lib/tone";
 
 type Result = {
   scenario: string;
