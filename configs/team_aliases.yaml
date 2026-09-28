@@ -63,6 +63,7 @@ teams:
     Alaves: {}
     Almeria: {}
     Ath Bilbao:
+      the_odds_api: ['Athletic Bilbao']
       understat: ['Athletic Club']
     Ath Madrid:
       understat: ['Atletico Madrid']
@@ -74,7 +75,8 @@ teams:
       understat: ['Celta Vigo']
     Cordoba: {}
     Eibar: {}
-    Elche: {}
+    Elche:
+      the_odds_api: ['Elche CF']
     Espanol:
       understat: ['Espanyol']
     Getafe: {}
@@ -89,11 +91,13 @@ teams:
     Levante: {}
     Malaga: {}
     Mallorca: {}
-    Osasuna: {}
+    Osasuna:
+      the_odds_api: ['CA Osasuna']
     Oviedo:
       understat: ['Real Oviedo']
     Real Madrid: {}
     Santander:
+      the_odds_api: ['Real Racing Club de Santander']
       understat: ['Racing Santander']
     Sevilla: {}
     Sociedad:
