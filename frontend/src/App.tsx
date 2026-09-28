@@ -6,6 +6,7 @@ import { BacktestPage } from "./pages/BacktestPage";
 import { CalculatorPage } from "./pages/CalculatorPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { TodayPage } from "./pages/TodayPage";
+import { TopPage } from "./pages/TopPage";
 
 // Pages with charts (Recharts) load on demand, keeping the first load small.
 const MatchPage = lazy(() => import("./pages/MatchPage").then((m) => ({ default: m.MatchPage })));
@@ -16,6 +17,7 @@ export function App() {
     <Routes>
       <Route element={<Layout />}>
         <Route index element={<TodayPage />} />
+        <Route path="top" element={<TopPage />} />
         <Route path="match/:matchId" element={<MatchPage />} />
         <Route path="calculator" element={<CalculatorPage />} />
         <Route path="bets" element={<BetsPage />} />

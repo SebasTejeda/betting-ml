@@ -150,3 +150,9 @@ Formato:
   - Sin kick-off conocido, liquidar a mano exige que haya empezado el día del partido (según el `match_id`).
   - Una pendiente real sin liquidar cuenta como perdida para el 403 desde el final del día del partido más 3 h (`latest_start`).
 - Frontend: la Calculadora tiene la sección "¿El partido no aparece?" (liga, fecha, equipos con nombres canónicos, casa accesible y cuota). Construye el `match_id` con las mismas reglas que el backend, para que `settle` encuentre el resultado oficial. Antes de registrar muestra el aviso "Sin cuota de referencia", y "Mis apuestas" marca estas apuestas.
+
+## 2026-09-28 — Página "Top del día" (/top) (petición del dueño)
+- Qué es: una lista única con las cuotas de la señal experimental de todas las ligas para la fecha elegida, ordenadas por EV. Muestra partido, resultado, casa, cuota, EV, si el modelo coincide y un botón "Registrar en papel", con la etiqueta "EXPERIMENTAL — solo papel" visible.
+- Implementación: solo frontend. Usa `GET /api/v1/comparator?only_value=true` (la API ya lo permitía), sin cambios en la API.
+- "EV positivo" se toma como la señal, es decir, EV por encima del umbral `min_edge` de Ajustes, y se filtra EV > 0. Motivo: el botón registra apuestas en papel marcadas como de la señal. Si se incluyeran cuotas con EV entre 0 y el umbral, entrarían en la evidencia de las 100 apuestas en papel cosas que no son la señal.
+- Juego responsable: la página avisa que la lista no tiene evidencia y que un EV alto con cuotas altas suele ser ruido. El registro va a la calculadora en papel por defecto, con el mismo flujo de límites.

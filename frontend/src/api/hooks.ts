@@ -15,7 +15,12 @@ export const keys = {
   backtest: ["backtest"] as const,
 };
 
-export type ComparatorParams = { date: string; league?: string; accessibleOnly: boolean };
+export type ComparatorParams = {
+  date: string;
+  league?: string;
+  accessibleOnly: boolean;
+  onlyValue?: boolean;
+};
 export type BetsParams = {
   kind?: "real" | "paper";
   status?: "pendiente" | "ganada" | "perdida" | "nula";
@@ -67,6 +72,7 @@ export function useComparator(params: ComparatorParams) {
               date: params.date,
               league: params.league || undefined,
               accessible_only: params.accessibleOnly,
+              only_value: params.onlyValue || undefined,
             },
           },
         }),
