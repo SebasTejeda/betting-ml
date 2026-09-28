@@ -63,7 +63,7 @@ Mismas reglas de ejecución que la spec 001: en orden, una tarea a la vez, `lint
 
 ## Fase 4 — Frontend
 
-- [ ] **T020** Proyecto `frontend/` con Vite + React + TS + Tailwind + TanStack Query + React Router + ESLint/Prettier + Vitest. Generación de tipos desde `/openapi.json` (`npm run gen:api`). `make web`, `make dev`.
+- [x] **T020** Proyecto `frontend/` con Vite + React + TS + Tailwind + TanStack Query + React Router + ESLint/Prettier + Vitest. Generación de tipos desde `/openapi.json` (`npm run gen:api`). `make web`, `make dev`.
   - Commit: `feat(web): frontend skeleton`
 - [ ] **T021** Página **Hoy** (tabla y tarjetas en el celular, botón de refresco con créditos).
 - [ ] **T022** Página **Partido** (tabla casas × resultados, margen, gráfico de referencia, calculadora rápida).

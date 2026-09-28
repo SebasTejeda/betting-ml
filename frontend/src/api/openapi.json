@@ -1,0 +1,3482 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "betting-ml API",
+    "description": "Predicciones 1X2 y value bets para las 5 grandes ligas (contracts/api.md).",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "tags": [
+          "health"
+        ],
+        "summary": "Health",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Health"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/leagues": {
+      "get": {
+        "tags": [
+          "leagues"
+        ],
+        "summary": "Leagues",
+        "operationId": "leagues_api_v1_leagues_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/League"
+                  },
+                  "type": "array",
+                  "title": "Response Leagues Api V1 Leagues Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/leagues/{code}/teams": {
+      "get": {
+        "tags": [
+          "leagues"
+        ],
+        "summary": "Teams",
+        "operationId": "teams_api_v1_leagues__code__teams_get",
+        "parameters": [
+          {
+            "name": "code",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Code"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Team"
+                  },
+                  "title": "Response Teams Api V1 Leagues  Code  Teams Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/matches": {
+      "get": {
+        "tags": [
+          "matches"
+        ],
+        "summary": "Matches",
+        "operationId": "matches_api_v1_matches_get",
+        "parameters": [
+          {
+            "name": "date",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "YYYY-MM-DD; por defecto hoy en America/Lima",
+              "title": "Date"
+            },
+            "description": "YYYY-MM-DD; por defecto hoy en America/Lima"
+          },
+          {
+            "name": "league",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Código de liga, p. ej. E0",
+              "title": "League"
+            },
+            "description": "Código de liga, p. ej. E0"
+          },
+          {
+            "name": "only_value",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "Solo partidos con al menos una value bet",
+              "default": false,
+              "title": "Only Value"
+            },
+            "description": "Solo partidos con al menos una value bet"
+          },
+          {
+            "name": "min_edge",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "description": "Umbral de valor esperado",
+              "default": 0.05,
+              "title": "Min Edge"
+            },
+            "description": "Umbral de valor esperado"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MatchesResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/predictions": {
+      "post": {
+        "tags": [
+          "predictions"
+        ],
+        "summary": "Predict",
+        "operationId": "predict_api_v1_predictions_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PredictionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PredictionResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/model": {
+      "get": {
+        "tags": [
+          "model"
+        ],
+        "summary": "Model",
+        "operationId": "model_api_v1_model_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelInfo"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/experiments": {
+      "get": {
+        "tags": [
+          "experiments"
+        ],
+        "summary": "Experiments",
+        "description": "Contenido de reports/experiments.csv ordenado por log loss de validación.",
+        "operationId": "experiments_api_v1_experiments_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "type": "array",
+                  "title": "Response Experiments Api V1 Experiments Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tracking/summary": {
+      "get": {
+        "tags": [
+          "tracking"
+        ],
+        "summary": "Summary",
+        "operationId": "summary_api_v1_tracking_summary_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrackingSummaryOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/refresh": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Refresh",
+        "operationId": "refresh_api_v1_admin_refresh_post",
+        "parameters": [
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RefreshResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/odds/refresh": {
+      "post": {
+        "tags": [
+          "spec-002"
+        ],
+        "summary": "Refresh Odds",
+        "operationId": "refresh_odds_api_v1_odds_refresh_post",
+        "parameters": [
+          {
+            "name": "league",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "League"
+            }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RefreshOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/odds/budget": {
+      "get": {
+        "tags": [
+          "spec-002"
+        ],
+        "summary": "Odds Budget",
+        "operationId": "odds_budget_api_v1_odds_budget_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BudgetOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/bookmakers": {
+      "get": {
+        "tags": [
+          "spec-002"
+        ],
+        "summary": "Bookmakers",
+        "operationId": "bookmakers_api_v1_bookmakers_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/BookmakerOut"
+                  },
+                  "type": "array",
+                  "title": "Response Bookmakers Api V1 Bookmakers Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/comparator": {
+      "get": {
+        "tags": [
+          "spec-002"
+        ],
+        "summary": "Comparator",
+        "operationId": "comparator_api_v1_comparator_get",
+        "parameters": [
+          {
+            "name": "date",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "YYYY-MM-DD; por defecto hoy en America/Lima",
+              "title": "Date"
+            },
+            "description": "YYYY-MM-DD; por defecto hoy en America/Lima"
+          },
+          {
+            "name": "league",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "League"
+            }
+          },
+          {
+            "name": "only_value",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "Solo partidos con señal experimental",
+              "default": false,
+              "title": "Only Value"
+            },
+            "description": "Solo partidos con señal experimental"
+          },
+          {
+            "name": "min_edge",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "maximum": 1.0,
+                  "minimum": 0.0
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Min Edge"
+            }
+          },
+          {
+            "name": "accessible_only",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": true,
+              "title": "Accessible Only"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComparatorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/comparator/{match_id}": {
+      "get": {
+        "tags": [
+          "spec-002"
+        ],
+        "summary": "Comparator Detail",
+        "operationId": "comparator_detail_api_v1_comparator__match_id__get",
+        "parameters": [
+          {
+            "name": "match_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Match Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComparatorDetailOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/calculator": {
+      "post": {
+        "tags": [
+          "spec-002"
+        ],
+        "summary": "Calculator",
+        "operationId": "calculator_api_v1_calculator_post",
+        "parameters": [
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CalculatorIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalculatorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/bets": {
+      "post": {
+        "tags": [
+          "spec-002"
+        ],
+        "summary": "Create Bet",
+        "operationId": "create_bet_api_v1_bets_post",
+        "parameters": [
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BetIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BetOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "spec-002"
+        ],
+        "summary": "List Bets",
+        "operationId": "list_bets_api_v1_bets_get",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/BetStatus"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "name": "kind",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/BetKind"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Kind"
+            }
+          },
+          {
+            "name": "league",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "League"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "From"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "To"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 500,
+              "minimum": 1,
+              "default": 50,
+              "title": "Size"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BetPage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/bets/settle": {
+      "post": {
+        "tags": [
+          "spec-002"
+        ],
+        "summary": "Settle",
+        "operationId": "settle_api_v1_bets_settle_post",
+        "parameters": [
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettleOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/bets/summary": {
+      "get": {
+        "tags": [
+          "spec-002"
+        ],
+        "summary": "Summary",
+        "operationId": "summary_api_v1_bets_summary_get",
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^(real|paper|all)$",
+              "default": "real",
+              "title": "Kind"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "From"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "To"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SummaryOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/bets/{bet_id}": {
+      "patch": {
+        "tags": [
+          "spec-002"
+        ],
+        "summary": "Patch Bet",
+        "operationId": "patch_bet_api_v1_bets__bet_id__patch",
+        "parameters": [
+          {
+            "name": "bet_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Bet Id"
+            }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BetPatch"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BetOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "spec-002"
+        ],
+        "summary": "Delete Bet",
+        "operationId": "delete_bet_api_v1_bets__bet_id__delete",
+        "parameters": [
+          {
+            "name": "bet_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Bet Id"
+            }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/settings": {
+      "get": {
+        "tags": [
+          "spec-002"
+        ],
+        "summary": "Get Settings",
+        "operationId": "get_settings_api_v1_settings_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettingsOut"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "spec-002"
+        ],
+        "summary": "Put Settings",
+        "operationId": "put_settings_api_v1_settings_put",
+        "parameters": [
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SettingsIO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettingsOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/backtest/pinnacle": {
+      "get": {
+        "tags": [
+          "spec-002"
+        ],
+        "summary": "Backtest",
+        "operationId": "backtest_api_v1_backtest_pinnacle_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Backtest Api V1 Backtest Pinnacle Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "BankrollOut": {
+        "properties": {
+          "initial": {
+            "type": "number",
+            "title": "Initial"
+          },
+          "current": {
+            "type": "number",
+            "title": "Current"
+          },
+          "series": {
+            "items": {
+              "$ref": "#/components/schemas/SeriesPoint"
+            },
+            "type": "array",
+            "title": "Series"
+          }
+        },
+        "type": "object",
+        "required": [
+          "initial",
+          "current",
+          "series"
+        ],
+        "title": "BankrollOut"
+      },
+      "BestOut": {
+        "properties": {
+          "bookmaker": {
+            "type": "string",
+            "title": "Bookmaker"
+          },
+          "odds": {
+            "type": "number",
+            "title": "Odds"
+          },
+          "ev": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ev"
+          }
+        },
+        "type": "object",
+        "required": [
+          "bookmaker",
+          "odds",
+          "ev"
+        ],
+        "title": "BestOut"
+      },
+      "BetIn": {
+        "properties": {
+          "match_id": {
+            "type": "string",
+            "minLength": 3,
+            "title": "Match Id"
+          },
+          "outcome": {
+            "type": "string",
+            "enum": [
+              "home",
+              "draw",
+              "away"
+            ],
+            "title": "Outcome"
+          },
+          "bookmaker": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Bookmaker"
+          },
+          "odds": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 1.0
+              },
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,5}|(?=[\\d.]{1,9}0*$)\\d{0,5}\\.\\d{0,3}0*$)"
+              }
+            ],
+            "title": "Odds"
+          },
+          "stake": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,10}|(?=[\\d.]{1,13}0*$)\\d{0,10}\\.\\d{0,2}0*$)"
+              }
+            ],
+            "title": "Stake"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "real",
+              "paper"
+            ],
+            "title": "Kind"
+          },
+          "from_experimental_signal": {
+            "type": "boolean",
+            "title": "From Experimental Signal",
+            "default": false
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "confirm": {
+            "type": "boolean",
+            "title": "Confirm",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "match_id",
+          "outcome",
+          "bookmaker",
+          "odds",
+          "stake",
+          "kind"
+        ],
+        "title": "BetIn"
+      },
+      "BetKind": {
+        "type": "string",
+        "enum": [
+          "real",
+          "paper"
+        ],
+        "title": "BetKind"
+      },
+      "BetOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "match_id": {
+            "type": "string",
+            "title": "Match Id"
+          },
+          "league": {
+            "type": "string",
+            "title": "League"
+          },
+          "home_team": {
+            "type": "string",
+            "title": "Home Team"
+          },
+          "away_team": {
+            "type": "string",
+            "title": "Away Team"
+          },
+          "kickoff": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kickoff"
+          },
+          "outcome": {
+            "type": "string",
+            "enum": [
+              "home",
+              "draw",
+              "away"
+            ],
+            "title": "Outcome"
+          },
+          "bookmaker": {
+            "type": "string",
+            "title": "Bookmaker"
+          },
+          "odds": {
+            "type": "number",
+            "title": "Odds"
+          },
+          "stake": {
+            "type": "number",
+            "title": "Stake"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "from_experimental_signal": {
+            "type": "boolean",
+            "title": "From Experimental Signal"
+          },
+          "fair_probability": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fair Probability"
+          },
+          "ev": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ev"
+          },
+          "clv": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Clv"
+          },
+          "clv_source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Clv Source"
+          },
+          "profit": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profit"
+          },
+          "settled_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Settled At"
+          },
+          "result_source": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "manual",
+                  "official"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Result Source"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Warnings"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "created_at",
+          "match_id",
+          "league",
+          "home_team",
+          "away_team",
+          "kickoff",
+          "outcome",
+          "bookmaker",
+          "odds",
+          "stake",
+          "kind",
+          "status",
+          "note",
+          "from_experimental_signal",
+          "fair_probability",
+          "ev",
+          "clv",
+          "clv_source",
+          "profit",
+          "settled_at",
+          "warnings"
+        ],
+        "title": "BetOut"
+      },
+      "BetPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/BetOut"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page"
+          },
+          "size": {
+            "type": "integer",
+            "title": "Size"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "size"
+        ],
+        "title": "BetPage"
+      },
+      "BetPatch": {
+        "properties": {
+          "note": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "pendiente",
+                  "ganada",
+                  "perdida",
+                  "nula"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          }
+        },
+        "type": "object",
+        "title": "BetPatch"
+      },
+      "BetStatus": {
+        "type": "string",
+        "enum": [
+          "pendiente",
+          "ganada",
+          "perdida",
+          "nula"
+        ],
+        "title": "BetStatus"
+      },
+      "BookQuoteOut": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "accessible": {
+            "type": "boolean",
+            "title": "Accessible"
+          },
+          "odds": {
+            "$ref": "#/components/schemas/betting_ml__api__schemas_002__Triple"
+          },
+          "margin": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Margin"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "accessible",
+          "odds",
+          "margin",
+          "updated_at"
+        ],
+        "title": "BookQuoteOut"
+      },
+      "BookmakerOut": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "role": {
+            "type": "string",
+            "title": "Role"
+          },
+          "accessible": {
+            "type": "boolean",
+            "title": "Accessible"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "name",
+          "role",
+          "accessible",
+          "source"
+        ],
+        "title": "BookmakerOut"
+      },
+      "BudgetOut": {
+        "properties": {
+          "credits_remaining": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Credits Remaining"
+          },
+          "credits_used_month": {
+            "type": "integer",
+            "title": "Credits Used Month"
+          },
+          "min_reserve": {
+            "type": "integer",
+            "title": "Min Reserve"
+          },
+          "last_refresh": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Refresh"
+          },
+          "low": {
+            "type": "boolean",
+            "title": "Low"
+          }
+        },
+        "type": "object",
+        "required": [
+          "credits_remaining",
+          "credits_used_month",
+          "min_reserve",
+          "last_refresh",
+          "low"
+        ],
+        "title": "BudgetOut"
+      },
+      "CalculatorIn": {
+        "properties": {
+          "match_id": {
+            "type": "string",
+            "minLength": 3,
+            "title": "Match Id"
+          },
+          "outcome": {
+            "type": "string",
+            "enum": [
+              "home",
+              "draw",
+              "away"
+            ],
+            "title": "Outcome"
+          },
+          "bookmaker": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Bookmaker"
+          },
+          "odds": {
+            "type": "number",
+            "exclusiveMinimum": 1.0,
+            "title": "Odds"
+          }
+        },
+        "type": "object",
+        "required": [
+          "match_id",
+          "outcome",
+          "bookmaker",
+          "odds"
+        ],
+        "title": "CalculatorIn"
+      },
+      "CalculatorOut": {
+        "properties": {
+          "fair_probability": {
+            "type": "number",
+            "title": "Fair Probability"
+          },
+          "fair_odds": {
+            "type": "number",
+            "title": "Fair Odds"
+          },
+          "ev": {
+            "type": "number",
+            "title": "Ev"
+          },
+          "verdict": {
+            "type": "string",
+            "enum": [
+              "valor",
+              "justo",
+              "evitar"
+            ],
+            "title": "Verdict"
+          },
+          "experimental": {
+            "type": "boolean",
+            "title": "Experimental"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "suggested_stake": {
+            "type": "number",
+            "title": "Suggested Stake"
+          },
+          "model_probability": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Probability"
+          },
+          "model_agrees": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Agrees"
+          },
+          "reference": {
+            "type": "string",
+            "title": "Reference"
+          },
+          "best_available": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BestOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "fair_probability",
+          "fair_odds",
+          "ev",
+          "verdict",
+          "experimental",
+          "label",
+          "suggested_stake",
+          "model_probability",
+          "model_agrees",
+          "reference",
+          "best_available"
+        ],
+        "title": "CalculatorOut"
+      },
+      "ComparatorDetailOut": {
+        "properties": {
+          "match_id": {
+            "type": "string",
+            "title": "Match Id"
+          },
+          "league": {
+            "type": "string",
+            "title": "League"
+          },
+          "kickoff": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kickoff"
+          },
+          "home_team": {
+            "type": "string",
+            "title": "Home Team"
+          },
+          "away_team": {
+            "type": "string",
+            "title": "Away Team"
+          },
+          "fair": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FairOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "model": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ModelOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "best": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/BestOut"
+            },
+            "propertyNames": {
+              "enum": [
+                "home",
+                "draw",
+                "away"
+              ]
+            },
+            "type": "object",
+            "title": "Best"
+          },
+          "margins": {
+            "$ref": "#/components/schemas/MarginsOut"
+          },
+          "experimental_signal": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SignalOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "warning": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Warning"
+          },
+          "bookmakers": {
+            "items": {
+              "$ref": "#/components/schemas/BookQuoteOut"
+            },
+            "type": "array",
+            "title": "Bookmakers"
+          },
+          "reference_history": {
+            "items": {
+              "$ref": "#/components/schemas/HistoryPointOut"
+            },
+            "type": "array",
+            "title": "Reference History"
+          }
+        },
+        "type": "object",
+        "required": [
+          "match_id",
+          "league",
+          "kickoff",
+          "home_team",
+          "away_team",
+          "fair",
+          "model",
+          "best",
+          "margins",
+          "experimental_signal",
+          "bookmakers",
+          "reference_history"
+        ],
+        "title": "ComparatorDetailOut"
+      },
+      "ComparatorMatchOut": {
+        "properties": {
+          "match_id": {
+            "type": "string",
+            "title": "Match Id"
+          },
+          "league": {
+            "type": "string",
+            "title": "League"
+          },
+          "kickoff": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kickoff"
+          },
+          "home_team": {
+            "type": "string",
+            "title": "Home Team"
+          },
+          "away_team": {
+            "type": "string",
+            "title": "Away Team"
+          },
+          "fair": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FairOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "model": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ModelOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "best": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/BestOut"
+            },
+            "propertyNames": {
+              "enum": [
+                "home",
+                "draw",
+                "away"
+              ]
+            },
+            "type": "object",
+            "title": "Best"
+          },
+          "margins": {
+            "$ref": "#/components/schemas/MarginsOut"
+          },
+          "experimental_signal": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SignalOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "warning": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Warning"
+          }
+        },
+        "type": "object",
+        "required": [
+          "match_id",
+          "league",
+          "kickoff",
+          "home_team",
+          "away_team",
+          "fair",
+          "model",
+          "best",
+          "margins",
+          "experimental_signal"
+        ],
+        "title": "ComparatorMatchOut"
+      },
+      "ComparatorOut": {
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date",
+            "title": "Date"
+          },
+          "snapshot_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Snapshot At"
+          },
+          "reference": {
+            "type": "string",
+            "title": "Reference"
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          },
+          "matches": {
+            "items": {
+              "$ref": "#/components/schemas/ComparatorMatchOut"
+            },
+            "type": "array",
+            "title": "Matches"
+          }
+        },
+        "type": "object",
+        "required": [
+          "date",
+          "snapshot_at",
+          "reference",
+          "count",
+          "matches"
+        ],
+        "title": "ComparatorOut"
+      },
+      "FairOut": {
+        "properties": {
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "probabilities": {
+            "$ref": "#/components/schemas/betting_ml__api__schemas_002__Triple"
+          },
+          "odds": {
+            "$ref": "#/components/schemas/betting_ml__api__schemas_002__Triple"
+          }
+        },
+        "type": "object",
+        "required": [
+          "source",
+          "probabilities",
+          "odds"
+        ],
+        "title": "FairOut"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "Health": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "const": "ok",
+            "title": "Status",
+            "default": "ok"
+          },
+          "model_loaded": {
+            "type": "boolean",
+            "title": "Model Loaded"
+          },
+          "model_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Version"
+          },
+          "data_last_update": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data Last Update"
+          }
+        },
+        "type": "object",
+        "required": [
+          "model_loaded",
+          "model_version",
+          "data_last_update"
+        ],
+        "title": "Health"
+      },
+      "HistoryPointOut": {
+        "properties": {
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "At"
+          },
+          "odds": {
+            "$ref": "#/components/schemas/betting_ml__api__schemas_002__Triple"
+          }
+        },
+        "type": "object",
+        "required": [
+          "at",
+          "odds"
+        ],
+        "title": "HistoryPointOut"
+      },
+      "League": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "country": {
+            "type": "string",
+            "title": "Country"
+          },
+          "teams": {
+            "type": "integer",
+            "title": "Teams"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "name",
+          "country",
+          "teams"
+        ],
+        "title": "League"
+      },
+      "MarginsOut": {
+        "properties": {
+          "best_combined": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Best Combined"
+          },
+          "average": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Average"
+          },
+          "best_vs_average_uplift": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Best Vs Average Uplift"
+          }
+        },
+        "type": "object",
+        "required": [
+          "best_combined",
+          "average",
+          "best_vs_average_uplift"
+        ],
+        "title": "MarginsOut"
+      },
+      "Market": {
+        "properties": {
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "average_odds": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/betting_ml__api__schemas__Triple"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "best_odds": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/betting_ml__api__schemas__Triple"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "implied_probabilities": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/betting_ml__api__schemas__Triple"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "source",
+          "average_odds",
+          "best_odds",
+          "implied_probabilities"
+        ],
+        "title": "Market"
+      },
+      "MatchOut": {
+        "properties": {
+          "match_id": {
+            "type": "string",
+            "title": "Match Id"
+          },
+          "league": {
+            "type": "string",
+            "title": "League"
+          },
+          "kickoff": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kickoff"
+          },
+          "home_team": {
+            "type": "string",
+            "title": "Home Team"
+          },
+          "away_team": {
+            "type": "string",
+            "title": "Away Team"
+          },
+          "probabilities": {
+            "$ref": "#/components/schemas/betting_ml__api__schemas__Triple"
+          },
+          "fair_odds": {
+            "$ref": "#/components/schemas/betting_ml__api__schemas__Triple"
+          },
+          "market": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Market"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "value_bets": {
+            "items": {
+              "$ref": "#/components/schemas/ValueBetOut"
+            },
+            "type": "array",
+            "title": "Value Bets"
+          },
+          "over_under_2_5": {
+            "type": "null",
+            "title": "Over Under 2 5"
+          }
+        },
+        "type": "object",
+        "required": [
+          "match_id",
+          "league",
+          "kickoff",
+          "home_team",
+          "away_team",
+          "probabilities",
+          "fair_odds",
+          "market",
+          "value_bets"
+        ],
+        "title": "MatchOut"
+      },
+      "MatchesResponse": {
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date",
+            "title": "Date"
+          },
+          "model_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Version"
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "matches": {
+            "items": {
+              "$ref": "#/components/schemas/MatchOut"
+            },
+            "type": "array",
+            "title": "Matches"
+          }
+        },
+        "type": "object",
+        "required": [
+          "date",
+          "model_version",
+          "count",
+          "message",
+          "matches"
+        ],
+        "title": "MatchesResponse"
+      },
+      "ModelInfo": {
+        "properties": {
+          "version": {
+            "type": "string",
+            "title": "Version"
+          },
+          "experiment_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Experiment Id"
+          },
+          "trained_on": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trained On"
+          },
+          "features": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Features"
+          },
+          "validation_metrics": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Validation Metrics"
+          },
+          "holdout_metrics": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Holdout Metrics"
+          },
+          "success_level": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Success Level"
+          },
+          "model_no_odds_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model No Odds Version"
+          }
+        },
+        "type": "object",
+        "required": [
+          "version",
+          "experiment_id",
+          "trained_on",
+          "features",
+          "validation_metrics",
+          "holdout_metrics",
+          "success_level"
+        ],
+        "title": "ModelInfo"
+      },
+      "ModelOut": {
+        "properties": {
+          "probabilities": {
+            "$ref": "#/components/schemas/betting_ml__api__schemas_002__Triple"
+          },
+          "version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version"
+          }
+        },
+        "type": "object",
+        "required": [
+          "probabilities",
+          "version"
+        ],
+        "title": "ModelOut"
+      },
+      "MonthOut": {
+        "properties": {
+          "loss_limit": {
+            "type": "number",
+            "title": "Loss Limit"
+          },
+          "current_loss": {
+            "type": "number",
+            "title": "Current Loss"
+          },
+          "remaining": {
+            "type": "number",
+            "title": "Remaining"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loss_limit",
+          "current_loss",
+          "remaining"
+        ],
+        "title": "MonthOut"
+      },
+      "OddsIn": {
+        "properties": {
+          "home": {
+            "type": "number",
+            "exclusiveMinimum": 1.0,
+            "title": "Home"
+          },
+          "draw": {
+            "type": "number",
+            "exclusiveMinimum": 1.0,
+            "title": "Draw"
+          },
+          "away": {
+            "type": "number",
+            "exclusiveMinimum": 1.0,
+            "title": "Away"
+          }
+        },
+        "type": "object",
+        "required": [
+          "home",
+          "draw",
+          "away"
+        ],
+        "title": "OddsIn"
+      },
+      "PredictionRequest": {
+        "properties": {
+          "league": {
+            "type": "string",
+            "minLength": 1,
+            "title": "League",
+            "examples": [
+              "E0"
+            ]
+          },
+          "home_team": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Home Team",
+            "examples": [
+              "Arsenal"
+            ]
+          },
+          "away_team": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Away Team",
+            "examples": [
+              "Chelsea"
+            ]
+          },
+          "match_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Match Date"
+          },
+          "odds": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OddsIn"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "league",
+          "home_team",
+          "away_team"
+        ],
+        "title": "PredictionRequest"
+      },
+      "PredictionResponse": {
+        "properties": {
+          "match_id": {
+            "type": "string",
+            "title": "Match Id"
+          },
+          "league": {
+            "type": "string",
+            "title": "League"
+          },
+          "kickoff": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kickoff"
+          },
+          "home_team": {
+            "type": "string",
+            "title": "Home Team"
+          },
+          "away_team": {
+            "type": "string",
+            "title": "Away Team"
+          },
+          "probabilities": {
+            "$ref": "#/components/schemas/betting_ml__api__schemas__Triple"
+          },
+          "fair_odds": {
+            "$ref": "#/components/schemas/betting_ml__api__schemas__Triple"
+          },
+          "market": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Market"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "value_bets": {
+            "items": {
+              "$ref": "#/components/schemas/ValueBetOut"
+            },
+            "type": "array",
+            "title": "Value Bets"
+          },
+          "over_under_2_5": {
+            "type": "null",
+            "title": "Over Under 2 5"
+          },
+          "model_variant": {
+            "type": "string",
+            "enum": [
+              "with_odds",
+              "without_odds"
+            ],
+            "title": "Model Variant"
+          }
+        },
+        "type": "object",
+        "required": [
+          "match_id",
+          "league",
+          "kickoff",
+          "home_team",
+          "away_team",
+          "probabilities",
+          "fair_odds",
+          "market",
+          "value_bets",
+          "model_variant"
+        ],
+        "title": "PredictionResponse"
+      },
+      "RefreshOut": {
+        "properties": {
+          "snapshot_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Snapshot Id"
+          },
+          "leagues": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Leagues"
+          },
+          "events": {
+            "type": "integer",
+            "title": "Events"
+          },
+          "credits_used": {
+            "type": "integer",
+            "title": "Credits Used"
+          },
+          "credits_remaining": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Credits Remaining"
+          },
+          "unmapped_teams": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Unmapped Teams"
+          },
+          "stopped_by_budget": {
+            "type": "boolean",
+            "title": "Stopped By Budget",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "snapshot_id",
+          "leagues",
+          "events",
+          "credits_used",
+          "credits_remaining",
+          "unmapped_teams"
+        ],
+        "title": "RefreshOut"
+      },
+      "RefreshResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "const": "accepted",
+            "title": "Status",
+            "default": "accepted"
+          },
+          "fixtures": {
+            "type": "integer",
+            "title": "Fixtures"
+          },
+          "current_season_refresh": {
+            "type": "string",
+            "const": "scheduled",
+            "title": "Current Season Refresh",
+            "default": "scheduled"
+          }
+        },
+        "type": "object",
+        "required": [
+          "fixtures"
+        ],
+        "title": "RefreshResponse"
+      },
+      "SeriesPoint": {
+        "properties": {
+          "date": {
+            "type": "string",
+            "title": "Date"
+          },
+          "value": {
+            "type": "number",
+            "title": "Value"
+          }
+        },
+        "type": "object",
+        "required": [
+          "date",
+          "value"
+        ],
+        "title": "SeriesPoint"
+      },
+      "SettingsIO": {
+        "properties": {
+          "bankroll_initial": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              }
+            ],
+            "title": "Bankroll Initial"
+          },
+          "currency": {
+            "type": "string",
+            "maxLength": 3,
+            "minLength": 3,
+            "title": "Currency",
+            "default": "PEN"
+          },
+          "monthly_loss_limit": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              }
+            ],
+            "title": "Monthly Loss Limit"
+          },
+          "max_stake_pct": {
+            "type": "number",
+            "maximum": 1.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Max Stake Pct"
+          },
+          "kelly_fraction": {
+            "type": "number",
+            "maximum": 1.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Kelly Fraction"
+          },
+          "min_edge": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Min Edge"
+          }
+        },
+        "type": "object",
+        "required": [
+          "bankroll_initial",
+          "monthly_loss_limit",
+          "max_stake_pct",
+          "kelly_fraction",
+          "min_edge"
+        ],
+        "title": "SettingsIO"
+      },
+      "SettingsOut": {
+        "properties": {
+          "bankroll_initial": {
+            "type": "number",
+            "title": "Bankroll Initial"
+          },
+          "currency": {
+            "type": "string",
+            "maxLength": 3,
+            "minLength": 3,
+            "title": "Currency",
+            "default": "PEN"
+          },
+          "monthly_loss_limit": {
+            "type": "number",
+            "title": "Monthly Loss Limit"
+          },
+          "max_stake_pct": {
+            "type": "number",
+            "maximum": 1.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Max Stake Pct"
+          },
+          "kelly_fraction": {
+            "type": "number",
+            "maximum": 1.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Kelly Fraction"
+          },
+          "min_edge": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Min Edge"
+          },
+          "monthly_loss_limit_in_force": {
+            "type": "number",
+            "title": "Monthly Loss Limit In Force"
+          }
+        },
+        "type": "object",
+        "required": [
+          "bankroll_initial",
+          "monthly_loss_limit",
+          "max_stake_pct",
+          "kelly_fraction",
+          "min_edge",
+          "monthly_loss_limit_in_force"
+        ],
+        "title": "SettingsOut"
+      },
+      "SettleOut": {
+        "properties": {
+          "settled": {
+            "type": "integer",
+            "title": "Settled"
+          },
+          "clv_computed": {
+            "type": "integer",
+            "title": "Clv Computed"
+          },
+          "still_pending": {
+            "type": "integer",
+            "title": "Still Pending"
+          },
+          "corrected": {
+            "type": "integer",
+            "title": "Corrected",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "settled",
+          "clv_computed",
+          "still_pending"
+        ],
+        "title": "SettleOut"
+      },
+      "SignalBetOut": {
+        "properties": {
+          "outcome": {
+            "type": "string",
+            "enum": [
+              "home",
+              "draw",
+              "away"
+            ],
+            "title": "Outcome"
+          },
+          "bookmaker": {
+            "type": "string",
+            "title": "Bookmaker"
+          },
+          "odds": {
+            "type": "number",
+            "title": "Odds"
+          },
+          "ev": {
+            "type": "number",
+            "title": "Ev"
+          },
+          "model_agrees": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Agrees"
+          },
+          "suggested_stake": {
+            "type": "number",
+            "title": "Suggested Stake"
+          }
+        },
+        "type": "object",
+        "required": [
+          "outcome",
+          "bookmaker",
+          "odds",
+          "ev",
+          "model_agrees",
+          "suggested_stake"
+        ],
+        "title": "SignalBetOut"
+      },
+      "SignalOut": {
+        "properties": {
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "bets": {
+            "items": {
+              "$ref": "#/components/schemas/SignalBetOut"
+            },
+            "type": "array",
+            "title": "Bets"
+          }
+        },
+        "type": "object",
+        "required": [
+          "label",
+          "bets"
+        ],
+        "title": "SignalOut"
+      },
+      "SignalProgressOut": {
+        "properties": {
+          "paper_bets": {
+            "type": "integer",
+            "title": "Paper Bets"
+          },
+          "target": {
+            "type": "integer",
+            "title": "Target"
+          },
+          "clv_mean": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Clv Mean"
+          },
+          "evidence_met": {
+            "type": "boolean",
+            "title": "Evidence Met"
+          }
+        },
+        "type": "object",
+        "required": [
+          "paper_bets",
+          "target",
+          "clv_mean",
+          "evidence_met"
+        ],
+        "title": "SignalProgressOut"
+      },
+      "SummaryOut": {
+        "properties": {
+          "bets": {
+            "type": "integer",
+            "title": "Bets"
+          },
+          "settled": {
+            "type": "integer",
+            "title": "Settled"
+          },
+          "staked": {
+            "type": "number",
+            "title": "Staked"
+          },
+          "profit": {
+            "type": "number",
+            "title": "Profit"
+          },
+          "roi": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Roi"
+          },
+          "clv_mean": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Clv Mean"
+          },
+          "clv_positive_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Clv Positive Rate"
+          },
+          "bankroll": {
+            "$ref": "#/components/schemas/BankrollOut"
+          },
+          "by_league": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "By League"
+          },
+          "by_bookmaker": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "By Bookmaker"
+          },
+          "month": {
+            "$ref": "#/components/schemas/MonthOut"
+          },
+          "experimental_signal": {
+            "$ref": "#/components/schemas/SignalProgressOut"
+          },
+          "best_odds_uplift_mean": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Best Odds Uplift Mean"
+          },
+          "note": {
+            "type": "string",
+            "title": "Note"
+          }
+        },
+        "type": "object",
+        "required": [
+          "bets",
+          "settled",
+          "staked",
+          "profit",
+          "roi",
+          "clv_mean",
+          "clv_positive_rate",
+          "bankroll",
+          "by_league",
+          "by_bookmaker",
+          "month",
+          "experimental_signal",
+          "best_odds_uplift_mean",
+          "note"
+        ],
+        "title": "SummaryOut"
+      },
+      "Team": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "elo": {
+            "type": "number",
+            "title": "Elo"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "elo"
+        ],
+        "title": "Team"
+      },
+      "TrackingSummaryOut": {
+        "properties": {
+          "predictions": {
+            "type": "integer",
+            "title": "Predictions"
+          },
+          "graded": {
+            "type": "integer",
+            "title": "Graded"
+          },
+          "log_loss": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Log Loss"
+          },
+          "accuracy": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accuracy"
+          },
+          "value_bets": {
+            "type": "integer",
+            "title": "Value Bets"
+          },
+          "roi": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Roi"
+          }
+        },
+        "type": "object",
+        "required": [
+          "predictions",
+          "graded",
+          "log_loss",
+          "accuracy",
+          "value_bets",
+          "roi"
+        ],
+        "title": "TrackingSummaryOut"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      },
+      "ValueBetOut": {
+        "properties": {
+          "outcome": {
+            "type": "string",
+            "enum": [
+              "home",
+              "draw",
+              "away"
+            ],
+            "title": "Outcome"
+          },
+          "odds": {
+            "type": "number",
+            "title": "Odds"
+          },
+          "model_probability": {
+            "type": "number",
+            "title": "Model Probability"
+          },
+          "expected_value": {
+            "type": "number",
+            "title": "Expected Value"
+          },
+          "kelly_fraction": {
+            "type": "number",
+            "title": "Kelly Fraction"
+          }
+        },
+        "type": "object",
+        "required": [
+          "outcome",
+          "odds",
+          "model_probability",
+          "expected_value",
+          "kelly_fraction"
+        ],
+        "title": "ValueBetOut"
+      },
+      "betting_ml__api__schemas_002__Triple": {
+        "properties": {
+          "home": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Home"
+          },
+          "draw": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Draw"
+          },
+          "away": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Away"
+          }
+        },
+        "type": "object",
+        "title": "Triple"
+      },
+      "betting_ml__api__schemas__Triple": {
+        "properties": {
+          "home": {
+            "type": "number",
+            "title": "Home"
+          },
+          "draw": {
+            "type": "number",
+            "title": "Draw"
+          },
+          "away": {
+            "type": "number",
+            "title": "Away"
+          }
+        },
+        "type": "object",
+        "required": [
+          "home",
+          "draw",
+          "away"
+        ],
+        "title": "Triple"
+      }
+    }
+  }
+}

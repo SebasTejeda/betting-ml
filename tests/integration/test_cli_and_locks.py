@@ -106,3 +106,11 @@ def test_select_skip_if_locked_validates_champion(settings: Settings) -> None:
     assert isinstance(mismatch.exception, ChampionLockedError)
     _lock(settings, "started")
     assert runner.invoke(app, ["select", "--skip-if-locked"]).exit_code == 1
+
+
+def test_openapi_export_for_the_frontend(tmp_path: Path) -> None:
+    out = tmp_path / "openapi.json"
+    result = runner.invoke(app, ["openapi", "--out", str(out)])
+    assert result.exit_code == 0, result.output
+    spec = json.loads(out.read_text(encoding="utf-8"))
+    assert "/api/v1/comparator" in spec["paths"] and "/api/v1/bets" in spec["paths"]

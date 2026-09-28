@@ -250,6 +250,22 @@ def backtest_002_report() -> None:
     typer.echo(f"Informe escrito en {Container().backtest_pinnacle().refresh_report()}")
 
 
+@app.command("openapi")
+def openapi(out: str = "frontend/src/api/openapi.json") -> None:
+    """Exporta el contrato OpenAPI de la API (sin levantarla) para generar los tipos del frontend."""
+    import json
+    from pathlib import Path
+
+    from betting_ml.api.main import create_app
+    from betting_ml.config import PROJECT_ROOT
+
+    path = Path(out) if Path(out).is_absolute() else PROJECT_ROOT / out
+    path.parent.mkdir(parents=True, exist_ok=True)
+    spec = create_app().openapi()  # no lifespan: nothing is loaded
+    path.write_text(json.dumps(spec, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    typer.echo(f"OpenAPI escrito en {path} ({len(spec['paths'])} rutas)")
+
+
 def _fmt(value: float | None) -> str:
     return "  —  " if value is None else f"{100 * value:+.2f}%"
 
