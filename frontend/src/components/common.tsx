@@ -230,12 +230,3 @@ export function Meter({
     </div>
   );
 }
-
-/** Plain card (content only). */
-export function Card({ children, className }: { children: ReactNode; className?: string }) {
-  return (
-    <UiCard className={cn("px-4 shadow-sm transition-colors duration-150", className)}>
-      {children}
-    </UiCard>
-  );
-}

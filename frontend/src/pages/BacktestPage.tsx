@@ -1,6 +1,18 @@
+import { ChartLine, FileWarning, Scale, SearchX, TableProperties } from "lucide-react";
+
 import { ApiError } from "../api/client";
 import { useBacktest } from "../api/hooks";
-import { Card, Empty, ErrorBox, Loading, PageTitle } from "../components/common";
+import { Empty, ErrorBox, evTone, Loading, PageTitle, Panel } from "../components/common";
+import { Badge } from "../components/ui/badge";
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "../components/ui/table";
 import { pct } from "../lib/format";
 
 type Result = {
@@ -53,7 +65,7 @@ export function BacktestPage() {
   if (backtest.isPending) return <Loading what="el backtest" />;
   if (backtest.isError) {
     if (backtest.error instanceof ApiError && backtest.error.status === 404) {
-      return <Empty>Aún no se ha ejecutado el backtest final.</Empty>;
+      return <Empty icon={SearchX}>Aún no se ha ejecutado el backtest final.</Empty>;
     }
     return <ErrorBox error={backtest.error} />;
   }
@@ -62,87 +74,93 @@ export function BacktestPage() {
   const margins = report.margins;
   return (
     <>
-      <PageTitle>Backtest contra Pinnacle</PageTitle>
-      <Card className="mb-4">
-        <p>
-          Conclusión: <strong>{report.conclusion ?? "—"}</strong> · nivel{" "}
-          <strong>{report.level ?? "—"}</strong>
+      <PageTitle
+        icon={ChartLine}
+        description="Resultados medidos del comparador y de la señal frente a la cuota de cierre de Pinnacle."
+      >
+        Backtest contra Pinnacle
+      </PageTitle>
+      <Panel className="mb-4" contentClassName="flex flex-col gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="text-sm text-muted-foreground">Conclusión</span>
+          <Badge variant="secondary" className="h-6 px-3 text-sm">
+            {report.conclusion ?? "—"}
+          </Badge>
+          <span className="text-sm text-muted-foreground">nivel</span>
+          <Badge variant="outline" className="h-6 px-3 text-sm">
+            {report.level ?? "—"}
+          </Badge>
+        </div>
+        <p className="flex items-start gap-2 text-sm text-muted-foreground">
+          <FileWarning aria-hidden className="mt-0.5 size-4 shrink-0 text-experimental" />
+          <span>
+            La estrategia principal ({report.primary_strategy ?? "—"}) no le ganó a la cuota de
+            cierre en la temporada de prueba {report.test?.season ?? ""}. Por eso la señal de valor
+            se muestra solo como EXPERIMENTAL y en papel. La variante con el filtro del modelo E12
+            tiene muy pocas apuestas y se eligió después de ver el resultado: no está validada.
+          </span>
         </p>
-        <p className="mt-1 text-sm text-slate-600">
-          La estrategia principal ({report.primary_strategy ?? "—"}) no le ganó a la cuota de cierre
-          en la temporada de prueba {report.test?.season ?? ""}. Por eso la señal de valor se
-          muestra solo como EXPERIMENTAL y en papel. La variante con el filtro del modelo E12 tiene
-          muy pocas apuestas y se eligió después de ver el resultado: no está validada.
-        </p>
-      </Card>
+      </Panel>
       {margins && (
-        <Card className="mb-4">
-          <h2 className="mb-2 font-semibold">Por qué el comparador: margen pagado</h2>
+        <Panel title="Por qué el comparador: margen pagado" icon={Scale} className="mb-4">
           <MarginTable margins={margins} />
-        </Card>
+        </Panel>
       )}
-      <Card>
-        <h2 className="mb-2 font-semibold">
-          Resultados en prueba ({report.test?.season ?? "—"}, una sola evaluación)
-        </h2>
+      <Panel
+        title={`Resultados en prueba (${report.test?.season ?? "—"}, una sola evaluación)`}
+        icon={TableProperties}
+      >
         {results.length === 0 ? (
           <Empty>Sin resultados.</Empty>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-sm">
-              <caption className="sr-only">
-                Resultados por escenario con intervalos de confianza
-              </caption>
-              <thead>
-                <tr className="border-b border-slate-200 text-left text-slate-700">
-                  <th scope="col" className="p-2">
-                    Escenario
-                  </th>
-                  <th scope="col" className="p-2">
-                    Apuestas
-                  </th>
-                  <th scope="col" className="p-2">
-                    CLV medio [IC 95 %]
-                  </th>
-                  <th scope="col" className="p-2">
-                    % CLV positivo
-                  </th>
-                  <th scope="col" className="p-2">
-                    ROI plano [IC 95 %]
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {results.map((r) => (
-                  <tr key={`${r.scenario}|${r.variant}`} className="border-b border-slate-100">
-                    <th scope="row" className="p-2 text-left font-normal">
-                      {SCENARIO[r.scenario] ?? r.scenario} · {VARIANT[r.variant] ?? r.variant}
-                    </th>
-                    <td className="p-2 tabular-nums">{r.n_bets}</td>
-                    <td className="p-2 tabular-nums">
-                      {pct(r.clv_mean, 2, true)}
-                      <span className="text-xs text-slate-600">
-                        {ci(r.clv_ci_low, r.clv_ci_high)}
-                      </span>
-                    </td>
-                    <td className="p-2 tabular-nums">{pct(r.clv_positive_rate, 0)}</td>
-                    <td className="p-2 tabular-nums">
-                      {pct(r.roi_flat, 1, true)}
-                      <span className="text-xs text-slate-600">
-                        {ci(r.roi_ci_low, r.roi_ci_high)}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <Table>
+            <TableCaption className="sr-only">
+              Resultados por escenario con intervalos de confianza
+            </TableCaption>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Escenario</TableHead>
+                <TableHead className="text-right">Apuestas</TableHead>
+                <TableHead className="text-right">CLV medio [IC 95 %]</TableHead>
+                <TableHead className="text-right">% CLV positivo</TableHead>
+                <TableHead className="text-right">ROI plano [IC 95 %]</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {results.map((r) => (
+                <TableRow key={`${r.scenario}|${r.variant}`}>
+                  <TableHead scope="row" className="font-normal whitespace-normal text-foreground">
+                    {SCENARIO[r.scenario] ?? r.scenario} ·{" "}
+                    <span className={r.variant === "none" ? undefined : "text-experimental"}>
+                      {VARIANT[r.variant] ?? r.variant}
+                    </span>
+                  </TableHead>
+                  <TableCell className="text-right tabular-nums">{r.n_bets}</TableCell>
+                  <TableCell className="text-right tabular-nums">
+                    <span className={evTone(r.clv_mean)}>{pct(r.clv_mean, 2, true)}</span>
+                    <span className="block text-xs text-muted-foreground">
+                      {ci(r.clv_ci_low, r.clv_ci_high)}
+                    </span>
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums">
+                    {pct(r.clv_positive_rate, 0)}
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums">
+                    <span className={evTone(r.roi_flat)}>{pct(r.roi_flat, 1, true)}</span>
+                    <span className="block text-xs text-muted-foreground">
+                      {ci(r.roi_ci_low, r.roi_ci_high)}
+                    </span>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         )}
-        <p className="mt-2 text-xs text-slate-600">
+        <p className="mt-3 text-xs text-muted-foreground">
           Con pocas decenas de apuestas los intervalos son muy anchos: ningún resultado de esta
           tabla es evidencia de una ventaja.
         </p>
-      </Card>
+      </Panel>
     </>
   );
 }
@@ -153,38 +171,34 @@ function MarginTable({ margins }: { margins: NonNullable<Report["margins"]> }) {
     [`Temporada actual (${margins.current_season ?? "—"})`, margins.current],
   ];
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full border-collapse text-sm">
-        <caption className="sr-only">Margen medio por tipo de cuota</caption>
-        <thead>
-          <tr className="border-b border-slate-200 text-left text-slate-700">
-            <th scope="col" className="p-2">
-              Periodo
-            </th>
-            <th scope="col" className="p-2">
-              Margen cuota promedio
-            </th>
-            <th scope="col" className="p-2">
-              Margen mejor cuota
-            </th>
-            <th scope="col" className="p-2">
-              La mejor paga vs promedio
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map(([label, block]) => (
-            <tr key={label} className="border-b border-slate-100">
-              <th scope="row" className="p-2 text-left font-normal">
-                {label}
-              </th>
-              <td className="p-2 tabular-nums">{pct(block?.margins?.avg?.margin_mean)}</td>
-              <td className="p-2 tabular-nums">{pct(block?.margins?.max?.margin_mean)}</td>
-              <td className="p-2 tabular-nums">{pct(block?.best_vs_avg?.uplift_mean, 1, true)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <Table>
+      <TableCaption className="sr-only">Margen medio por tipo de cuota</TableCaption>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Periodo</TableHead>
+          <TableHead className="text-right">Margen cuota promedio</TableHead>
+          <TableHead className="text-right">Margen mejor cuota</TableHead>
+          <TableHead className="text-right">La mejor paga vs promedio</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {rows.map(([label, block]) => (
+          <TableRow key={label}>
+            <TableHead scope="row" className="font-normal text-foreground">
+              {label}
+            </TableHead>
+            <TableCell className="text-right tabular-nums">
+              {pct(block?.margins?.avg?.margin_mean)}
+            </TableCell>
+            <TableCell className="text-right font-semibold text-positive tabular-nums">
+              {pct(block?.margins?.max?.margin_mean)}
+            </TableCell>
+            <TableCell className="text-right font-semibold text-positive tabular-nums">
+              {pct(block?.best_vs_avg?.uplift_mean, 1, true)}
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
   );
 }
