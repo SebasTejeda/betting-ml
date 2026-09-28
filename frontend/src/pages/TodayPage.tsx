@@ -136,6 +136,9 @@ function BestCell({
     <span className="flex flex-col">
       <span className="font-semibold tabular-nums">{odds(best.odds)}</span>
       <span className="text-xs text-slate-600">{best.bookmaker}</span>
+      {match.fair && (
+        <span className="text-xs text-slate-500">justa {odds(match.fair.odds[outcome])}</span>
+      )}
     </span>
   );
 }
@@ -158,8 +161,10 @@ function Signal({ match }: { match: ComparatorMatch }) {
             fromSignal: true,
           })}
         >
-          {OUTCOME_LABEL[bet.outcome]} {odds(bet.odds)} · EV {pct(bet.ev, 1, true)} · anotar en
-          papel
+          {OUTCOME_LABEL[bet.outcome]} {odds(bet.odds)} · EV {pct(bet.ev, 1, true)}
+          {bet.model_agrees !== null &&
+            ` · el modelo ${bet.model_agrees ? "coincide" : "no coincide"}`}{" "}
+          · anotar en papel
         </Link>
       ))}
     </div>

@@ -124,3 +124,16 @@ Formato:
 - Problema: una apuesta real marcada a mano como `ganada` o `nula` reducía la pérdida del mes y levantaba el 403 sin ejecutar nunca `settle`.
 - Decisión (opción de dominio): cada apuesta guarda quién la liquidó (`result_source`: `manual` u `official`; migración `0002`). Para el límite mensual (403, avisos y `month.current_loss` del resumen), una apuesta real liquidada a mano como `ganada`/`nula` cuenta como perdida hasta que `settle` la confirma con el resultado oficial. Si el resultado manual era correcto se marca `official`; si no, se corrige. Las liquidadas a mano como `perdida` cuentan normal. Las manuales sin confirmar se revisan en cada `settle`, sin límite de antigüedad.
 - Impacto: el beneficio y el ROI del resumen siguen mostrando lo registrado; solo el límite usa el peor caso. Un partido aplazado marcado `nula` a mano cuenta como pérdida del mes hasta que haya resultado oficial (conservador). En la UI (T024) se explicará que una apuesta pendiente de un partido aplazado se liquida como `nula`.
+
+## 2026-09-27 — Auditoría final T029 (primera ronda)
+- Bloqueante corregido: en la Calculadora, una cuota con veredicto `valor` **es** la señal experimental. El registro sale ahora en papel por defecto y con `from_experimental_signal = true`, así que en real pide la confirmación del 409 y cuenta aparte. Antes salía como real y sin marca.
+- Observaciones atendidas:
+  - Hoy muestra la cuota justa de la referencia bajo la mejor cuota. La señal indica si el modelo coincide.
+  - Partido muestra la probabilidad y la cuota justa de la referencia y la probabilidad del modelo (US3).
+  - El resumen mensual suma las apuestas reales vencidas sin liquidar, igual que el 403, y "Mis apuestas" lo explica.
+  - El README advierte que el ahorro de margen medido usa `Max` de football-data (casas no accesibles incluidas) y que el ahorro real con casas peruanas aún no está medido.
+- Observaciones que quedan documentadas sin cambio (uso personal y local):
+  - El dinero se guarda en SQLite como `REAL` (la ida y vuelta es exacta con escala 2) y viaja en el JSON como número.
+  - Subir `bankroll_initial` o `max_stake_pct` aplica de inmediato. No relaja el límite de pérdida mensual, que sigue la regla del mes siguiente.
+  - `from_experimental_signal` lo declara el cliente; el frontend lo envía siempre desde la señal.
+  - La última cuota de una casa que retiró el partido se conserva.

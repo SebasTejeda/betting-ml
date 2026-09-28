@@ -341,7 +341,8 @@ class ManageBets:
             series.append(((bet.settled_at or bet.created_at).date().isoformat(), running))
         now = self.clock()
         limit = self.current_limit(now)
-        loss = monthly_loss(everything, month_key(now))
+        # same figure as the 403: overdue unsettled real bets count as lost until settled
+        loss = monthly_loss(everything, month_key(now)) + overdue_pending(everything, now)
         return Summary(
             bets=len(bets),
             settled=len(settled),

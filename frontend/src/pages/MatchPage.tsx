@@ -44,6 +44,7 @@ export function MatchPage() {
       <div className="grid gap-4 lg:grid-cols-2">
         <Card className="lg:col-span-2">
           <h2 className="mb-2 font-semibold">Cuotas por casa</h2>
+          <ReferenceAndModel match={match} />
           <BooksTable match={match} />
         </Card>
         <Card>
@@ -82,7 +83,10 @@ export function MatchPage() {
                     })}
                   >
                     {OUTCOME_LABEL[bet.outcome]} {odds(bet.odds)} en {bet.bookmaker} · EV{" "}
-                    {pct(bet.ev, 1, true)} · anotar en papel
+                    {pct(bet.ev, 1, true)}
+                    {bet.model_agrees !== null &&
+                      ` · el modelo ${bet.model_agrees ? "coincide" : "no coincide"}`}{" "}
+                    · anotar en papel
                   </Link>
                 </li>
               ))}
@@ -175,5 +179,28 @@ function ReferenceChart({ match }: { match: ComparatorDetail }) {
         </LineChart>
       </ResponsiveContainer>
     </div>
+  );
+}
+
+function ReferenceAndModel({ match }: { match: ComparatorDetail }) {
+  if (!match.fair && !match.model) return null;
+  return (
+    <dl className="mb-3 grid gap-2 text-sm sm:grid-cols-3" aria-label="Referencia y modelo">
+      {OUTCOMES.map((o) => (
+        <div key={o} className="rounded bg-slate-50 p-2">
+          <dt className="font-medium">{OUTCOME_LABEL[o]}</dt>
+          <dd>
+            {match.fair
+              ? `Justa (${match.fair.source}): ${odds(match.fair.odds[o])} · ${pct(match.fair.probabilities[o])}`
+              : "Sin referencia"}
+          </dd>
+          {match.model && (
+            <dd className="text-slate-600">
+              Modelo ({match.model.version ?? "—"}): {pct(match.model.probabilities[o])}
+            </dd>
+          )}
+        </div>
+      ))}
+    </dl>
   );
 }

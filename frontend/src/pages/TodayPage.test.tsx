@@ -28,6 +28,8 @@ test("shows the best odds, margins and the experimental label", async () => {
   expect(within(table).getAllByText("4.60")).toHaveLength(2);
   expect(within(table).getAllByText("Pagan +4.1 % vs promedio")).toHaveLength(2);
   expect(within(table).getByText("EXPERIMENTAL — solo papel")).toBeInTheDocument();
+  expect(within(table).getAllByText("justa 4.35")).toHaveLength(1);
+  expect(within(table).getByRole("link", { name: /el modelo coincide/ })).toBeInTheDocument();
   expect(within(table).getByText("Sin cuota de referencia")).toBeInTheDocument();
   expect(screen.queryByText(/recomendad/i)).not.toBeInTheDocument();
   const signal = within(table).getByRole("link", { name: /anotar en papel/ });

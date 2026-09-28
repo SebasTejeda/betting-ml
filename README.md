@@ -1,6 +1,6 @@
 # betting-ml
 
-Modelo de machine learning que estima las probabilidades 1X2 (local / empate / visita) de los partidos de las 5 grandes ligas europeas, las compara con las cuotas para detectar *value bets* y las sirve con una API REST. La spec 002 le suma un **comparador de mejor cuota** con Pinnacle como referencia, una calculadora para casas peruanas, un **diario de apuestas con límites de juego responsable** y un frontend web. Construido con **Spec-Driven Development** (especificaciones en [`specs/`](specs/), bitácora en [`PROGRESS.md`](PROGRESS.md), decisiones en [`decisions.md`](specs/001-prediction-model/decisions.md)).
+Modelo de machine learning que estima las probabilidades 1X2 (local / empate / visita) de los partidos de las 5 grandes ligas europeas, las compara con las cuotas del mercado y las sirve con una API REST (la spec 001 buscaba *value bets*; no encontró ventaja). La spec 002 le suma un **comparador de mejor cuota** con Pinnacle como referencia, una calculadora para casas peruanas, un **diario de apuestas con límites de juego responsable** y un frontend web. Construido con **Spec-Driven Development** (especificaciones en [`specs/`](specs/), bitácora en [`PROGRESS.md`](PROGRESS.md), decisiones en [`decisions.md`](specs/001-prediction-model/decisions.md)).
 
 > **Juego responsable.** Proyecto educativo. Apostar implica riesgo de pérdida. Este modelo **no** muestra ventaja frente al mercado: no lo uses para apostar dinero real.
 
@@ -113,7 +113,7 @@ Especificación en [`specs/002-odds-comparator/`](specs/002-odds-comparator/) y 
 | Margen medio de la mejor cuota | 0.5 % | 2.7 % |
 | La mejor cuota paga más que el promedio | +5.0 % | +4.9 % |
 
-- **Eso justifica el comparador:** elegir la mejor casa ahorra unos 4 puntos de margen por apuesta. Es la única ventaja medida.
+- **Eso justifica el comparador:** elegir la mejor casa ahorra unos 4 puntos de margen por apuesta. Es la única ventaja medida. **Salvedad:** la "mejor cuota" del backtest es la columna `Max` de football-data, que incluye casas y exchanges no accesibles desde Perú. Con solo Betsson, Coolbet y las casas peruanas el ahorro será menor, y aún no está medido: el diario lo mide con "mejor cuota vs promedio" en tus apuestas.
 - **La señal de valor no está validada.** La estrategia principal (Bet365 sin filtro) tuvo un CLV de −3.7 % en la prueba 2025-26 (27 apuestas). La variante con el filtro del modelo E12 tiene solo 8 apuestas y se eligió después de ver el fallo: no es evidencia. Por eso la señal se muestra como **"EXPERIMENTAL — solo papel"**. El diario cuenta el progreso hacia 100 apuestas en papel con CLV positivo, que sería la evidencia real.
 
 ### Configuración

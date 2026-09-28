@@ -126,7 +126,9 @@ export function BetsPage() {
         <p className="mt-3 text-xs text-slate-600">
           Liquidar a mano solo es posible después del inicio del partido, y borrar solo antes. Una
           apuesta marcada a mano como ganada o nula cuenta como perdida para el límite mensual hasta
-          que se confirme con el resultado oficial. Si un partido se aplaza, márcala como nula.
+          que se confirme con el resultado oficial, y una apuesta real sin liquidar de un partido ya
+          terminado (más de 3 h) también cuenta como perdida hasta liquidarla. Si un partido se
+          aplaza, márcala como nula.
         </p>
       </Card>
     </>

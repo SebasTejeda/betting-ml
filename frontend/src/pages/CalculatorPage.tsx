@@ -116,6 +116,8 @@ export function CalculatorPage() {
                 bookmaker={evaluated.bookmaker}
                 odds={evaluated.odds}
                 suggestedStake={evaluated.result.suggested_stake}
+                // a "valor" verdict IS the experimental signal: paper by default, flagged
+                fromSignal={evaluated.result.verdict === "valor"}
               />
             ) : (
               <p className="text-sm text-slate-600">Evalúa primero la cuota.</p>

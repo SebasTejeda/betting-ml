@@ -203,3 +203,38 @@ test("stake validation", async () => {
   await userEvent.click(within(form).getByRole("button", { name: "Registrar apuesta" }));
   expect(await screen.findByText(/máximo 2 decimales/)).toBeInTheDocument();
 });
+
+test("a 'valor' verdict is the experimental signal: paper by default and flagged", async () => {
+  server.use(
+    http.get(`${API}/comparator`, () => HttpResponse.json(comparator)),
+    http.get(`${API}/bookmakers`, () => HttpResponse.json(bookmakers)),
+    http.post(`${API}/calculator`, () =>
+      HttpResponse.json({ ...calculation, verdict: "valor", ev: 0.05, suggested_stake: 2.5 }),
+    ),
+  );
+  const bodies: Record<string, unknown>[] = [];
+  server.use(
+    http.post(`${API}/bets`, async ({ request }) => {
+      const body = (await request.json()) as Record<string, unknown>;
+      bodies.push(body);
+      return HttpResponse.json(
+        {
+          error: {
+            code: "EXPERIMENTAL_SIGNAL_UNPROVEN",
+            message:
+              "Esta señal aún no tiene evidencia (0/100 apuestas en papel, CLV actual sin datos). ¿Apostar dinero real igual?",
+            details: {},
+          },
+        },
+        { status: 409 },
+      );
+    }),
+  );
+  const form = await evaluate();
+  expect(within(form).getByLabelText(/En papel/)).toBeChecked();
+  expect(within(form).getByText("EXPERIMENTAL — solo papel")).toBeInTheDocument();
+  await userEvent.click(within(form).getByLabelText(/Real/));
+  await userEvent.click(within(form).getByRole("button", { name: "Registrar apuesta" }));
+  expect(await screen.findByRole("alertdialog")).toHaveTextContent("0/100 apuestas en papel");
+  expect(bodies[0]).toMatchObject({ kind: "real", from_experimental_signal: true, confirm: false });
+});

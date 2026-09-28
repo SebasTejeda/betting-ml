@@ -18,6 +18,8 @@ test("shows every bookmaker, highlights the best price and the margins", async (
   expect(within(betsson).getAllByText("(mejor cuota)", { exact: false })).toHaveLength(2);
   expect(within(table).getByText("1.7 %")).toBeInTheDocument();
   expect(screen.getByRole("img", { name: /cuota de referencia/ })).toBeInTheDocument();
+  expect(screen.getByText("Justa (pinnacle): 4.35 · 23.0 %")).toBeInTheDocument();
+  expect(screen.getByText("Modelo (E12-test): 24.0 %")).toBeInTheDocument();
   expect(screen.getByText("EXPERIMENTAL — solo papel")).toBeInTheDocument();
 });
 

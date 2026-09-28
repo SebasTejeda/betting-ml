@@ -256,3 +256,6 @@ def test_not_settling_cannot_dodge_the_monthly_block(env) -> None:  # type: igno
         use_case.create(_new(stake=D("1.00")), confirm=True)
     assert "sin liquidar" in blocked.value.check.messages[0]
     assert use_case.create(_new(kind=BetKind.PAPER)).kind is BetKind.PAPER
+    # the summary shows the same monthly figure the block uses
+    assert use_case.summary().month_loss == D("100.00")
+    assert use_case.summary().month_remaining == D("0.00")
