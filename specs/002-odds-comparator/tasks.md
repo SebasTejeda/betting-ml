@@ -77,6 +77,6 @@ Mismas reglas de ejecución que la spec 001: en orden, una tarea a la vez, `lint
 
 - [x] **T027** CI: job de frontend.
 - [x] **T028** README: sección de la spec 002 (qué hace, cómo configurar la API key de The Odds API, cómo usar cada página, comandos sin `make`, resultados del backtest y aviso de juego responsable).
-- [ ] 🔍 **T029** Auditoría final con `ml-reviewer`.
+- [x] 🔍 **T029** Auditoría final con `ml-reviewer`.
 - [ ] **T030** Verificación final: backend y frontend en verde; levantar `make dev`, hacer un refresco real de cuotas (≈ 10 créditos), revisar Hoy, registrar una apuesta de papel desde la calculadora y ver que aparece en el panel. Resumen en `PROGRESS.md`.
   - Commit: `chore: spec 002 final verification`
