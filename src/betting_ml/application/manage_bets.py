@@ -306,7 +306,7 @@ class ManageBets:
                 raise BetStateError(
                     "el partido aún no empieza: no se puede liquidar", "MATCH_NOT_STARTED"
                 )
-            bet = bet.settle(status, self.clock())
+            bet = bet.settle(status, self.clock(), source="manual")
         return self.bets.update(bet)
 
     def delete(self, bet_id: int) -> None:

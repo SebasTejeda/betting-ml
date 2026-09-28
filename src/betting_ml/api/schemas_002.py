@@ -185,6 +185,7 @@ class BetOut(BaseModel):
     clv_source: str | None
     profit: Money | None
     settled_at: datetime | None
+    result_source: Literal["manual", "official"] | None = None
     warnings: list[str]
 
 

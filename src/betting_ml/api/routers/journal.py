@@ -157,6 +157,7 @@ def _bet_out(bet: Bet) -> BetOut:
         ev=bet.ev,
         clv=bet.clv,
         clv_source=bet.clv_source,
+        result_source=bet.result_source,
         profit=bet.profit,
         settled_at=bet.settled_at,
         warnings=list(bet.warnings),

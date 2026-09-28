@@ -224,6 +224,7 @@ class SqlBetRepository:
         row.clv_source = bet.clv_source
         row.profit = bet.profit
         row.settled_at = bet.settled_at
+        row.result_source = bet.result_source
         return row
 
     @staticmethod
@@ -251,6 +252,7 @@ class SqlBetRepository:
             clv_source=row.clv_source,
             profit=None if row.profit is None else Decimal(row.profit),
             settled_at=_utc(row.settled_at),
+            result_source=row.result_source,
         )
 
     def add(self, bet: Bet) -> Bet:

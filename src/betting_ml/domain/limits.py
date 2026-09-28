@@ -4,6 +4,8 @@
 - Once the monthly budget is exhausted, real bets are blocked until next month (paper bets are
   always allowed). Real bets still pending more than ``OVERDUE_AFTER`` after kick-off count as
   lost for the block until they are settled (worst case: not settling cannot dodge the block).
+- Real bets settled by hand as won or void count as lost for the limit until the official
+  result confirms them (typing a fake win cannot dodge the block either).
 - A high stake or getting close to / over the monthly budget produces warnings that need an
   explicit confirmation.
 - Lowering the monthly limit applies immediately; raising it only applies from next month.
@@ -99,15 +101,21 @@ def effective_monthly_limit(
 
 
 def monthly_loss(bets: Iterable[Bet], month: str, tz: ZoneInfo = LIMA) -> Decimal:
-    """Net loss (≥ 0) of real bets settled in ``month`` (Lima calendar)."""
+    """Net loss (≥ 0) of real bets settled in ``month`` (Lima calendar). Manual wins/voids not
+    yet confirmed by the official result count as lost (worst case)."""
     net = Decimal("0.00")
     for bet in bets:
         if bet.kind is not BetKind.REAL or bet.status is BetStatus.PENDING or bet.profit is None:
             continue
         if bet.settled_at is None or month_key(bet.settled_at, tz) != month:
             continue
-        net += bet.profit
+        net += -bet.stake if unconfirmed_manual(bet) else bet.profit
     return max(Decimal("0.00"), -net)
+
+
+def unconfirmed_manual(bet: Bet) -> bool:
+    """Settled by hand as won/void and not yet checked against the official result."""
+    return bet.result_source == "manual" and bet.status in (BetStatus.WON, BetStatus.VOID)
 
 
 def overdue_pending(bets: Iterable[Bet], now: datetime) -> Decimal:

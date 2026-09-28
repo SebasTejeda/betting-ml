@@ -121,7 +121,7 @@ class SettleBets:
             b
             for b in self.bets.all()
             if b.status is not BetStatus.PENDING
-            and (b.clv is None or (b.settled_at or now) >= recent)
+            and (b.clv is None or b.result_source == "manual" or (b.settled_at or now) >= recent)
         ]
         results = self._results(pending + settled_recent) if (pending or settled_recent) else {}
         settled = clv_count = corrected = 0
@@ -137,6 +137,8 @@ class SettleBets:
                 )
                 self.bets.update(fixed)
                 corrected += 1
+            elif bet.result_source != "official":  # the manual result was right: confirm it
+                self.bets.update(replace(bet, result_source="official"))
         missing_clv = [
             b for b in self.bets.all() if b.status is not BetStatus.PENDING and b.clv is None
         ]

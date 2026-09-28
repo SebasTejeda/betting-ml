@@ -187,8 +187,10 @@ def test_update_delete_and_summary(env) -> None:  # type: ignore[no-untyped-def]
     assert summary.roi == pytest.approx(12 / 9)
     assert summary.bankroll_current == D("512.00") and summary.bankroll_series[-1][1] == D("512.00")
     assert {g["bookmaker"] for g in summary.by_bookmaker} == {"betsson", "teapuesto"}
-    assert summary.month_limit == D("100.00") and summary.month_loss == D("0.00")
-    assert summary.month_remaining == D("100.00")
+    # the manual win is not confirmed yet: for the limit it counts as lost (5 + 4)
+    assert summary.month_limit == D("100.00") and summary.month_loss == D("9.00")
+    assert summary.month_remaining == D("91.00")
+    assert use_case.get(won.id).result_source == "manual"
     assert summary.signal.paper_bets == 0 and "ROI" in summary.note
     assert summary.best_odds_uplift_mean is not None
     paper = use_case.summary(kind=BetKind.PAPER)

@@ -76,6 +76,8 @@ class Bet:
     clv_source: str | None = None
     profit: Decimal | None = None
     settled_at: datetime | None = None
+    # Who settled it: "manual" (by hand, not yet confirmed) or "official" (result checked).
+    result_source: str | None = None
     id: int | None = None
 
     def __post_init__(self) -> None:
@@ -84,7 +86,7 @@ class Bet:
         if self.stake <= 0:
             raise ValueError("stake must be positive")
 
-    def settle(self, status: BetStatus, at: datetime) -> Bet:
+    def settle(self, status: BetStatus, at: datetime, source: str = "official") -> Bet:
         """Return a settled copy with its profit (void → 0; won → stake × (odds − 1))."""
         if status is BetStatus.PENDING:
             raise ValueError("cannot settle to pending")
@@ -94,7 +96,7 @@ class Bet:
             profit = -self.stake
         else:
             profit = Decimal("0.00")
-        return replace(self, status=status, profit=profit, settled_at=at)
+        return replace(self, status=status, profit=profit, settled_at=at, result_source=source)
 
     def result_status(self, result: Outcome) -> BetStatus:
         return BetStatus.WON if result is self.outcome else BetStatus.LOST

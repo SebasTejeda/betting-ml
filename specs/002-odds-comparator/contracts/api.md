@@ -131,7 +131,7 @@ Si viola un límite (US6):
 Query: `status`, `kind`, `league`, `from`, `to`. Lista paginada (`page`, `size`).
 
 ### PATCH `/api/v1/bets/{id}`
-Editar nota (siempre) o liquidar manualmente (`status`). La liquidación manual solo vale para apuestas `pendiente` (si no, `409 BET_NOT_PENDING`) y después del inicio del partido (si no, `409 MATCH_NOT_STARTED`). Una apuesta liquidada no se puede volver a liquidar a mano ni volver a `pendiente`.
+Editar nota (siempre) o liquidar manualmente (`status`). La liquidación manual solo vale para apuestas `pendiente` (si no, `409 BET_NOT_PENDING`) y después del inicio del partido (si no, `409 MATCH_NOT_STARTED`). Una apuesta liquidada no se puede volver a liquidar a mano ni volver a `pendiente`. Cada apuesta lleva `result_source` (`manual` | `official` | `null`): una apuesta real liquidada a mano como `ganada` o `nula` cuenta como perdida para el límite mensual hasta que `settle` la confirma con el resultado oficial.
 
 ### DELETE `/api/v1/bets/{id}`
 Solo apuestas `pendiente` (si no, `409 BET_NOT_PENDING`) y antes del inicio del partido (si no, `409 MATCH_ALREADY_STARTED`): así borrar una apuesta no puede esconder una pérdida del mes.

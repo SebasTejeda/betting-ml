@@ -537,3 +537,39 @@ def test_unsettled_finished_bets_count_for_the_403(ctx) -> None:  # type: ignore
         403,
         "MONTHLY_LIMIT_REACHED",
     )
+
+
+def test_manual_win_does_not_lift_the_403_until_confirmed(ctx) -> None:  # type: ignore[no-untyped-def]
+    client, _, clock, _, results, _ = ctx
+    match_id = _match_id(client)
+    bets = [
+        client.post(
+            "/api/v1/bets", json=_bet(match_id, stake=10, confirm=True), headers=AUTH
+        ).json()
+        for _ in range(10)
+    ]
+    clock.now = AFTER_KICKOFF
+    for bet in bets[:9]:
+        client.patch(f"/api/v1/bets/{bet['id']}", json={"status": "perdida"}, headers=AUTH)
+    won = client.patch(f"/api/v1/bets/{bets[9]['id']}", json={"status": "ganada"}, headers=AUTH)
+    assert won.json()["result_source"] == "manual"
+    new = _bet(match_id, stake=1, confirm=True)
+    _error(client.post("/api/v1/bets", json=new, headers=AUTH), 403, "MONTHLY_LIMIT_REACHED")
+    # the official result (away win) confirms it: the manual win now counts and the 403 lifts
+    results.frame = pd.DataFrame(
+        [
+            {
+                "league": "E0",
+                "date": pd.Timestamp(match_id[3:13]),
+                "home_team": bets[0]["home_team"],
+                "away_team": bets[0]["away_team"],
+                "home_goals": 0.0,
+                "away_goals": 1.0,
+            }
+        ]
+    )
+    settled = client.post("/api/v1/bets/settle", headers=AUTH).json()
+    assert settled["corrected"] == 9  # the 9 manual "perdida" were wrong: the away side won
+    assert client.post("/api/v1/bets", json=new, headers=AUTH).status_code == 201
+    items = client.get("/api/v1/bets", params={"kind": "real", "size": 50}).json()["items"]
+    assert {b["result_source"] for b in items if b["status"] == "ganada"} == {"official"}

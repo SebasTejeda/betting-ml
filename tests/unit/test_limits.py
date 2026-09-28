@@ -18,6 +18,7 @@ from betting_ml.domain.limits import (
     next_month_key,
     overdue_pending,
     signal_progress,
+    unconfirmed_manual,
 )
 
 D = Decimal
@@ -163,3 +164,18 @@ def test_overdue_pending_real_bets_count_for_the_block() -> None:
         D("5"), BetKind.REAL, D("40"), D("100"), D("10"), pending_exposure=D("60"), overdue=D("0")
     )
     assert warned.status is LimitStatus.WARNING  # still dodgeable only while the match is live
+
+
+def test_manual_wins_count_as_lost_until_confirmed() -> None:
+    at = datetime(2026, 10, 10, tzinfo=UTC)
+    base = _bet(BetKind.REAL, BetStatus.PENDING, None, "10")
+    manual_win = base.settle(BetStatus.WON, at, source="manual")
+    manual_void = base.settle(BetStatus.VOID, at, source="manual")
+    manual_loss = base.settle(BetStatus.LOST, at, source="manual")
+    official_win = base.settle(BetStatus.WON, at)
+    assert official_win.result_source == "official"
+    assert unconfirmed_manual(manual_win) and unconfirmed_manual(manual_void)
+    assert not unconfirmed_manual(manual_loss) and not unconfirmed_manual(official_win)
+    assert monthly_loss([manual_win, manual_void], "2026-10") == D("20.00")
+    assert monthly_loss([manual_loss], "2026-10") == D("10.00")
+    assert monthly_loss([official_win], "2026-10") == D("0.00")
