@@ -14,5 +14,10 @@ export default defineConfig({
     setupFiles: ["./src/test/setup.ts"],
     css: false,
     globals: true,
+    coverage: {
+      include: ["src/**/*.{ts,tsx}"],
+      exclude: ["src/test/**", "src/**/*.test.tsx", "src/main.tsx", "src/api/schema.d.ts"],
+      thresholds: { lines: 80, functions: 80 },
+    },
   },
 });
