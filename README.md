@@ -149,6 +149,8 @@ Especificación en [`specs/002-odds-comparator/`](specs/002-odds-comparator/) y 
 - **Backtest** (`/backtest`): conclusión, margen pagado por tipo de cuota y resultados de la prueba con sus intervalos de confianza.
 - **Ajustes** (`/settings`): bankroll, moneda, límite de pérdida mensual (bajarlo aplica al instante; subirlo, desde el mes siguiente), stake máximo, fracción de Kelly y umbral de la señal.
 
+La app usa tema oscuro por defecto; el botón de sol/luna de la barra superior cambia al tema claro y lo recuerda en el navegador. En el celular la navegación está en una barra inferior.
+
 La primera vez, pulsa **Configurar clave** (arriba a la derecha) y pega tu `APP_API_KEY`: sin ella no se puede escribir (refrescar, registrar, liquidar ni guardar ajustes). La clave se guarda solo en el `localStorage` de tu navegador, porque es una herramienta personal que corre en tu máquina. No uses la app en un equipo compartido.
 
 > **Juego responsable.** Apuesta solo lo que puedas perder. Esta app no encontró una ventaja que permita ganar apostando: su valor es ahorrar margen eligiendo la mejor cuota y **medir** con honestidad. Los límites mensuales existen para que no persigas pérdidas. Si sientes que pierdes el control, pide ayuda.
