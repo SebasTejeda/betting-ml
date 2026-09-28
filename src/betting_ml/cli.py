@@ -262,7 +262,7 @@ def openapi(out: str = "frontend/src/api/openapi.json") -> None:
     path = Path(out) if Path(out).is_absolute() else PROJECT_ROOT / out
     path.parent.mkdir(parents=True, exist_ok=True)
     spec = create_app().openapi()  # no lifespan: nothing is loaded
-    path.write_text(json.dumps(spec, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    path.write_bytes((json.dumps(spec, indent=2, ensure_ascii=False) + "\n").encode("utf-8"))
     typer.echo(f"OpenAPI escrito en {path} ({len(spec['paths'])} rutas)")
 
 

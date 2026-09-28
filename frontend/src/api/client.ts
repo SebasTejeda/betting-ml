@@ -26,7 +26,11 @@ const auth: Middleware = {
   },
 };
 
-export const api = createClient<paths>({ baseUrl: globalThis.location?.origin ?? "" });
+export const api = createClient<paths>({
+  baseUrl: globalThis.location?.origin ?? "",
+  // resolved on each call (tests replace the global fetch after this module loads)
+  fetch: (request) => globalThis.fetch(request),
+});
 api.use(auth);
 
 type Result<T> = { data?: T; error?: unknown; response: Response };
