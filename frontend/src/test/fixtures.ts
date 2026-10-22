@@ -1,4 +1,8 @@
 import type {
+  AdviceItem,
+  Analysis,
+  MarketSummary,
+  TeamForm,
   Bet,
   Bookmaker,
   Budget,
@@ -170,6 +174,7 @@ export const summary: Summary = {
     ],
   },
   by_league: [{ league: "E0", bets: 10, roi: -0.08, clv_mean: 0.02 }],
+  by_market: [],
   by_bookmaker: [{ bookmaker: "teapuesto", bets: 10, roi: -0.08, clv_mean: 0.02 }],
   month: { loss_limit: 100, current_loss: 8.4, remaining: 91.6 },
   experimental_signal: { paper_bets: 23, target: 100, clv_mean: 0.012, evidence_met: false },
@@ -185,4 +190,177 @@ export const settings: Settings = {
   kelly_fraction: 0.25,
   min_edge: 0.02,
   monthly_loss_limit_in_force: 100,
+};
+
+// --- spec 003: match analysis
+const FORM_SUMMARY = {
+  n: 6,
+  goals_for_avg: 2.17,
+  goals_against_avg: 1.17,
+  xg_for_avg: 2.32,
+  xg_against_avg: 1.23,
+  over25_pct: 0.67,
+  btts_pct: 0.67,
+  scored_2plus: 3,
+  failed_to_score: 1,
+  clean_sheets: 1,
+  streak: "WWLWWL",
+};
+
+function teamForm(team: string, venue: "home" | "away"): TeamForm {
+  return {
+    team,
+    last6: [
+      {
+        date: "2026-10-18",
+        opponent: "Sevilla",
+        competition: "SP1",
+        venue,
+        goals_for: 4,
+        goals_against: 1,
+        xg_for: 2.1,
+        xg_against: 0.8,
+        result: "W",
+      },
+      {
+        date: "2026-10-10",
+        opponent: "Villarreal",
+        competition: "SP1",
+        venue,
+        goals_for: 0,
+        goals_against: 1,
+        xg_for: null,
+        xg_against: null,
+        result: "L",
+      },
+    ],
+    summary: FORM_SUMMARY,
+    summary_venue: { ...FORM_SUMMARY, venue, fallback_to_all: false },
+    warnings: [],
+  };
+}
+
+export const MOST_LIKELY: AdviceItem = {
+  label: "Ambos marcan: sí",
+  market: "btts",
+  selection: "yes",
+  line: null,
+  probability: 0.75,
+  fair_odds: 1.33,
+  best_odds: 1.28,
+  bookmaker: "betsson",
+  ev: -0.04,
+  verdict: "evitar",
+  confidence: "media",
+  experimental: true,
+  price_comment:
+    "Probable (75 %), pero la cuota 1.28 paga menos de lo justo (1.33): EV -4.0 %. No conviene.",
+  reasons: [
+    {
+      stance: "for",
+      text: "El modelo espera al menos 1.9 goles de cada equipo.",
+      evidence: { lambda_min: 1.91 },
+    },
+    {
+      stance: "against",
+      text: "Barcelona no recibió goles en 3 de sus últimos 6 partidos de visita.",
+      evidence: {
+        away: "Barcelona",
+        away_clean_sheets: 3,
+        away_n: 6,
+        away_venue_text: " de visita",
+      },
+    },
+  ],
+  warnings: [],
+};
+
+export function analysis(overrides: Partial<Analysis> = {}): Analysis {
+  return {
+    match: {
+      match_id: "SP1-2026-10-26-real-madrid-barcelona",
+      competition: "SP1",
+      kickoff: null,
+      date: "2026-10-26",
+      home_team: "Real Madrid",
+      away_team: "Barcelona",
+      cross_league: false,
+      ratings: null,
+      expected_goals: { home: 2.09, away: 1.91 },
+      model: "dixon_coles_xg",
+      odds_snapshot_at: null,
+      warnings: [],
+    },
+    best_options: [],
+    best_options_note: "Los consejos de valor están desactivados.",
+    most_likely: [MOST_LIKELY],
+    no_value_message: null,
+    markets: [
+      {
+        market: "btts",
+        name: "Ambos marcan",
+        confidence: "media",
+        experimental: true,
+        selections: [
+          {
+            selection: "yes",
+            line: null,
+            label: "Ambos marcan: sí",
+            probability: 0.75,
+            fair_odds: 1.33,
+            best_odds: 1.28,
+            bookmaker: "betsson",
+            ev: -0.04,
+            verdict: "evitar",
+            confidence: "media",
+            information_only: false,
+          },
+        ],
+      },
+      {
+        market: "totals",
+        name: "Más/Menos goles",
+        confidence: "baja",
+        experimental: true,
+        selections: [
+          {
+            selection: "over",
+            line: 4.5,
+            label: "Más de 4.5 goles",
+            probability: 0.37,
+            fair_odds: 2.7,
+            best_odds: null,
+            bookmaker: null,
+            ev: null,
+            verdict: "sin_cuota",
+            confidence: "baja",
+            information_only: true,
+          },
+        ],
+      },
+    ],
+    form: {
+      home: teamForm("Real Madrid", "home"),
+      away: teamForm("Barcelona", "away"),
+      h2h: { matches: [], note: "Los enfrentamientos directos tienen poco poder predictivo." },
+    },
+    ...overrides,
+  };
+}
+
+export const marketSummary: MarketSummary = {
+  market: "totals",
+  bets: 12,
+  settled: 10,
+  roi: -0.05,
+  clv_mean_pinnacle: null,
+  clv_n_pinnacle: 0,
+  clv_mean_market_average: 0.012,
+  clv_n_market_average: 9,
+  clv_mean_other: null,
+  clv_n_other: 0,
+  paper_with_clv: 9,
+  paper_clv_mean: 0.012,
+  evidence_target: 100,
+  evidence_met: false,
 };
