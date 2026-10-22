@@ -1,5 +1,5 @@
 # Comandos del proyecto (ver plan.md §8). Todos delegan en `uv run` y en la CLI `betting-ml`.
-.PHONY: verify-integrity backup restore security web web-test web-api dev backtest-002 backtest-002-final setup lint test data baselines exp select holdout report train-prod serve track docker all
+.PHONY: verify-integrity backup restore models-rehash security web web-test web-api dev backtest-002 backtest-002-final setup lint test data baselines exp select holdout report train-prod serve track docker all
 
 UV ?= uv
 RUN = $(UV) run
@@ -86,6 +86,10 @@ backup:
 
 restore:
 	$(CLI) restore $(FILE)
+
+# Una sola vez, tras revisar los modelos anteriores a la spec 003 (pide confirmación).
+models-rehash:
+	$(CLI) models-rehash
 
 # ---- Frontend (spec 002)
 web:

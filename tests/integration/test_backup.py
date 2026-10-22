@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import hashlib
 import random
+import re
 import sqlite3
 import threading
 from collections.abc import Callable, Iterator
@@ -19,7 +20,7 @@ import pytest
 from sqlalchemy.orm import Session, sessionmaker
 from typer.testing import CliRunner
 
-from betting_ml.adapters.sql.audit import SqlIntegrity
+from betting_ml.adapters.sql.audit import SqlAuditLog, SqlIntegrity
 from betting_ml.adapters.sql.backup import SqliteBackups, database_path
 from betting_ml.adapters.sql.db import prepare, session_factory
 from betting_ml.adapters.sql.repositories import SqlBetRepository, SqlSettingsRepository
@@ -285,6 +286,17 @@ def _bet_edited_outside(copy: Path) -> None:
     _reseal(copy)
 
 
+def _without_audit(copy: Path) -> None:
+    """Edited, its log dropped and stamped back before spec 003: nothing left to check it
+    against, so it is refused unless the owner asks for a legacy restore."""
+    with closing(sqlite3.connect(copy)) as connection:
+        connection.execute("UPDATE bets SET stake = '1000.00' WHERE id = 1")
+        connection.execute("DROP TABLE audit_log")
+        connection.execute("UPDATE alembic_version SET version_num = '0006'")
+        connection.commit()
+    _reseal(copy)
+
+
 @pytest.mark.parametrize(
     ("tamper", "reason"),
     [
@@ -294,9 +306,10 @@ def _bet_edited_outside(copy: Path) -> None:
         (_no_sidecar, "falta app-20261022-120000.db.sha256"),
         (_no_file, "no existe"),
         (_garbage, "no es una base SQLite válida"),
-        (_corrupt_pages, ""),
+        (_corrupt_pages, "integrity_check|no es una base SQLite válida"),
         (_not_ours, "no es una base de betting-ml"),
         (_bet_edited_outside, "bet 1: no coincide con su último evento"),
+        (_without_audit, "no tiene auditoría"),
     ],
 )
 def test_restore_refuses_a_bad_copy_and_leaves_everything_as_it_was(
@@ -312,7 +325,7 @@ def test_restore_refuses_a_bad_copy_and_leaves_everything_as_it_was(
     restore = _restore(live)
 
     problems = restore.verify(copy)
-    assert problems and any(reason in p for p in problems), problems
+    assert problems and any(re.search(reason, p) for p in problems), problems
     with pytest.raises(RestoreError, match="copia rechazada"):
         restore.run(copy)
 
@@ -345,6 +358,76 @@ def test_restoring_a_pre_restore_copy_does_not_rotate_it_away(
 
     assert first.exists() and _bet_count(live) == 2
     assert second.previous is not None and _bet_count(second.previous) == 1
+
+
+def test_a_legacy_copy_is_restored_only_when_asked(
+    live: Path, sessions: sessionmaker[Session]
+) -> None:
+    _history(sessions)
+    copy = _backups(live).run().path
+    _without_audit(copy)
+    with pytest.raises(RestoreError, match="--allow-legacy"):
+        _restore(live).run(copy)
+    assert _restore(live).verify(copy, allow_legacy=True) == []
+    _restore(live).run(copy, allow_legacy=True)
+    assert _bet_count(live) == 3
+
+
+def _insert_session(path: Path) -> None:
+    with closing(sqlite3.connect(path)) as connection:
+        connection.execute(
+            "INSERT INTO sessions (token_hash, csrf_token, created_at, last_seen_at, expires_at,"
+            " password_fingerprint) VALUES (:h, :c, '2026-10-22 10:00:00', '2026-10-22 10:00:00',"
+            " '2026-10-23 10:00:00', :f)",
+            {"h": "a" * 64, "c": "b" * 64, "f": "c" * 64},
+        )
+        connection.commit()
+
+
+def test_restore_closes_every_session_and_is_audited(
+    live: Path, sessions: sessionmaker[Session]
+) -> None:
+    """A session logged out after the copy was taken would come back to life with it."""
+    _history(sessions)
+    _insert_session(live)
+    copy = _backups(live).run().path
+    _restore(live).run(copy, actor="cli")
+    with closing(sqlite3.connect(live)) as connection:
+        assert connection.execute("SELECT count(*) FROM sessions").fetchone()[0] == 0
+    last = SqlAuditLog(sessions).records()[-1]
+    assert (last.actor, last.action, last.entity) == ("cli", "DB_RESTORED", "database")
+    assert copy.name in last.payload and SqliteBackups.sha256(copy) in last.payload
+    assert VerifyIntegrity(SqlIntegrity(sessions)).run().problems == []
+
+
+def _break(live: Path, sessions: sessionmaker[Session]) -> bytes:
+    """Keep the header page, destroy the rest: SQLite reports the live database malformed."""
+    sessions.kw["bind"].dispose()  # the API is stopped
+    data = live.read_bytes()
+    broken = data[:4096] + random.Random(3).randbytes(len(data) - 4096)
+    live.write_bytes(broken)
+    return broken
+
+
+def test_a_damaged_live_database_is_restored_only_with_force(
+    live: Path, sessions: sessionmaker[Session]
+) -> None:
+    _history(sessions)
+    copy = _backups(live).run().path
+    broken = _break(live, sessions)
+    restore = _restore(live)
+
+    with pytest.raises(RestoreError, match="--force"):
+        restore.run(copy)
+    assert live.read_bytes() == broken  # untouched
+
+    result = restore.run(copy, force=True)
+
+    assert result.previous is not None and not result.previous_verified
+    assert result.previous.name.startswith("unverified-pre-restore-")
+    assert result.previous.read_bytes() == broken  # kept as it was, for forensics
+    assert _bet_count(live) == 3
+    assert VerifyIntegrity(SqlIntegrity(sessions)).run().problems == []
 
 
 # ------------------------------------------------------------------ CLI
@@ -397,3 +480,19 @@ def test_cli_restore_refuses_a_tampered_copy(
 def test_cli_backup_without_a_database_fails(cli_settings: Settings) -> None:
     failed = CliRunner().invoke(app, ["backup"])
     assert failed.exit_code == 1 and "no hay base de datos" in failed.output
+
+
+def test_cli_restore_over_a_damaged_database(
+    live: Path, sessions: sessionmaker[Session], cli_settings: Settings
+) -> None:
+    _history(sessions)
+    assert CliRunner().invoke(app, ["backup"]).exit_code == 0
+    copy = next((live.parent / "backups").glob("app-*.db"))
+    _break(live, sessions)
+    refused = CliRunner().invoke(app, ["restore", str(copy), "--yes"])
+    assert refused.exit_code == 1 and "--force" in refused.output
+    assert refused.exception is None or isinstance(refused.exception, SystemExit)  # no traceback
+    forced = CliRunner().invoke(app, ["restore", str(copy), "--yes", "--force"])
+    assert forced.exit_code == 0, forced.output
+    assert "en bruto, sin verificar" in forced.output and "Sesiones cerradas" in forced.output
+    assert _bet_count(live) == 3

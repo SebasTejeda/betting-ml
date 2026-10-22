@@ -168,7 +168,7 @@ def test_joblib_registry_roundtrip(tmp_path: Path) -> None:
     model = build_model({"type": "frequencies"}).fit(_toy_matches().assign(target=0))
     registry.save("E01-2026-09-27", model, {"experiment_id": "E01"})
     loaded, meta = registry.load("E01-2026-09-27")
-    assert meta == {"experiment_id": "E01"}
+    assert meta == {"experiment_id": "E01", "sha256": registry.artifact_sha256("E01-2026-09-27")}
     assert registry.load_metadata("E01-2026-09-27")["experiment_id"] == "E01"
     np.testing.assert_allclose(loaded.overall, model.overall)
     assert registry.list_versions() == ["E01-2026-09-27"]

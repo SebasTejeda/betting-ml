@@ -31,6 +31,7 @@ from betting_ml.domain.ports import (
     ModelRegistry,
     TeamNameNormalizer,
 )
+from betting_ml.domain.security import ModelIntegrityError
 from betting_ml.ml.features.pipeline import ALL_GROUPS, FeaturePipeline
 
 logger = logging.getLogger(__name__)
@@ -42,6 +43,15 @@ DEFAULT_MIN_EDGE = 0.05
 
 class ModelNotAvailableError(RuntimeError):
     pass
+
+
+class ModelNotVerifiedError(ModelNotAvailableError):
+    """The artifact failed its SHA-256 check: served like a missing model (health, warm-up,
+    leagues), answered as ``503 MODEL_INTEGRITY_ERROR``."""
+
+    def __init__(self, error: ModelIntegrityError) -> None:
+        super().__init__(str(error))
+        self.version = error.version
 
 
 class UnknownLeagueError(LookupError):
@@ -182,6 +192,8 @@ class PredictMatches:
                 raise ModelNotAvailableError(
                     f"modelo no entrenado o datos no disponibles: {exc}"
                 ) from exc
+            except ModelIntegrityError as exc:
+                raise ModelNotVerifiedError(exc) from exc
             pipeline = FeaturePipeline(champion.features)
             pipeline.elo.transform(history)
             ratings = {lg: pipeline.elo.current_ratings(lg) for lg in self.leagues.codes}

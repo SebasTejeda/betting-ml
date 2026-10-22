@@ -45,7 +45,12 @@ from betting_ml.application.catalog import RefreshData
 from betting_ml.application.compare_matches import CompareMatches, EvaluateManualOdds
 from betting_ml.application.evaluate_holdout import EvaluateHoldout
 from betting_ml.application.generate_report import GenerateReport
-from betting_ml.application.maintenance import BackupDatabase, RestoreDatabase, VerifyIntegrity
+from betting_ml.application.maintenance import (
+    BackupDatabase,
+    RehashModels,
+    RestoreDatabase,
+    VerifyIntegrity,
+)
 from betting_ml.application.manage_bets import ManageBets
 from betting_ml.application.predict_matches import PredictMatches
 from betting_ml.application.read_backtest import ReadBacktestReport
@@ -169,6 +174,9 @@ class Container:
     @cached_property
     def registry(self) -> JoblibModelRegistry:
         return JoblibModelRegistry(self.settings.models_path)
+
+    def rehash_models(self) -> RehashModels:
+        return RehashModels(self.registry)
 
     def run_experiment(self) -> RunExperiment:
         return RunExperiment(

@@ -11,6 +11,7 @@ from typing import Any
 
 import pytest
 import sqlalchemy as sa
+from alembic import command
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.orm import Session, sessionmaker
 from typer.testing import CliRunner
@@ -18,7 +19,13 @@ from typer.testing import CliRunner
 from betting_ml.adapters.argon2_hasher import Argon2Hasher
 from betting_ml.adapters.memory_rate_limiter import MemoryRateLimiter
 from betting_ml.adapters.sql.audit import SqlAuditLog, SqlIntegrity
-from betting_ml.adapters.sql.db import make_engine, prepare, session_factory, upgrade
+from betting_ml.adapters.sql.db import (
+    _alembic_config,
+    make_engine,
+    prepare,
+    session_factory,
+    upgrade,
+)
 from betting_ml.adapters.sql.models import APPEND_ONLY_TRIGGERS
 from betting_ml.adapters.sql.repositories import (
     SqlBetRepository,
@@ -40,6 +47,7 @@ from betting_ml.domain.journal import (
     OddsQuote,
     OddsSnapshot,
     QuoteSource,
+    SettingsChange,
     VersionConflictError,
 )
 
@@ -351,3 +359,109 @@ def test_concurrent_appends_keep_one_unbroken_chain(sessions: sessionmaker[Sessi
     assert not errors, errors[0]
     assert len(log.records()) == 60
     assert _verify(sessions) == []
+
+
+# ------------------------------------------------------------------ limit history (checkpoint A1)
+def _raise_limit(sessions: sessionmaker[Session]) -> None:
+    """Raising the loss limit only applies next month: that rule lives in settings_history."""
+    settings = SqlSettingsRepository(sessions)
+    current = settings.get()
+    settings.save(
+        replace(current, monthly_loss_limit=Decimal("5000.00")),
+        [SettingsChange(NOW, "monthly_loss_limit", "100.00", "5000.00", "2026-11")],
+    )
+
+
+def test_each_limit_change_is_audited_with_when_it_applies(
+    sessions: sessionmaker[Session],
+) -> None:
+    _raise_limit(sessions)
+    records = SqlAuditLog(sessions).records()
+    assert [(r.action, r.entity) for r in records] == [
+        ("SETTINGS_CHANGED", "settings"),
+        ("SETTINGS_HISTORY_ADDED", "settings_change"),
+    ]
+    assert '"effective_from":"2026-11"' in records[1].payload
+    assert _verify(sessions) == []
+
+
+@pytest.mark.parametrize(
+    ("statement", "problem"),
+    [
+        (
+            "UPDATE settings_history SET effective_from = '2026-10'",  # apply the raise now
+            "settings_change 1: no coincide con su último evento",
+        ),
+        ("DELETE FROM settings_history", "settings_change 1: falta"),
+        (
+            "INSERT INTO settings_history (changed_at, field, old_value, new_value,"
+            " effective_from) VALUES ('2026-10-01 00:00:00', 'monthly_loss_limit', '100',"
+            " '9999', '2026-09')",
+            "settings_change 2: existe sin ningún evento",
+        ),
+    ],
+)
+def test_limit_history_changed_outside_the_api_is_detected(
+    sessions: sessionmaker[Session], statement: str, problem: str
+) -> None:
+    _raise_limit(sessions)
+    _sql(sessions, statement)
+    assert any(p.startswith(problem) for p in _verify(sessions)), _verify(sessions)
+
+
+def test_migration_0008_seals_the_existing_limit_history(tmp_path: Path) -> None:
+    url = f"sqlite:///{(tmp_path / 'old.db').as_posix()}"
+    upgrade(url, "0007")
+    engine = make_engine(url)
+    with engine.begin() as connection:
+        connection.execute(
+            sa.text(
+                "INSERT INTO settings_history (changed_at, field, old_value, new_value,"
+                " effective_from) VALUES ('2026-09-01 00:00:00.000000', 'monthly_loss_limit',"
+                " '100.00', '200.00', '2026-10')"
+            )
+        )
+    engine.dispose()
+    upgrade(url)
+    sessions = session_factory(make_engine(url))
+    assert _actions(sessions) == [("migration", "BASELINE", "1")]
+    assert _verify(sessions) == []
+    sessions.kw["bind"].dispose()
+    command.downgrade(_alembic_config(url), "0007")  # the events stay…
+    upgrade(url)  # …and are not sealed twice
+    assert _actions(sessions) == [("migration", "BASELINE", "1")]
+    _sql(sessions, "UPDATE settings_history SET effective_from = '2026-09'")
+    assert any(p.startswith("settings_change 1: no coincide") for p in _verify(sessions))
+
+
+# ------------------------------------------------------------------ downgrade (checkpoint A2)
+def test_downgrade_of_0007_never_drops_audit_events(tmp_path: Path) -> None:
+    """Dropping the log and upgrading again would seal a fresh baseline over tampered data."""
+    url = f"sqlite:///{(tmp_path / 'app.db').as_posix()}"
+    sessions = session_factory(prepare(url))
+    _with_history(sessions)
+    _sql(sessions, "UPDATE bets SET stake = 1 WHERE id = 1")  # tampered…
+    problems = _verify(sessions)
+    assert problems
+    sessions.kw["bind"].dispose()
+    with pytest.raises(RuntimeError, match="Downgrade de 0007 abortado"):
+        command.downgrade(_alembic_config(url), "0006")
+    sessions = session_factory(prepare(url))
+    assert _verify(sessions) == problems  # …and still reported: nothing was dropped
+
+
+def test_downgrade_of_an_empty_log_still_works(tmp_path: Path) -> None:
+    url = f"sqlite:///{(tmp_path / 'app.db').as_posix()}"
+    upgrade(url)
+    command.downgrade(_alembic_config(url), "0006")
+    engine = make_engine(url)
+    assert "audit_log" not in sa.inspect(engine).get_table_names()
+    engine.dispose()
+
+
+def test_a_missing_append_only_trigger_is_reported(sessions: sessionmaker[Session]) -> None:
+    _with_history(sessions)
+    _sql(sessions, "DROP TRIGGER audit_log_no_delete")
+    assert "falta el trigger audit_log_no_delete: audit_log ya no es de solo inserción" in (
+        _verify(sessions)
+    )

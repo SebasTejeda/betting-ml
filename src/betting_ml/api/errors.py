@@ -29,6 +29,7 @@ from betting_ml.application.manage_bets import (
 from betting_ml.application.predict_matches import (
     InvalidMatchError,
     ModelNotAvailableError,
+    ModelNotVerifiedError,
     UnknownLeagueError,
     UnknownTeamError,
 )
@@ -117,6 +118,10 @@ def register_error_handlers(app: FastAPI) -> None:
     @app.exception_handler(ModelNotAvailableError)
     async def _model(_: Request, exc: ModelNotAvailableError) -> JSONResponse:
         return error_response(503, "MODEL_NOT_AVAILABLE", str(exc))
+
+    @app.exception_handler(ModelNotVerifiedError)  # the most specific handler wins
+    async def _model_integrity(_: Request, exc: ModelNotVerifiedError) -> JSONResponse:
+        return error_response(503, "MODEL_INTEGRITY_ERROR", str(exc), {"version": exc.version})
 
     @app.exception_handler(OddsBudgetLowError)
     async def _budget(_: Request, exc: OddsBudgetLowError) -> JSONResponse:

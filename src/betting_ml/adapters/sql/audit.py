@@ -14,11 +14,15 @@ from typing import Any
 from sqlalchemy import select, text
 from sqlalchemy.orm import Session, sessionmaker
 
-from betting_ml.adapters.sql.models import AuditRow
+from betting_ml.adapters.sql.models import APPEND_ONLY_TRIGGERS, AuditRow
 from betting_ml.domain.audit import GENESIS_HASH, AuditEvent, AuditInfo, AuditRecord, seal
 
 # entities whose current rows must match their last event: entity -> (table, key column)
-STATE_TABLES = {"bet": ("bets", "id"), "settings": ("settings", "id")}
+STATE_TABLES = {
+    "bet": ("bets", "id"),
+    "settings": ("settings", "id"),
+    "settings_change": ("settings_history", "id"),  # when a limit change takes effect
+}
 
 Clock = Callable[[], datetime]
 
@@ -156,6 +160,17 @@ class SqlIntegrity(SqlAuditLog):
             problems += [
                 f"foreign_key_check: {table} rowid {rowid} -> {parent}"
                 for table, rowid, parent, _ in session.execute(text("PRAGMA foreign_key_check"))
+            ]
+            triggers = {
+                name
+                for (name,) in session.execute(
+                    text("SELECT name FROM sqlite_master WHERE type = 'trigger'")
+                )
+            }
+            problems += [
+                f"falta el trigger {name}: audit_log ya no es de solo inserción"
+                for name in APPEND_ONLY_TRIGGERS
+                if name not in triggers
             ]
             return problems
 

@@ -9,10 +9,10 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from betting_ml.domain.audit import AuditRecord, verify_chain, verify_states
-from betting_ml.domain.ports import DatabaseFiles, IntegritySource
+from betting_ml.domain.audit import AuditInfo, AuditRecord, verify_chain, verify_states
+from betting_ml.domain.ports import DatabaseFiles, IntegritySource, ModelHashes
 
-STATEFUL_ENTITIES = ("bet", "settings")
+STATEFUL_ENTITIES = ("bet", "settings", "settings_change")
 HASH_LENGTH = 64
 
 
@@ -58,6 +58,7 @@ class VerifyIntegrity:
 # ---------------------------------------------------------------------- backups (US6)
 BACKUP_PREFIX = "app"
 PRE_RESTORE_PREFIX = "pre-restore"
+UNVERIFIED_PREFIX = "unverified-pre-restore"  # raw copy of a damaged database: never rotated
 SIDECAR = ".sha256"
 
 
@@ -80,6 +81,7 @@ class BackupResult:
 class RestoreResult:
     restored: Path
     previous: Path | None  # copy of the state that was replaced
+    previous_verified: bool = True  # False: a raw copy of a damaged database (--force)
 
 
 def sidecar_of(path: Path) -> Path:
@@ -104,7 +106,7 @@ class BackupDatabase:
         self.keep = keep
         self.clock = clock
 
-    def _target(self, prefix: str) -> Path:
+    def target(self, prefix: str) -> Path:
         stamp = self.clock().strftime("%Y%m%d-%H%M%S")
         target = self.directory / f"{prefix}-{stamp}.db"
         n = 1
@@ -118,9 +120,8 @@ class BackupDatabase:
         if not self.files.exists():
             raise BackupError("no hay base de datos que copiar")
         self.directory.mkdir(parents=True, exist_ok=True)
-        target = self._target(prefix)
-        self.files.copy_to(target)
-        problems = self.files.check(target)
+        target = self.target(prefix)
+        problems = self.files.copy_to(target) or self.files.check(target)
         if problems:
             target.unlink(missing_ok=True)
             raise BackupError("la copia no pasó la verificación: " + "; ".join(problems))
@@ -154,7 +155,9 @@ class RestoreDatabase:
         self.files = files
         self.backups = backups
 
-    def verify(self, candidate: Path) -> list[str]:
+    def verify(self, candidate: Path, allow_legacy: bool = False) -> list[str]:
+        """``allow_legacy``: accept a copy from before the audit log (spec 003), whose content
+        cannot be checked against any event."""
         sidecar = sidecar_of(candidate)
         if not candidate.is_file():
             return [f"{candidate.name}: no existe"]
@@ -166,18 +169,106 @@ class RestoreDatabase:
         if self.files.sha256(candidate) != expected:
             return [f"{candidate.name}: el SHA-256 no coincide con {sidecar.name}"]
         problems = self.files.check(candidate)
-        if not problems and self.files.has_audit(candidate):
-            problems += VerifyIntegrity(self.files.integrity_source(candidate)).run().problems
-        return problems
+        if problems:
+            return problems
+        if self.files.has_audit(candidate):
+            return VerifyIntegrity(self.files.integrity_source(candidate)).run().problems
+        if allow_legacy:
+            return []
+        return [
+            f"{candidate.name}: no tiene auditoría (anterior a la spec 003), así que su "
+            "contenido no se puede verificar; usa --allow-legacy si es intencional"
+        ]
 
-    def run(self, candidate: Path) -> RestoreResult:
-        problems = self.verify(candidate)
+    def run(
+        self,
+        candidate: Path,
+        actor: str = "cli",
+        allow_legacy: bool = False,
+        force: bool = False,
+    ) -> RestoreResult:
+        """``force``: if the live database is too damaged for a verified copy, keep a raw copy
+        of its files instead and restore anyway (the case a restore exists for)."""
+        problems = self.verify(candidate, allow_legacy)
         if problems:
             raise RestoreError("copia rechazada: " + "; ".join(problems))
-        previous = (
-            self.backups.run(PRE_RESTORE_PREFIX, protect=candidate).path
-            if self.files.exists()
-            else None
+        previous, verified = None, True
+        if self.files.exists():
+            try:
+                previous = self.backups.run(PRE_RESTORE_PREFIX, protect=candidate).path
+            except BackupError as exc:
+                if not force:
+                    raise RestoreError(
+                        f"no se pudo guardar una copia verificada de la base actual ({exc}); "
+                        "con --force se guarda en bruto y se restaura igualmente"
+                    ) from exc
+                previous = self.files.copy_raw(self.backups.target(UNVERIFIED_PREFIX))
+                verified = False
+        self.files.restore_from(candidate, replace_file=not verified)
+        self.files.after_restore(
+            AuditInfo(
+                actor,
+                "DB_RESTORED",
+                {
+                    "file": candidate.name,
+                    "sha256": self.files.sha256(candidate),
+                    "previous": None if previous is None else previous.name,
+                    "previous_verified": verified,
+                },
+            )
         )
-        self.files.restore_from(candidate)
-        return RestoreResult(candidate, previous)
+        return RestoreResult(candidate, previous, verified)
+
+
+# ---------------------------------------------------------------------- model hashes (US6)
+@dataclass(frozen=True)
+class ModelHash:
+    version: str
+    sha256: str  # of the artifact as it is now
+    status: str  # "ok" (recorded and equal), "new" (none recorded), "mismatch"
+
+
+class RehashRefusedError(RuntimeError):
+    """Some artifact differs from its recorded hash: nothing was written."""
+
+
+class RehashModels:
+    """Record the SHA-256 of models saved before spec 003. It certifies the files as they are
+    now, so it runs once, after checking they are the expected ones; a recorded hash that
+    differs is never replaced (that file may have been tampered with)."""
+
+    def __init__(self, models: ModelHashes) -> None:
+        self.models = models
+
+    def plan(self, versions: list[str] | None = None) -> list[ModelHash]:
+        available = self.models.list_versions()
+        unknown = sorted(set(versions or []) - set(available))
+        if unknown:
+            raise ValueError(f"modelos sin model.joblib: {', '.join(unknown)}")
+        hashes = []
+        for version in versions or available:
+            actual = self.models.artifact_sha256(version)
+            recorded = self.models.recorded_sha256(version)
+            status = "new" if recorded is None else "ok" if recorded == actual else "mismatch"
+            hashes.append(ModelHash(version, actual, status))
+        return hashes
+
+    def run(
+        self, versions: list[str] | None = None, shown: dict[str, str] | None = None
+    ) -> list[ModelHash]:
+        """``shown``: the hashes the owner reviewed; a file changed since then is refused."""
+        hashes = self.plan(versions)
+        mismatched = [h.version for h in hashes if h.status == "mismatch"]
+        if mismatched:
+            raise RehashRefusedError(
+                "SHA-256 distinto del registrado (no se reemplaza): " + ", ".join(mismatched)
+            )
+        changed = [
+            h.version for h in hashes if shown is not None and shown.get(h.version) != h.sha256
+        ]
+        if changed:
+            raise RehashRefusedError("cambiaron desde que se listaron: " + ", ".join(changed))
+        for model_hash in hashes:
+            if model_hash.status == "new":
+                self.models.record_sha256(model_hash.version, model_hash.sha256)
+        return hashes

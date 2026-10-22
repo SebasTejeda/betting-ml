@@ -435,17 +435,28 @@ class SqlSettingsRepository:
             if session.execute(statement).rowcount == 0:  # type: ignore[attr-defined]
                 current = session.scalar(select(SettingsRow.version).where(SettingsRow.id == 1))
                 raise VersionConflictError("settings", current or 0)
-            for change in changes:
-                session.add(
-                    SettingsHistoryRow(
-                        changed_at=change.changed_at,
-                        field=change.field,
-                        old_value=change.old_value,
-                        new_value=change.new_value,
-                        effective_from=change.effective_from,
-                    )
-                )
             record_change(session, audit, "SETTINGS_CHANGED", "settings", 1, before, self.clock)
+            # Each history row is audited too: the limit in force is computed from it.
+            recorded = AuditInfo(audit.actor, "SETTINGS_HISTORY_ADDED", audit.detail)
+            for change in changes:
+                row = SettingsHistoryRow(
+                    changed_at=change.changed_at,
+                    field=change.field,
+                    old_value=change.old_value,
+                    new_value=change.new_value,
+                    effective_from=change.effective_from,
+                )
+                session.add(row)
+                session.flush()
+                record_change(
+                    session,
+                    recorded,
+                    "SETTINGS_HISTORY_ADDED",
+                    "settings_change",
+                    row.id,
+                    None,
+                    self.clock,
+                )
         return replace(settings, version=new_version)
 
     def history(self, field: str | None = None) -> list[SettingsChange]:

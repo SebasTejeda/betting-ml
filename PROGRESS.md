@@ -211,3 +211,14 @@ Spec activa: [`specs/003-security-hardening/`](specs/003-security-hardening/). T
   - Antes de restaurar guarda una copia del estado actual y pide confirmación (`--yes` para scripts).
   - 21 tests nuevos (copia durante escrituras concurrentes, 9 formas de copia mala); 8 mutaciones detectadas.
   - 841 tests backend (cobertura 99 %)
+- 2026-10-22 · T017 · Integridad de los modelos y checkpoint 🔍 de la fase 4.
+  - SHA-256 de `model.joblib` en `metadata.json`, verificado sobre los mismos bytes que se deserializan; `503 MODEL_INTEGRITY_ERROR`; `betting-ml models-rehash` (+ make), que nunca reemplaza un hash distinto.
+  - Checkpoint ml-reviewer: bloqueado por 2 hallazgos altos, corregidos:
+    - historial de límites auditado y verificado (migración 0008);
+    - el downgrade de 0007 aborta si hay auditoría.
+  - También corregidos:
+    - `restore --force` sobre una base dañada y `--allow-legacy` para copias sin auditoría;
+    - restaurar cierra las sesiones y registra `DB_RESTORED`;
+    - `verify-integrity` comprueba los triggers.
+  - Riesgo del encadenado sin clave documentado con su alcance real; HMAC con clave pendiente de decisión del dueño.
+  - 874 tests backend (cobertura 99 %); 13 mutaciones detectadas.

@@ -127,7 +127,7 @@ Reglas de ejecución:
   - Tests: backup en caliente consistente; restore rechaza un archivo con hash distinto o corrupto.
   - Commit: `feat(ops): verified sqlite backup and restore`
 
-- [ ] **T017** Integridad de los modelos (US6) y 🔍 checkpoint de integridad
+- [x] **T017** Integridad de los modelos (US6) y 🔍 checkpoint de integridad
   - SHA-256 de `model.joblib` en `metadata.json`; verificación antes de `joblib.load`; `503 MODEL_INTEGRITY_ERROR`.
   - `betting-ml models-rehash` para los modelos existentes (se ejecuta una vez, tras revisar que son los del repo).
   - Checkpoint `ml-reviewer` de T013–T017 (migraciones sin pérdida, auditoría, concurrencia).

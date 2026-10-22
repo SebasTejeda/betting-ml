@@ -8,17 +8,20 @@ them never writes a byte.
 from __future__ import annotations
 
 import hashlib
+import shutil
 import sqlite3
 from contextlib import closing
 from pathlib import Path
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.pool import NullPool
 
-from betting_ml.adapters.sql.audit import SqlIntegrity
+from betting_ml.adapters.sql.audit import SqlIntegrity, append, take_write_lock, utc_now
 from betting_ml.adapters.sql.db import BUSY_TIMEOUT_MS, MEMORY_URL, resolve_url, session_factory
+from betting_ml.domain.audit import AuditEvent, AuditInfo
 
 REQUIRED_TABLES = {"alembic_version", "bets", "settings"}
+SIDE_FILES = ("-wal", "-shm")
 CHUNK = 1 << 20
 
 
@@ -42,18 +45,38 @@ class SqliteBackups:
     def exists(self) -> bool:
         return self.database.is_file()
 
-    def copy_to(self, target: Path) -> None:
-        """Hot copy of the live database: consistent even while the API writes."""
-        with (
-            closing(sqlite3.connect(self.database, timeout=BUSY_TIMEOUT_MS / 1000)) as source,
-            closing(sqlite3.connect(target)) as copy,
-        ):
-            source.backup(copy)
-            copy.execute("PRAGMA journal_mode=DELETE")  # one file: nothing left in a -wal
+    def copy_to(self, target: Path) -> list[str]:
+        """Hot copy of the live database: consistent even while the API writes. Returns what
+        made it fail (a live database too damaged to read), empty on success."""
+        try:
+            with (
+                closing(sqlite3.connect(self.database, timeout=BUSY_TIMEOUT_MS / 1000)) as source,
+                closing(sqlite3.connect(target)) as copy,
+            ):
+                source.backup(copy)
+                copy.execute("PRAGMA journal_mode=DELETE")  # one file: nothing left in a -wal
+        except sqlite3.DatabaseError as exc:
+            return [f"{self.database.name}: no se puede copiar ({exc})"]
+        return []
 
-    def restore_from(self, candidate: Path) -> None:
+    def copy_raw(self, target: Path) -> Path:
+        """Byte copy of the live files (``.db`` and its ``-wal``/``-shm``), for a database too
+        damaged for the backup API: kept for forensics, never verified."""
+        shutil.copyfile(self.database, target)
+        for suffix in SIDE_FILES:
+            side = self.database.with_name(self.database.name + suffix)
+            if side.is_file():
+                shutil.copyfile(side, target.with_name(target.name + suffix))
+        return target
+
+    def restore_from(self, candidate: Path, replace_file: bool = False) -> None:
         """Overwrite the live database page by page inside SQLite's own locking (never a file
-        swap under an open connection), then keep it in WAL mode."""
+        swap under an open connection), then keep it in WAL mode. ``replace_file``: the live
+        database is too damaged to write into, so its files are removed first (the API must
+        be stopped; on Windows an open file makes this fail instead)."""
+        if replace_file:
+            for suffix in ("", *SIDE_FILES):
+                self.database.with_name(self.database.name + suffix).unlink(missing_ok=True)
         with (
             closing(_read_only(candidate)) as source,
             closing(sqlite3.connect(self.database, timeout=BUSY_TIMEOUT_MS / 1000)) as live,
@@ -61,6 +84,36 @@ class SqliteBackups:
             source.backup(live)
             live.execute("PRAGMA journal_mode=WAL")
             live.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+
+    def after_restore(self, info: AuditInfo) -> None:
+        """Sessions in the copy may have been closed since: all are purged, so everyone logs
+        in again. The restore itself is the first event after the copy's chain."""
+        engine = create_engine(
+            "sqlite://",
+            creator=lambda: sqlite3.connect(self.database, timeout=BUSY_TIMEOUT_MS / 1000),
+            poolclass=NullPool,
+        )
+        try:
+            tables = set(inspect(engine).get_table_names())
+            with session_factory(engine).begin() as session:
+                if "audit_log" in tables:
+                    take_write_lock(session)
+                if "sessions" in tables:
+                    session.execute(text("DELETE FROM sessions"))
+                if "audit_log" in tables:
+                    append(
+                        session,
+                        AuditEvent(
+                            ts_utc=utc_now(),
+                            actor=info.actor,
+                            action=info.action or "DB_RESTORED",
+                            entity="database",
+                            entity_id=None,
+                            detail=info.detail,
+                        ),
+                    )
+        finally:
+            engine.dispose()
 
     @staticmethod
     def sha256(path: Path) -> str:

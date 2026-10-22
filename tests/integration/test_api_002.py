@@ -708,6 +708,7 @@ def test_api_writes_are_audited_with_their_principal(ctx) -> None:  # type: igno
         ("api_key", "BET_CREATED"),
         ("api_key", "BET_UPDATED"),
         ("api_key", "SETTINGS_CHANGED"),
+        ("api_key", "SETTINGS_HISTORY_ADDED"),  # min_edge: the change and when it applies
         ("api_key", "ODDS_MANUAL_QUOTE"),
         ("api_key", "BET_DELETED"),
     ]

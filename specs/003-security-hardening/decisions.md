@@ -277,3 +277,91 @@ Formato:
   - Aceptar la base activa: falla 1.
   - Rotar por orden alfabético: falla 1.
   - Conservar una copia que no pasó la verificación: falla 1.
+
+## 2026-10-22 — T017: hash de los modelos y checkpoint 🔍 de integridad (T013–T017)
+- Contexto: `joblib.load` ejecuta el código que nombre el pickle (A08). La spec pide registrar el SHA-256 de `model.joblib` en `metadata.json` y no cargar nada que no coincida.
+- Decisión (modelos):
+  - **Clave.** `metadata.json` guarda el hash en la clave `sha256`. `JoblibModelRegistry.save` lo escribe siempre.
+  - **Carga.** `load` lee el archivo una vez, calcula el hash de esos bytes y deserializa **los mismos bytes** (`io.BytesIO`), así que no hay ventana para cambiar el archivo entre la comprobación y la carga. Se rechazan con `ModelIntegrityError`:
+    - un hash que falte o no tenga formato SHA-256;
+    - un `metadata.json` ilegible;
+    - un hash distinto.
+  - **API.** La aplicación convierte el error en `ModelNotVerifiedError`, subclase de `ModelNotAvailableError`. Así, todo lo que ya trataba el "modelo no disponible" sigue funcionando: `/health` responde `model_loaded=false`, el arranque registra un error en el log y la lista de ligas muestra 0 equipos.
+    - Las rutas responden `503 MODEL_INTEGRITY_ERROR` con `details.version` y sin rutas de archivo.
+    - Un test con un pickle malicioso (con control positivo de que ejecuta código) demuestra que nunca se deserializa.
+  - **Escritura de `metadata.json`.** Se escribe en un temporal y se cambia con `os.replace`: una escritura interrumpida nunca deja medio archivo.
+  - **`betting-ml models-rehash` (+ make).** Lista cada modelo con su hash y su estado (`sin registrar`, `ya registrado` o `DISTINTO DEL REGISTRADO`) y pide confirmación (`--yes` para scripts).
+    - Solo registra los que no tienen hash, y solo si el archivo sigue teniendo el hash que se mostró.
+    - Nunca reemplaza un hash distinto: termina con código 1 y no escribe nada.
+  - **Nota operativa.**
+    - Los `metadata.json` versionados de E06 y E12 no tienen hash, y en esta máquina no hay `model.joblib`, así que hoy no cambia nada.
+    - `train-prod` guarda los modelos nuevos ya con su hash.
+    - Si se copian modelos de otra máquina, hay que revisarlos y ejecutar `models-rehash`. Hasta entonces la API responde `503 MODEL_INTEGRITY_ERROR`.
+- Alcance (riesgo aceptado, hallazgo M3 del checkpoint): esto es **integridad, no autenticidad**. Quien puede reemplazar `model.joblib` también puede reescribir `metadata.json`.
+  - El ancla es git: `metadata.json` está versionado, así que un hash nuevo o cambiado aparece en `git diff` y en la revisión.
+  - Para autenticidad haría falta un HMAC con una clave fuera de `models/` (ver "Pendiente de decisión").
+
+### Checkpoint 🔍 (ml-reviewer, T013–T017)
+Veredicto inicial: **bloqueado** por dos hallazgos altos, ambos reproducidos. Lo confirmado como correcto:
+- Las migraciones 0005–0007 conservan filas, CHECK, claves foráneas e índices al subir de 0004 a la última.
+- Toda escritura de apuestas, ajustes y snapshots va con su evento y su `version`.
+- Los backups son coherentes.
+- Ninguna otra ruta deserializa modelos.
+
+Corregido en este mismo commit, con tests negativos:
+- **A1 (alto): el historial de límites no estaba auditado.** El límite vigente se calcula a partir de `settings_history` (subir el límite solo aplica el mes siguiente). Un `UPDATE ... SET effective_from` por SQL aplicaba la subida al instante y `verify-integrity` no decía nada.
+  - Ahora cada fila del historial es una entidad auditada (`settings_change`, evento `SETTINGS_HISTORY_ADDED` con `effective_from`, en la misma transacción que el cambio de ajustes).
+  - `verify-integrity` la compara con su último evento, igual que las apuestas: detecta filas cambiadas, borradas o insertadas.
+  - La **migración 0008** sella un `BASELINE` de las filas existentes tras la cabeza de la cadena. No cambia ni borra nada, y no repite el sellado si se vuelve a subir.
+- **A2 (alto): el downgrade de 0007 borraba la auditoría.** Después, subir de nuevo sellaba un `BASELINE` nuevo sobre datos manipulados ("blanqueo"). Ahora el downgrade **aborta** si `audit_log` tiene algún evento y no toca nada. El downgrade de 0008 no borra sus eventos.
+- **M1 (medio): no se podía restaurar justo cuando la base activa estaba dañada.** La copia previa fallaba y la CLI terminaba con un traceback.
+  - Ahora `restore` explica el problema y termina con código 1.
+  - Con `--force` guarda una copia en bruto (`unverified-pre-restore-…db`, con su `-wal`/`-shm`, nunca rotada) y restaura igualmente sobre archivos nuevos (la API debe estar parada).
+- **M2/E5 (medio): una copia sin `audit_log` se restauraba sin verificar su contenido.** Bastaba con editarla, borrar la tabla, marcarla como 0006 y recalcular el `.sha256`. Ahora se rechaza salvo `--allow-legacy` explícito. Esto corrige la afirmación del "paso 4" de T016.
+- **Bajos corregidos:**
+  - `restore` cierra todas las sesiones (una cerrada después de la copia habría revivido con ella) y registra el evento `DB_RESTORED` con el archivo, su hash y la copia previa.
+  - `verify-integrity` comprueba que existen los triggers de solo inserción.
+  - `metadata.json` se escribe de forma atómica y, si está ilegible, cuenta como fallo de integridad.
+  - `models-rehash` registra solo los hashes que el dueño vio.
+  - El test de páginas corruptas comprobaba `"" in p` (siempre verdadero); ahora exige el error de SQLite.
+  - Si la copia en caliente falla porque la base está dañada, se informa como problema y no como excepción de `sqlite3`.
+
+No corregido (riesgo aceptado, con su alcance real):
+- **M2, encadenado sin clave.**
+  - **Corrección al alcance declarado en T015:** no hace falta reescribir toda la cadena para engañarla. Quien tiene escritura sobre el archivo `.db` y conoce el formato puede **añadir** eventos válidos al final y cuadrar cualquier cambio. Las copias externas tampoco lo detectan, porque la cadena antigua sigue siendo prefijo de la nueva; sí conservan el estado real anterior para compararlo.
+  - Lo que la cadena sí garantiza:
+    - detecta cambios hechos fuera de la aplicación sin forjar eventos (SQL a mano, herramientas, errores);
+    - detecta registros alterados, borrados o reordenados;
+    - detecta triggers eliminados.
+  - Protege frente a errores y manipulaciones ingenuas, no frente a un atacante con acceso al archivo y conocimiento del código.
+- **TOCTOU local de `restore`.** La copia se vuelve a leer del disco tras verificarla. Aprovecharlo exige escribir en `data/backups/` durante la restauración, es decir, acceso local de escritura.
+- **Snapshots y cuotas.** No se comparan con sus eventos (se audita un resumen). Las cuotas vienen de la API y se pueden volver a pedir.
+- **Borrado de apuestas.** `delete` no condiciona en SQL por `status`. La ventana de carrera es prácticamente nula porque el caso de uso lo niega tras el inicio del partido.
+- **Importación del dominio en 0007/0008.** Usan `domain.audit` en vivo. Su formato lleva `"v": 1` y nunca cambia en el sitio: un formato nuevo sería `v: 2` y conservaría el de `v1`.
+- **Downgrade de 0006.** Elimina la columna `version`. Es metadato de concurrencia, no son datos del usuario.
+- **Columna `ts_utc` de `audit_log`.** No se compara con la firmada. La hora firmada va en el payload; la columna es una copia para consultas.
+- **Test de concurrencia.** El test de 2 hilos de `test_concurrency.py` no es determinista, pero lo cubre el test determinista con `RacingRepository`.
+
+**Pendiente de decisión del dueño (M2 y M3).** Encadenar la auditoría con **HMAC** y firmar los hashes de los modelos con una clave nueva que solo esté en `.env` (`AUDIT_KEY`). Así, forjar eventos o modelos exigiría robar también `.env`.
+- Costes:
+  - un secreto más que custodiar y respaldar aparte (sin él no se puede verificar la cadena);
+  - formato `v: 2`;
+  - una migración que firme la cabeza actual.
+- Se propone al cerrar esta tarea; si se aprueba, va como tarea propia antes de T021.
+
+- Impacto: mutaciones comprobadas, todas detectadas.
+  - **T017:**
+    - Sin comparar el hash del modelo: fallan 5 tests.
+    - Aceptar modelos sin hash: fallan 6.
+    - Guardar sin hash: fallan 9.
+    - Rehash que reemplaza un hash distinto: falla 1.
+    - Sin el código `MODEL_INTEGRITY_ERROR`: falla 1.
+    - Error sin traducir: falla 1.
+  - **Checkpoint:**
+    - Historial fuera de la verificación: fallan 4.
+    - Downgrade que borra la auditoría: falla 1.
+    - Aceptar una copia sin auditoría: fallan 2.
+    - Sin exigir `--force`: fallan 2.
+    - Sesiones que reviven: falla 1.
+    - Sin comprobar triggers: falla 1.
+    - Rehash sin comparar lo mostrado: falla 1.

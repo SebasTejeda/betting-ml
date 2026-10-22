@@ -58,3 +58,13 @@ class PasswordCheckBusyError(Exception):
 
     def __init__(self) -> None:
         super().__init__("El servidor está ocupado verificando otros inicios de sesión. Reintenta.")
+
+
+class ModelIntegrityError(Exception):
+    """A model artifact whose SHA-256 is missing from its metadata or differs from it. Such a
+    file is never unpickled: ``joblib.load`` runs whatever code the pickle names (A08)."""
+
+    def __init__(self, version: str, reason: str) -> None:
+        super().__init__(f"El modelo {version} no pasa la verificación de integridad: {reason}")
+        self.version = version
+        self.reason = reason

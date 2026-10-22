@@ -87,7 +87,18 @@ def upgrade() -> None:
         op.execute(ddl)
 
 
+class AuditNotEmptyError(RuntimeError):
+    """Dropping the log would erase its events (and a later upgrade would seal a fresh
+    baseline over any tampered data): refused while it holds any."""
+
+
 def downgrade() -> None:
+    events = op.get_bind().execute(sa.text("SELECT count(*) FROM audit_log")).scalar()
+    if events:
+        raise AuditNotEmptyError(
+            f"Downgrade de 0007 abortado: audit_log tiene {events} eventos y es de solo "
+            "inserción. No se ha modificado nada; haz antes una copia (betting-ml backup)."
+        )
     for name in TRIGGERS:
         op.execute(f"DROP TRIGGER IF EXISTS {name}")
     op.drop_index("ix_audit_log_entity", table_name="audit_log")

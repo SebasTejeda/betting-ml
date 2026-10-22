@@ -35,7 +35,7 @@ from betting_ml.api.routers import (
     settings,
     tracking,
 )
-from betting_ml.application.predict_matches import ModelNotAvailableError
+from betting_ml.application.predict_matches import ModelNotAvailableError, ModelNotVerifiedError
 from betting_ml.config import Settings, ensure_secure, get_settings
 
 logger = logging.getLogger(__name__)
@@ -86,6 +86,8 @@ def create_app(services: ServicesApi | None = None, config: Settings | None = No
             app.state.container = Container().api_services()
         try:  # warm-up: load models and Elo state once
             app.state.container.predictor.state()
+        except ModelNotVerifiedError as exc:
+            logger.error("Model not loaded, integrity check failed: %s", exc)
         except ModelNotAvailableError as exc:
             logger.warning("API started without a trained model: %s", exc)
         auth = getattr(app.state.container, "auth", None)

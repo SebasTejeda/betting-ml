@@ -286,14 +286,21 @@ def backup() -> None:
 def restore(
     file: Path = typer.Argument(..., help="Copia .db con su .sha256 al lado"),
     yes: bool = typer.Option(False, "--yes", help="No pedir confirmación"),
+    force: bool = typer.Option(
+        False, "--force", help="Si la base actual está dañada, guardarla en bruto y restaurar"
+    ),
+    allow_legacy: bool = typer.Option(
+        False, "--allow-legacy", help="Aceptar una copia anterior a la auditoría (sin verificar)"
+    ),
 ) -> None:
     """Restaura una copia verificada (hash, integridad y auditoría). Antes guarda una copia del
-    estado actual. Detén la API antes; al arrancar, migra la copia si es antigua."""
+    estado actual y después cierra todas las sesiones. Detén la API antes; al arrancar, migra
+    la copia si es antigua."""
     from betting_ml.application.maintenance import RestoreError
     from betting_ml.container import Container
 
     use_case = Container().restore_database()
-    problems = use_case.verify(file)
+    problems = use_case.verify(file, allow_legacy)
     if problems:
         for problem in problems:
             typer.echo(f"RECHAZADA: {problem}", err=True)
@@ -304,13 +311,52 @@ def restore(
             abort=True,
         )
     try:
-        result = use_case.run(file)
-    except RestoreError as exc:  # changed between the check and the restore
+        result = use_case.run(file, allow_legacy=allow_legacy, force=force)
+    except RestoreError as exc:
         typer.echo(str(exc), err=True)
         raise typer.Exit(code=1) from exc
     typer.echo(f"Restaurada: {result.restored.name}")
     if result.previous is not None:
-        typer.echo(f"Estado anterior guardado en {result.previous}")
+        state = "" if result.previous_verified else " (en bruto, sin verificar: estaba dañado)"
+        typer.echo(f"Estado anterior guardado en {result.previous}{state}")
+    typer.echo("Sesiones cerradas: vuelve a iniciar sesión.")
+
+
+@app.command("models-rehash")
+def models_rehash(
+    version: list[str] = typer.Option(None, "--version", help="Solo estos modelos"),
+    yes: bool = typer.Option(False, "--yes", help="No pedir confirmación"),
+) -> None:
+    """Registra en metadata.json el SHA-256 de los modelos guardados antes de la spec 003.
+    Certifica los archivos tal como están: revisa antes que son los tuyos. Nunca reemplaza un
+    hash registrado distinto (código 1)."""
+    from betting_ml.application.maintenance import RehashRefusedError
+    from betting_ml.container import Container
+
+    use_case = Container().rehash_models()
+    try:
+        hashes = use_case.plan(version or None)
+    except ValueError as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(code=1) from exc
+    labels = {"ok": "ya registrado", "new": "sin registrar", "mismatch": "DISTINTO DEL REGISTRADO"}
+    for model_hash in hashes:
+        typer.echo(f"{model_hash.version}: {labels[model_hash.status]}  {model_hash.sha256}")
+    if any(h.status == "mismatch" for h in hashes):
+        typer.echo("Hay modelos alterados o reentrenados a mano: no se registra nada.", err=True)
+        raise typer.Exit(code=1)
+    new = [h for h in hashes if h.status == "new"]
+    if not new:
+        typer.echo("Nada que registrar.")
+        return
+    if not yes:
+        typer.confirm(f"¿Registrar el SHA-256 de {len(new)} modelo(s)?", abort=True)
+    try:
+        use_case.run([h.version for h in new], shown={h.version: h.sha256 for h in new})
+    except RehashRefusedError as exc:  # changed between the listing and the write
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(code=1) from exc
+    typer.echo(f"Registrado el SHA-256 de {len(new)} modelo(s) en su metadata.json.")
 
 
 @app.command("db-upgrade")
