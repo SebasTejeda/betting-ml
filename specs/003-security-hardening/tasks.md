@@ -101,7 +101,7 @@ Reglas de ejecución:
 
 ## Fase 4 — Integridad de datos
 
-- [ ] **T013** Restricciones en la base y SQLite robusto (US5)
+- [x] **T013** Restricciones en la base y SQLite robusto (US5)
   - Migración 0005 (*batch mode*): `CHECK` de `plan.md` §5 y `NOT NULL` faltantes; valida antes y aborta listando las filas inválidas, sin borrar nada.
   - `journal_mode=WAL`, `busy_timeout=5000` y `foreign_keys=ON` verificados al arrancar.
   - Tests: `INSERT` directo con datos imposibles → `IntegrityError`; migración sobre una base con datos válidos e inválidos.

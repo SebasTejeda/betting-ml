@@ -4,6 +4,7 @@ to canonical match ids. The API key only lives in memory (never logged or stored
 from __future__ import annotations
 
 import logging
+import math
 import time
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
@@ -143,6 +144,16 @@ class MappedOdds:
     events: int = 0
     unmapped_teams: set[str] = field(default_factory=set)
     unknown_bookmakers: set[str] = field(default_factory=set)
+    invalid_prices: int = 0  # prices that are not odds (≤ 1, not a number): skipped
+
+
+def _price(raw: Any) -> float | None:
+    """Decimal odds or None: the database rejects odds ≤ 1 (spec 003, US5)."""
+    try:
+        price = float(raw)
+    except (TypeError, ValueError):
+        return None
+    return price if math.isfinite(price) and price > 1 else None
 
 
 def uk_date(commence: datetime) -> Any:
@@ -207,17 +218,23 @@ def map_events(
                     )
                     if code is None:
                         continue
+                    price = _price(outcome.get("price"))
+                    if price is None:
+                        mapped.invalid_prices += 1
+                        continue
                     mapped.quotes.append(
                         OddsQuote(
                             match_id=match_id,
                             league=league,
                             bookmaker=key,
                             outcome=code,
-                            odds=float(outcome["price"]),
+                            odds=price,
                             kickoff_utc=kickoff,
                             home_team=home,
                             away_team=away,
                             last_update=updated,
                         )
                     )
+    if mapped.invalid_prices:
+        logger.warning("%s: %d invalid prices skipped", league, mapped.invalid_prices)
     return mapped

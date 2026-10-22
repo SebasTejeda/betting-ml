@@ -182,3 +182,10 @@ Spec activa: [`specs/003-security-hardening/`](specs/003-security-hardening/). T
   - OpenAPI regenerado; el frontend valida la moneda con el mismo patrón.
   - 58 tests negativos nuevos; mutaciones comprobadas.
   - 534 tests backend (cobertura 98.8 %) y 57 frontend en verde.
+- 2026-10-22 · T013 · 28 restricciones CHECK con nombre en bets, settings, settings_history, odds_quotes, odds_snapshots, bookmakers y sessions.
+  - Cubren cuota > 1, stake > 0 en céntimos, listas de estado, tipo y resultado, coherencia pendiente/liquidada, beneficio según el estado, rangos de probabilidad, EV y CLV, moneda y fracciones.
+  - Migración 0005: valida antes y aborta listando rowids sin tocar datos; downgrade explícito.
+  - PRAGMA WAL, busy_timeout=5000 y foreign_keys=ON en cada conexión, verificados al arrancar.
+  - The Odds API descarta y cuenta las cuotas inválidas.
+  - 46 tests nuevos (INSERT directo imposible → IntegrityError, migración con datos válidos e inválidos, esquema migrado = modelos, PRAGMA).
+  - 580 tests backend en verde (cobertura 98.8 %)

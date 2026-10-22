@@ -68,6 +68,21 @@ def test_unmapped_teams_are_reported_not_hidden() -> None:
     assert {q.bookmaker for q in unknown_books.quotes} == {"pinnacle"}
 
 
+def test_invalid_prices_are_skipped_and_counted() -> None:
+    """A price the database would reject (≤ 1, missing, not a number) never reaches it."""
+    event = _events()[0]
+    book = event["bookmakers"][0]
+    outcomes = book["markets"][0]["outcomes"]
+    broken = [{**outcomes[0], "price": 1.0}, {**outcomes[1], "price": "n/a"}, outcomes[2]]
+    event = {
+        **event,
+        "bookmakers": [{**book, "markets": [{**book["markets"][0], "outcomes": broken}]}],
+    }
+    mapped = map_events([event], "E0", TeamNameResolver(load_team_aliases()))
+    assert mapped.invalid_prices == 2
+    assert len(mapped.quotes) == 1 and mapped.quotes[0].odds > 1
+
+
 def _client(handler, **kwargs) -> TheOddsApiClient:  # type: ignore[no-untyped-def]
     transport = httpx.MockTransport(handler)
     return TheOddsApiClient(

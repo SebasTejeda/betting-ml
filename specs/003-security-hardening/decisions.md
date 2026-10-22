@@ -156,3 +156,28 @@ Formato:
   - El 500 ya no se relanza (T011 lo relanzaba para que el servidor registrara la traza). Ahora el middleware registra la traza con `logger.exception` en `betting_ml.api.errors`, junto con el `request_id`, el método y la ruta, y responde el 500 uniforme. Solo relanza si la respuesta ya había empezado. Motivo: una sola entrada de log por error, enlazable con el `request_id` que ve el cliente; T018 añadirá la redacción de secretos.
   - El frontend valida la moneda con el mismo patrón (solo letras) antes de enviarla.
 - Impacto: verificado con mutaciones. Sin `extra="forbid"` fallan 7 tests; con los errores de Pydantic sin filtrar fallan 54.
+
+## 2026-10-22 — T013: restricciones con los valores reales del esquema y PRAGMA verificados
+- Contexto: la tabla del plan (§5) se escribió antes de leer `adapters/sql/models.py`, como el propio plan advierte.
+- Decisión:
+  - **Valores reales.** `outcome` se guarda como `H`/`D`/`A`, no `home`/`draw`/`away`. La cuota de `odds_quotes` se llama `odds`, no `price`. Las casas tienen `source` `api`/`manual` y `role` `reference`/`exchange`/`soft`. Los snapshots tienen `source` `the_odds_api`/`manual`.
+  - **Restricciones añadidas sobre el plan:**
+    - `ck_bets_settlement`: pendiente ⇔ sin beneficio y sin fecha de liquidación.
+    - `ck_bets_profit`: perdida → −stake, nula → 0, ganada → ≥ 0, siempre en céntimos.
+    - `result_source` ∈ {manual, official}; `fair_probability` ∈ [0, 1]; EV y CLV ∈ [−1, 1000]. Ambos valen cuota × probabilidad − 1.
+    - Moneda `[A-Z]{3}`; `min_edge` ∈ [0, 1]; mes de `settings_history` con forma `YYYY-MM`; créditos ≥ 0.
+    - Sesiones: hash de 64 caracteres y `last_seen_at ≥ created_at`.
+  - **Pendiente para otras tareas.** `version >= 1` llega con la columna en T014 (migración 0006) y `audit_log` en T015.
+  - **NOT NULL.** No faltaba ninguno: la migración 0001 ya coincide con los modelos.
+  - **Migración 0005.**
+    - Es una copia congelada de las reglas de los modelos; un test compara ambos esquemas.
+    - Primero valida y, si hay filas inválidas, aborta listando `tabla.restricción: rowid …` (solo rowids, nunca valores) sin tocar nada.
+    - Las bases creadas desde los modelos se saltan la reconstrucción.
+    - El *batch mode* de Alembic 1.20 **conserva** los CHECK al reconstruir una tabla. Por eso el *downgrade* los quita uno a uno, y las migraciones futuras (0006) no los perderán.
+  - **Cuotas inválidas.** El adaptador de The Odds API descarta las cuotas ≤ 1 o no numéricas, las cuenta y lo registra en el log. Así una cuota rara no hace fallar el snapshot entero con la nueva restricción.
+  - **PRAGMA.** `foreign_keys=ON`, `busy_timeout=5000` y `journal_mode=WAL` se fijan en cada conexión. Una base en memoria no admite WAL y queda en `memory`. `prepare()` los relee y falla al arrancar (`DatabaseConfigError`) si alguno no se aplicó.
+  - **`synchronous`.** Se mantiene en `FULL`, el valor por defecto: en WAL, `NORMAL` puede perder las últimas transacciones si se corta la luz, y aquí prima la integridad.
+- Impacto:
+  - Con WAL, la base son tres archivos (`app.db`, `-wal`, `-shm`). La copia de seguridad de T016 debe usar la API de *backup* de SQLite y no copiar el archivo.
+  - Mutaciones comprobadas. Sin una restricción en 0005 fallan 3 tests; sin la validación previa, 1; sin WAL, 2.
+  - Quitar `busy_timeout` no rompe nada porque `sqlite3` ya usa 5 s por defecto. Un test comprueba que `check_pragmas` detecta un timeout distinto.
