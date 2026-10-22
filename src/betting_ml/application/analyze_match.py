@@ -29,6 +29,9 @@ from betting_ml.domain.ports import RatingsSource
 from betting_ml.domain.ratings import snapshot_date
 from betting_ml.domain.value import verdict as value_verdict
 
+# Re-exported so the API layer never imports from ml.
+from betting_ml.ml.models.goal_model import MissingHistoryError as MissingHistoryError
+
 LEVEL_ORDER = {"baja": 0, "media": 1, "alta": 2}
 EUROPEAN = ("UCL", "UEL")
 

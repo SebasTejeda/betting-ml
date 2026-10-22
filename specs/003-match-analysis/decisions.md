@@ -247,3 +247,9 @@ Formato:
 ## 2026-10-22 — Checkpoint T017, 2.ª ronda: APROBADO CON OBSERVACIONES
 - Aplicado: `GET /analysis` con `match_id` también exige que `home`/`away` correspondan (422 `MATCH_TEAMS_MISMATCH`), para no calcular EV con cuotas en caché de otro partido.
 - Registrado: los créditos de The Odds API se reinician en la fecha de suscripción, no el día 1; `_remaining()` compara por mes calendario, así que tras un reinicio a mitad de mes un valor bajo anterior podría bloquear (429) hasta fin de mes: falla del lado seguro. El aviso de cuotas viejas usa la hora real del servidor. T020 debe separar el CLV contra Pinnacle del CLV contra el cierre promedio.
+
+## 2026-10-22 — Auditoría final T024: APROBADO CON OBSERVACIONES (sin bloqueantes)
+- Aplicado: el router `analysis` ya no importa de `ml`; `MissingHistoryError` se reexporta desde `application.analyze_match`.
+- Registrado sin cambio: el aviso de cuotas por evento viejas (> 6 h) se arma en el router; es texto de presentación y queda ahí por simplicidad (mover a `application` si crece).
+- Registrado sin cambio: si no se conoce el saldo de créditos (sin snapshot ni caché con saldo), el primer refresco por evento no comprueba la reserva mínima. El daño máximo es una llamada (~12 créditos) y el saldo queda conocido desde esa respuesta.
+- Registrado: `container.py` con 68 % de cobertura (cableado, ejercitado por los tests de integración); 2 avisos de lint en componentes shadcn (`react-refresh/only-export-components`); cuotas por evento pendientes de verificar con una respuesta real.

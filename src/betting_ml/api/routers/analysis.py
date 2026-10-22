@@ -21,13 +21,13 @@ from betting_ml.api.schemas_003 import (
     TeamOut,
 )
 from betting_ml.application.analyze_match import (
+    MissingHistoryError,
     RatingsUnavailableError,
     SameTeamError,
     TeamNotFoundError,
 )
 from betting_ml.application.event_odds import EventNotFoundError, InvalidMatchIdError
 from betting_ml.domain.entities import slugify
-from betting_ml.ml.models.goal_model import MissingHistoryError
 
 router = APIRouter(prefix="/api/v1", tags=["spec-003"])
 STALE_ODDS_HOURS = 6
