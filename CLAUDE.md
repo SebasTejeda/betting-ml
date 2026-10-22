@@ -4,13 +4,14 @@ Responde siempre al usuario en español.
 
 Proyecto: modelo de ML para predecir partidos de fútbol (1X2), detectar value bets y servirlo con una API REST; comparador de cuotas con referencia Pinnacle, diario de apuestas y frontend. Se construye con **Spec-Driven Development (SDD)**.
 
-**Spec activa: ninguna.** Las specs 001 (`specs/001-prediction-model/`), 002 (`specs/002-odds-comparator/`) y 003 (`specs/003-security-hardening/`) están terminadas; su código y resultados se mantienen. El trabajo nuevo empieza con una spec nueva (`specs/004-…/`) aprobada por el dueño.
+**Spec activa: `specs/004-match-analysis/`** — integración de la rama `Sebastian` (análisis de partido) siguiendo [`integration.md`](specs/004-match-analysis/integration.md). Las specs 001 (`specs/001-prediction-model/`), 002 (`specs/002-odds-comparator/`) y 003 (`specs/003-security-hardening/`) están terminadas; su código y resultados se mantienen.
 
 ## Lee en este orden antes de hacer nada
 
 1. `specs/constitution.md` — reglas no negociables (I–XII).
 2. `SECURITY.md` — modelo de amenazas y controles que ningún cambio puede debilitar.
-3. `PROGRESS.md` — estado del proyecto (resúmenes finales de cada spec).
+3. `specs/004-match-analysis/integration.md` — plan y tareas (I00–I08) de la spec activa.
+4. `PROGRESS.md` — estado del proyecto (resúmenes finales de cada spec; sección "Spec 004").
 
 Referencia de las specs terminadas:
 - `specs/001-prediction-model/{spec,plan,experiments,decisions}.md` con `reports/REPORT.md`.

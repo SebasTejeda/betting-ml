@@ -276,3 +276,14 @@ Spec activa: [`specs/002-odds-comparator/`](specs/002-odds-comparator/). Una lí
   - desplegar siguiendo `docs/deploy.md`;
   - programar las copias externas.
 
+---
+
+# Spec 004 — Integración del análisis de partido (rama Sebastian)
+
+Plan: [`specs/004-match-analysis/integration.md`](specs/004-match-analysis/integration.md). Trabajo en la rama `Daniel`; tras cada tarea se pide confirmación al dueño. Una línea por tarea: `AAAA-MM-DD · IXX · qué se hizo · resultado clave`.
+
+## Bitácora (spec 004)
+
+- 2026-10-22 · I00 · Análisis de `origin/Sebastian` (30 commits, 119 archivos) y plan de integración aprobado.
+  - Encontrado: 18 conflictos de texto, dos migraciones 0004, dos "spec 003" con la enmienda XII, rutas nuevas públicas, columnas de apuestas sin CHECK ni auditoría, y el refresco por evento fuera del cupo de créditos.
+  - Decidido: fusionar conservando sus commits; su spec pasa a 004, la enmienda a XIII y la migración a 0009; `.claude/launch.json` (ruta personal) queda fuera.
