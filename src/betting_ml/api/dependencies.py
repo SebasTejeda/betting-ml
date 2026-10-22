@@ -16,6 +16,7 @@ from betting_ml.application.predict_matches import PredictMatches
 from betting_ml.application.read_backtest import ReadBacktestReport
 from betting_ml.application.refresh_odds import RefreshOdds
 from betting_ml.application.settle_bets import SettleBets
+from betting_ml.application.throttle import RateLimits
 from betting_ml.application.track_predictions import TrackPredictions
 from betting_ml.config import BookmakersFile, LeaguesFile
 
@@ -82,6 +83,13 @@ class ServicesApi(Protocol):
     @property
     def auth(self) -> Authenticate | None:
         """Owner login (spec 003); None disables session logins."""
+
+    @property
+    def rate_limits(self) -> RateLimits | None:
+        """Request limits (spec 003, US2); None disables them (functional tests)."""
+
+    @property
+    def max_body_bytes(self) -> int: ...
 
     @property
     def secure_cookies(self) -> bool:

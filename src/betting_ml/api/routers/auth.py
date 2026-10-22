@@ -9,6 +9,7 @@ from betting_ml.api.errors import ApiError
 from betting_ml.api.schemas_auth import LoginIn, LoginOut, MeOut
 from betting_ml.api.security import (
     SESSION_COOKIE,
+    client_ip,
     current_principal,
     public,
     require_read,
@@ -37,7 +38,11 @@ def login(
     auth: Authenticate = Depends(get_auth),
     services: ServicesApi = Depends(get_services),
 ) -> LoginOut:
-    result = auth.login(body.password, current_token=request.cookies.get(SESSION_COOKIE))
+    result = auth.login(
+        body.password,
+        current_token=request.cookies.get(SESSION_COOKIE),
+        client=client_ip(request.scope),
+    )
     response.set_cookie(
         SESSION_COOKIE,
         result.token,

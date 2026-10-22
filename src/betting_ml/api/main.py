@@ -12,6 +12,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from betting_ml import __version__
 from betting_ml.api.dependencies import ServicesApi
 from betting_ml.api.errors import register_error_handlers
+from betting_ml.api.middleware.body_limit import BodyLimitMiddleware
+from betting_ml.api.middleware.rate_limit import RateLimitMiddleware
 from betting_ml.api.routers import (
     admin,
     auth,
@@ -95,6 +97,9 @@ def create_app(services: ServicesApi | None = None) -> FastAPI:
         lifespan=lifespan,
     )
     app.state.container = services
+    # added innermost first: CORS → body limit → rate limit → routers (plan.md §3)
+    app.add_middleware(RateLimitMiddleware)
+    app.add_middleware(BodyLimitMiddleware)
     app.add_middleware(
         CORSMiddleware,
         allow_origin_regex=LOCALHOST_ORIGINS,

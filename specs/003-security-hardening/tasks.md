@@ -73,7 +73,7 @@ Reglas de ejecución:
   - Tests MSW: login correcto/incorrecto, 429, redirección por 401, CSRF en escrituras, logout; cobertura ≥ 80 %.
   - Commit: `feat(web): login page and cookie session without secrets in local storage`
 
-- [ ] **T008** Rate limit y anti fuerza bruta (US2)
+- [x] **T008** Rate limit y anti fuerza bruta (US2)
   - Puerto `RateLimiter` y adaptador en memoria (ventana deslizante, thread-safe).
   - Login: 5 fallos/min por IP con bloqueo progresivo (1, 5, 15 min); global por sesión/IP; `POST /odds/refresh` 6/hora. `429` con `Retry-After`.
   - `BodyLimitMiddleware`: `413 PAYLOAD_TOO_LARGE`.

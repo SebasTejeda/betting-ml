@@ -81,3 +81,27 @@ Formato:
 - Decisión: se purgan al arrancar la API, en cada login y una a una al detectarlas vencidas al validar; sin tarea horaria.
 - Motivo: una sesión vencida nunca se acepta (se comprueba en cada petición); la purga solo limpia filas, así que no hace falta un scheduler.
 - Impacto: pueden quedar filas vencidas hasta el siguiente login o reinicio; no tienen efecto.
+
+## 2026-10-22 — El login cuenta intentos antes de comprobar la contraseña
+- Contexto: la spec pide 5 fallos por minuto e IP con bloqueo progresivo (1, 5, 15 min). Contar solo los fallos *después* de verificar deja pasar intentos en paralelo mientras Argon2 calcula.
+- Decisión: cada intento se cuenta de forma atómica antes de verificar y un login correcto borra la cuenta. El 6.º intento en un minuto responde `429 TOO_MANY_ATTEMPTS` con `Retry-After` y bloquea la IP 1, 5 y luego 15 minutos (tope). Durante el bloqueo no se comprueba la contraseña, ni siquiera la correcta. El nivel de bloqueo se recuerda 24 h o hasta un login correcto.
+- Motivo: es el mismo límite visto desde fuera, pero sin carreras; además, un cliente bloqueado no consume CPU de Argon2.
+- Impacto: el quinto intento fallido sigue siendo `401`; el sexto ya es `429`.
+
+## 2026-10-22 — Límite global por IP, no por sesión
+- Contexto: la spec dice "global por sesión/IP".
+- Decisión: el límite global (`RATE_LIMIT_PER_MINUTE`) se cuenta por IP del cliente, también para peticiones sin credencial.
+- Motivo: una cookie inventada distinta en cada petición no debe dar un cupo nuevo; con un solo dueño, la IP basta.
+- Impacto: detrás de un proxy hay que pasar la IP real (`uvicorn --proxy-headers` con `--forwarded-allow-ips`); se configura en T020 (Docker).
+
+## 2026-10-22 — Cupo de refrescos de cuotas global y después de autenticar
+- Contexto: `POST /odds/refresh` gasta créditos de The Odds API.
+- Decisión: `ODDS_REFRESH_MAX_PER_HOUR` (6) refrescos manuales en cualquier hora móvil, para toda la API y no por cliente. Se cuenta después de `require_write`, así que una petición anónima no consume el cupo del dueño. El refresco automático programado no pasa por la API y no cuenta.
+- Motivo: el riesgo es el saldo de créditos, que es uno solo.
+- Impacto: `429 RATE_LIMITED` con `Retry-After`.
+
+## 2026-10-22 — Límites desactivables en los tests, límite de cuerpo siempre activo
+- Contexto: los tests funcionales hacen cientos de peticiones por minuto con el mismo cliente.
+- Decisión: si los servicios no traen `rate_limits`, no hay límite de peticiones (`ApiServices` lo deja en `None` por defecto; el `Container` siempre lo configura). El límite de cuerpo aplica siempre, con 64 KB por defecto.
+- Motivo: no hay que tocar los tests funcionales y la configuración real no puede quedarse sin límites.
+- Impacto: `tests/integration/test_api_limits.py` prueba los límites con servicios que sí los traen.

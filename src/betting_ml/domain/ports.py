@@ -6,7 +6,7 @@ the domain only references the type (no IO).
 
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
@@ -201,3 +201,21 @@ class PasswordHasher(Protocol):
     def hash(self, password: str) -> str: ...
 
     def verify(self, password_hash: str, password: str) -> bool: ...
+
+
+@runtime_checkable
+class RateLimiter(Protocol):
+    """Sliding-window counters and lockouts by opaque key (spec 003, US2). Thread-safe."""
+
+    def hit(self, key: str, limit: int, window: timedelta) -> float | None:
+        """Atomically counts one event for ``key`` unless ``limit`` events already fall in the
+        last ``window``: None when counted, else the seconds until one is allowed again."""
+
+    def count(self, key: str, window: timedelta) -> int: ...
+
+    def lock(self, key: str, duration: timedelta) -> None: ...
+
+    def locked_for(self, key: str) -> float | None:
+        """Seconds left of the lock on ``key``, or None if it is not locked."""
+
+    def reset(self, key: str) -> None: ...

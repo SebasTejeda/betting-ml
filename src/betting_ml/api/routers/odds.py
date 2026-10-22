@@ -4,16 +4,40 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Query
 
-from betting_ml.api.dependencies import JournalApi, get_journal
-from betting_ml.api.errors import ApiError
+from betting_ml.api.dependencies import JournalApi, ServicesApi, get_journal, get_services
+from betting_ml.api.errors import ApiError, retry_after
 from betting_ml.api.schemas_002 import BudgetOut, RefreshOut
 from betting_ml.api.security import require_read, require_write
+from betting_ml.application.throttle import HOUR
 
 writes = APIRouter(prefix="/api/v1", tags=["spec-002"], dependencies=[Depends(require_write)])
 reads = APIRouter(prefix="/api/v1", tags=["spec-002"], dependencies=[Depends(require_read)])
 
 
-@writes.post("/odds/refresh", status_code=202, response_model=RefreshOut)
+def refresh_quota(services: ServicesApi = Depends(get_services)) -> None:
+    """ODDS_REFRESH_MAX_PER_HOUR manual refreshes in any rolling hour: each one spends credits
+    of The Odds API (spec 003, US2). Counted only once authenticated."""
+    limits = services.rate_limits
+    if limits is None:
+        return
+    wait = limits.limiter.hit("odds-refresh", limits.odds_refresh_per_hour, HOUR)
+    if wait is not None:
+        headers = retry_after(wait)
+        raise ApiError(
+            429,
+            "RATE_LIMITED",
+            f"Máximo {limits.odds_refresh_per_hour} refrescos de cuotas por hora.",
+            {"retry_after": int(headers["Retry-After"])},
+            headers,
+        )
+
+
+@writes.post(
+    "/odds/refresh",
+    status_code=202,
+    response_model=RefreshOut,
+    dependencies=[Depends(refresh_quota)],
+)
 def refresh_odds(
     league: str | None = Query(None), journal: JournalApi = Depends(get_journal)
 ) -> RefreshOut:

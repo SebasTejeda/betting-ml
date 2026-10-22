@@ -12,7 +12,7 @@ it on their own).
 from __future__ import annotations
 
 import secrets
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from enum import StrEnum
 from typing import Any
 
@@ -36,6 +36,12 @@ class Access(StrEnum):
 def _same(given: str, expected: str) -> bool:
     """Constant-time comparison on bytes (a non-ASCII header must not raise)."""
     return secrets.compare_digest(given.encode(), expected.encode())
+
+
+def client_ip(scope: Mapping[str, Any]) -> str:
+    """Client address of the connection (behind a proxy, uvicorn's --proxy-headers sets it)."""
+    client = scope.get("client")
+    return str(client[0]) if client else "unknown"
 
 
 def _unauthorized() -> ApiError:

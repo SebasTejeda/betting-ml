@@ -12,6 +12,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime, timedelta
 
+from betting_ml.application.throttle import LoginThrottle
 from betting_ml.domain.ports import PasswordHasher, SessionStore
 from betting_ml.domain.security import Session, keyed_digest
 
@@ -47,6 +48,7 @@ class Authenticate:
         max_age: timedelta,
         clock: Callable[[], datetime] = lambda: datetime.now(UTC),
         token_factory: Callable[[int], str] = secrets.token_urlsafe,
+        throttle: LoginThrottle | None = None,
     ) -> None:
         self.sessions = sessions
         self.hasher = hasher
@@ -56,17 +58,24 @@ class Authenticate:
         self.max_age = max_age
         self.clock = clock
         self.token_factory = token_factory
+        self.throttle = throttle
         self.fingerprint = keyed_digest(secret, password_hash)
 
     @property
     def enabled(self) -> bool:
         return self.password_hash.startswith("$argon2id$")
 
-    def login(self, password: str, current_token: str | None = None) -> Login:
+    def login(
+        self, password: str, current_token: str | None = None, client: str = "unknown"
+    ) -> Login:
         if not self.enabled:
             raise LoginDisabledError()
+        if self.throttle is not None:
+            self.throttle.begin(client)  # before Argon2: a locked client costs no CPU
         if not self.hasher.verify(self.password_hash, password):
             raise InvalidCredentialsError()
+        if self.throttle is not None:
+            self.throttle.succeeded(client)
         if current_token:  # rotation: the previous session never survives a new login
             self.logout(current_token)
         self.purge()

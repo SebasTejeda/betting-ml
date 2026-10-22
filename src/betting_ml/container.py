@@ -22,6 +22,7 @@ from betting_ml.adapters.football_data import FootballDataSource
 from betting_ml.adapters.git_info import current_commit
 from betting_ml.adapters.http import HttpClient
 from betting_ml.adapters.joblib_registry import JoblibModelRegistry
+from betting_ml.adapters.memory_rate_limiter import MemoryRateLimiter
 from betting_ml.adapters.parquet_repository import ParquetMatchRepository
 from betting_ml.adapters.report_store import JsonReportStore
 from betting_ml.adapters.sql.db import prepare, session_factory
@@ -49,9 +50,11 @@ from betting_ml.application.refresh_odds import RefreshOdds
 from betting_ml.application.run_experiment import RunExperiment
 from betting_ml.application.select_champion import SelectChampion
 from betting_ml.application.settle_bets import SettleBets
+from betting_ml.application.throttle import LoginThrottle, RateLimits
 from betting_ml.application.track_predictions import TrackPredictions
 from betting_ml.application.train_production import TrainProduction
 from betting_ml.config import (
+    DEFAULT_MAX_BODY_BYTES,
     BookmakersFile,
     FeaturesFile,
     LeaguesFile,
@@ -100,6 +103,8 @@ class ApiServices:
     journal: JournalServices | None = None
     auth: Authenticate | None = None
     secure_cookies: bool = False
+    rate_limits: RateLimits | None = None  # None: no request limits (functional tests)
+    max_body_bytes: int = DEFAULT_MAX_BODY_BYTES
 
 
 class Container:
@@ -286,6 +291,12 @@ class Container:
             ),
             auth=self.authenticate,
             secure_cookies=self.settings.app_env == "prod",
+            rate_limits=RateLimits(
+                limiter=self.rate_limiter,
+                per_minute=self.settings.rate_limit_per_minute,
+                odds_refresh_per_hour=self.settings.odds_refresh_max_per_hour,
+            ),
+            max_body_bytes=self.settings.max_body_bytes,
         )
 
     def backtest_pinnacle(self, allow_holdout: bool = False) -> BacktestPinnacle:
@@ -328,7 +339,12 @@ class Container:
             secret=secret,
             idle=timedelta(minutes=self.settings.session_idle_minutes),
             max_age=timedelta(hours=self.settings.session_max_hours),
+            throttle=LoginThrottle(self.rate_limiter, self.settings.login_max_attempts_per_minute),
         )
+
+    @cached_property
+    def rate_limiter(self) -> MemoryRateLimiter:
+        return MemoryRateLimiter()
 
     @cached_property
     def db_sessions(self) -> sessionmaker[Session]:

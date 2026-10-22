@@ -17,6 +17,7 @@ CONFIGS_DIR = PROJECT_ROOT / "configs"
 SEASON_PATTERN = r"^\d{4}-\d{2}$"
 EXAMPLE_KEY = "cambia-esto"
 MIN_SECRET_LENGTH = 32
+DEFAULT_MAX_BODY_BYTES = 65_536
 ORIGIN_PATTERN = re.compile(r"^https?://[^/\s*]+$")
 
 logger = logging.getLogger(__name__)
@@ -71,7 +72,7 @@ class Settings(BaseSettings):
     rate_limit_per_minute: int = Field(default=120, gt=0)
     login_max_attempts_per_minute: int = Field(default=5, gt=0)
     odds_refresh_max_per_hour: int = Field(default=6, gt=0)
-    max_body_bytes: int = Field(default=65_536, gt=0)
+    max_body_bytes: int = Field(default=DEFAULT_MAX_BODY_BYTES, gt=0)
     backup_keep: int = Field(default=14, gt=0)
     log_format: Literal["text", "json"] | None = None
 

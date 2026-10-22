@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from typing import Any
 
 from fastapi import FastAPI, Request
@@ -32,30 +33,46 @@ from betting_ml.application.predict_matches import (
 )
 from betting_ml.application.read_backtest import BacktestReportNotFoundError
 from betting_ml.application.refresh_odds import OddsBudgetLowError
+from betting_ml.application.throttle import TooManyAttemptsError
 
 
 class ApiError(Exception):
     def __init__(
-        self, status: int, code: str, message: str, details: dict[str, Any] | None = None
+        self,
+        status: int,
+        code: str,
+        message: str,
+        details: dict[str, Any] | None = None,
+        headers: dict[str, str] | None = None,
     ) -> None:
         super().__init__(message)
         self.status = status
         self.code = code
         self.message = message
         self.details = details or {}
+        self.headers = headers
 
 
 def error_response(
-    status: int, code: str, message: str, details: dict[str, Any] | None = None
+    status: int,
+    code: str,
+    message: str,
+    details: dict[str, Any] | None = None,
+    headers: dict[str, str] | None = None,
 ) -> JSONResponse:
     body = {"error": {"code": code, "message": message, "details": jsonable_encoder(details or {})}}
-    return JSONResponse(status_code=status, content=body)
+    return JSONResponse(status_code=status, content=body, headers=headers)
+
+
+def retry_after(seconds: float) -> dict[str, str]:
+    """``Retry-After`` header in whole seconds (at least 1)."""
+    return {"Retry-After": str(max(1, math.ceil(seconds)))}
 
 
 def register_error_handlers(app: FastAPI) -> None:
     @app.exception_handler(ApiError)
     async def _api_error(_: Request, exc: ApiError) -> JSONResponse:
-        return error_response(exc.status, exc.code, exc.message, exc.details)
+        return error_response(exc.status, exc.code, exc.message, exc.details, exc.headers)
 
     @app.exception_handler(UnknownLeagueError)
     async def _league(_: Request, exc: UnknownLeagueError) -> JSONResponse:
@@ -128,6 +145,16 @@ def register_error_handlers(app: FastAPI) -> None:
     async def _credentials(_: Request, exc: InvalidCredentialsError) -> JSONResponse:
         return error_response(401, "INVALID_CREDENTIALS", str(exc))
 
+    @app.exception_handler(TooManyAttemptsError)
+    async def _too_many(_: Request, exc: TooManyAttemptsError) -> JSONResponse:
+        return error_response(
+            429,
+            "TOO_MANY_ATTEMPTS",
+            str(exc),
+            {"retry_after": exc.retry_after},
+            retry_after(exc.retry_after),
+        )
+
     @app.exception_handler(LoginDisabledError)
     async def _login_disabled(_: Request, exc: LoginDisabledError) -> JSONResponse:
         return error_response(503, "LOGIN_DISABLED", str(exc))
@@ -144,5 +171,7 @@ def register_error_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(StarletteHTTPException)
     async def _http(_: Request, exc: StarletteHTTPException) -> JSONResponse:
-        code = {404: "NOT_FOUND", 405: "METHOD_NOT_ALLOWED"}.get(exc.status_code, "HTTP_ERROR")
+        code = {404: "NOT_FOUND", 405: "METHOD_NOT_ALLOWED", 413: "PAYLOAD_TOO_LARGE"}.get(
+            exc.status_code, "HTTP_ERROR"
+        )
         return error_response(exc.status_code, code, str(exc.detail))
