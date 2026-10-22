@@ -39,7 +39,7 @@ Regla de procesos: si levantas servidores para probar o tomar capturas, hazlo en
 - [x] **T013** `application/analyze_match.py` que une matriz, mercados, cuotas, confianza, forma y consejos.
 - [x] **T014** Adaptador de cuotas por evento en `the_odds_api.py` + estimación de costo + caché de 30 min. **Antes:** la llamada de verificación de market keys que quedó pendiente en T004 (decisions.md).
 - [x] **T015** Routers según `contracts/api.md` + cambio en `POST /bets` para `market/selection/line` + liquidación por mercado (incluida la regla de "empate no apuesta" y hándicap europeo). Migración de base de datos.
-- [ ] **T016** Tests de API (incluidos 404/422/429/503 y partido entre ligas) y carpeta "Spec 003" en Postman.
+- [x] **T016** Tests de API (incluidos 404/422/429/503 y partido entre ligas) y carpeta "Spec 003" en Postman.
   - Commits: uno por tarea.
 - [ ] 🔍 **T017** Checkpoint `ml-reviewer` del backend (consejos honestos, evidencia, liquidación por mercado, límites de US6 de la spec 002 intactos).
 
