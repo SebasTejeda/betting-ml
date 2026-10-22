@@ -7,8 +7,9 @@ from fastapi import APIRouter, Depends, Query
 from betting_ml.api.dependencies import ServicesApi, get_services
 from betting_ml.api.mappers.predictions import match_out
 from betting_ml.api.schemas import MatchesResponse
+from betting_ml.api.security import require_read
 
-router = APIRouter(prefix="/api/v1", tags=["matches"])
+router = APIRouter(prefix="/api/v1", tags=["matches"], dependencies=[Depends(require_read)])
 
 
 @router.get("/matches", response_model=MatchesResponse)

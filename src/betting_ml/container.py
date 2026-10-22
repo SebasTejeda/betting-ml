@@ -69,7 +69,6 @@ class JournalServices:
     bets: ManageBets
     settle: SettleBets
     bookmakers: BookmakersFile
-    app_api_key: str
     reports_path: Path
     # Starts the optional automatic refresh (ODDS_AUTO_REFRESH); returns an object with
     # ``shutdown()``. ``None`` when disabled.
@@ -88,7 +87,7 @@ class ApiServices:
     tracking: TrackPredictions
     leagues: LeaguesFile
     read_experiments: Callable[[], pd.DataFrame]
-    admin_api_key: str
+    app_api_key: str  # the single machine key; ADMIN_API_KEY is only a settings alias
     refresher: RefreshData
     journal: JournalServices | None = None
 
@@ -259,7 +258,7 @@ class Container:
             tracking=self.tracking,
             leagues=self.leagues,
             read_experiments=self.experiment_store.read_rows,
-            admin_api_key=self.settings.app_api_key.get_secret_value(),  # ADMIN_API_KEY is an alias
+            app_api_key=self.settings.app_api_key.get_secret_value(),
             refresher=RefreshData(
                 refresh_fixtures=self._refresh_fixtures,
                 rebuild=self._rebuild_current_season,
@@ -272,7 +271,6 @@ class Container:
                 bets=self.manage_bets,
                 settle=self.settle_bets,
                 bookmakers=self.bookmakers,
-                app_api_key=self.settings.app_api_key.get_secret_value(),
                 reports_path=self.settings.reports_path,
                 start_auto_refresh=self._auto_refresh if self.settings.odds_auto_refresh else None,
             ),

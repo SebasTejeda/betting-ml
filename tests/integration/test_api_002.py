@@ -118,7 +118,7 @@ def ctx(tmp_path: Path):  # type: ignore[no-untyped-def]
     reports = tmp_path / "reports"
     reports.mkdir()
     journal = JournalServices(
-        refresh, compare, EvaluateManualOdds(compare, clock), manage, settle, catalog, KEY, reports
+        refresh, compare, EvaluateManualOdds(compare, clock), manage, settle, catalog, reports
     )
     serving = build_serving_env(tmp_path)
     services = ApiServices(
@@ -126,7 +126,7 @@ def ctx(tmp_path: Path):  # type: ignore[no-untyped-def]
         serving.tracking,
         leagues(),
         pd.DataFrame,
-        "admin-key",
+        KEY,
         RefreshData(lambda: 0, lambda: None, serving.predictor.reset),
         journal,
     )
@@ -442,8 +442,8 @@ def test_settle_settings_and_backtest(ctx) -> None:  # type: ignore[no-untyped-d
 
 
 def test_writes_disabled_with_default_key_and_missing_services(ctx, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
-    client, journal, *_, services = ctx
-    services.journal = replace(journal, app_api_key="cambia-esto")
+    client, _, *_, services = ctx
+    services.app_api_key = "cambia-esto"
     _error(
         client.post("/api/v1/odds/refresh", headers={"X-API-Key": "cambia-esto"}),
         503,

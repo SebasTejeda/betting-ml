@@ -42,7 +42,7 @@ Reglas de ejecución:
   - Hecho cuando: `betting-ml openapi` produce un `openapi.json` idéntico (salvo el orden de los *tags*, si cambia) y pasan todos los tests existentes sin modificarlos.
   - Commit: `refactor(api): split journal router by resource and type the services`
 
-- [ ] **T005** Módulo único de seguridad
+- [x] **T005** Módulo único de seguridad
   - `api/security.py` con `Principal`, `require_auth` (por ahora solo `X-API-Key`) y `require_write`; se eliminan las verificaciones duplicadas de `admin.py` y `journal.py`.
   - Dependencias a nivel de `APIRouter`, no ruta por ruta.
   - Test generado desde `app.routes`: cada ruta tiene la política declarada (pública / lectura / escritura) y no hay rutas sin clasificar.

@@ -4,9 +4,10 @@ from fastapi import APIRouter, Depends
 
 from betting_ml.api.dependencies import ServicesApi, get_services
 from betting_ml.api.schemas import League, Team
+from betting_ml.api.security import require_read
 from betting_ml.application.catalog import list_leagues
 
-router = APIRouter(prefix="/api/v1/leagues", tags=["leagues"])
+router = APIRouter(prefix="/api/v1/leagues", tags=["leagues"], dependencies=[Depends(require_read)])
 
 
 @router.get("", response_model=list[League])

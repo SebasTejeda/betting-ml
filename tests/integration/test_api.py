@@ -38,7 +38,7 @@ def client(env: ServingEnv, refreshed: list[str]) -> Iterator[TestClient]:
         tracking=env.tracking,
         leagues=leagues(),
         read_experiments=lambda: experiments,
-        admin_api_key=API_KEY,
+        app_api_key=API_KEY,
         refresher=RefreshData(
             refresh_fixtures=lambda: len(env.fixtures.fetch_fixtures(force_refresh=True)),
             rebuild=lambda: refreshed.append("rebuilt"),
@@ -282,4 +282,4 @@ def test_admin_disabled_with_default_key(env: ServingEnv) -> None:
     )
     with TestClient(create_app(services)) as client:
         response = client.post("/api/v1/admin/refresh", headers={"X-API-Key": "cambia-esto"})
-        _assert_error(response, 503, "ADMIN_DISABLED")
+        _assert_error(response, 503, "WRITES_DISABLED")

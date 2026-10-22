@@ -39,7 +39,7 @@ Se suma a [`../../001-prediction-model/contracts/api.md`](../../001-prediction-m
 | `PATCH /api/v1/bets/{id}` | El cuerpo incluye `version` (entero). Versión vieja → `409 VERSION_CONFLICT` con `details.current_version`. |
 | `PUT /api/v1/settings` | Igual: `version` obligatoria; `409 VERSION_CONFLICT`. |
 | `BetOut`, `SettingsOut` | Añaden `version`. |
-| `POST /api/v1/admin/refresh` | Acepta `APP_API_KEY` (y `ADMIN_API_KEY` como alias temporal). |
+| `POST /api/v1/admin/refresh` | Usa la clave única `APP_API_KEY` (`ADMIN_API_KEY` solo como alias temporal en `.env`). Con la clave de ejemplo responde `503 WRITES_DISABLED`, igual que el resto de escrituras (antes `503 ADMIN_DISABLED`). Hecho en T005. |
 
 ## 3. Errores nuevos
 

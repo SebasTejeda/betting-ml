@@ -14,10 +14,6 @@
       "value": "2026-09-27"
     },
     {
-      "key": "adminApiKey",
-      "value": "cambia-esto"
-    },
-    {
       "key": "appApiKey",
       "value": "cambia-esto"
     },
@@ -681,7 +677,7 @@
               },
               {
                 "key": "X-API-Key",
-                "value": "{{adminApiKey}}"
+                "value": "{{appApiKey}}"
               }
             ],
             "url": {

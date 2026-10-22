@@ -297,23 +297,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/bets/summary": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Summary */
-        get: operations["summary_api_v1_bets_summary_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/bets/{bet_id}": {
         parameters: {
             query?: never;
@@ -330,6 +313,23 @@ export interface paths {
         head?: never;
         /** Patch Bet */
         patch: operations["patch_bet_api_v1_bets__bet_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/bets/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Summary */
+        get: operations["summary_api_v1_bets_summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/settings": {
@@ -1604,39 +1604,6 @@ export interface operations {
             };
         };
     };
-    summary_api_v1_bets_summary_get: {
-        parameters: {
-            query?: {
-                kind?: string;
-                from?: string | null;
-                to?: string | null;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SummaryOut"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
     delete_bet_api_v1_bets__bet_id__delete: {
         parameters: {
             query?: never;
@@ -1692,6 +1659,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BetOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    summary_api_v1_bets_summary_get: {
+        parameters: {
+            query?: {
+                kind?: string;
+                from?: string | null;
+                to?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SummaryOut"];
                 };
             };
             /** @description Validation Error */

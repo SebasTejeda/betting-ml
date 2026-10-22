@@ -5,9 +5,11 @@ from fastapi import APIRouter, Depends
 from betting_ml.api.dependencies import ServicesApi, get_services
 from betting_ml.api.mappers.predictions import match_out
 from betting_ml.api.schemas import PredictionRequest, PredictionResponse
+from betting_ml.api.security import require_read
 from betting_ml.domain.entities import OddsTriple
 
-router = APIRouter(prefix="/api/v1", tags=["predictions"])
+# Computes without changing state: authenticated like a read (no CSRF).
+router = APIRouter(prefix="/api/v1", tags=["predictions"], dependencies=[Depends(require_read)])
 
 
 @router.post("/predictions", response_model=PredictionResponse)

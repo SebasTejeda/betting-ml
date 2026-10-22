@@ -6,18 +6,18 @@ import datetime as dt
 
 from fastapi import APIRouter, Depends, Query, Response
 
-from betting_ml.api.dependencies import JournalApi, get_journal, require_app_key
+from betting_ml.api.dependencies import JournalApi, get_journal
 from betting_ml.api.errors import ApiError
 from betting_ml.api.mappers.journal import bet_out, day_end, day_start, new_bet, summary_out
 from betting_ml.api.schemas_002 import BetIn, BetOut, BetPage, BetPatch, SettleOut, SummaryOut
+from betting_ml.api.security import require_read, require_write
 from betting_ml.domain.journal import BetFilters, BetKind, BetStatus
 
-router = APIRouter(prefix="/api/v1", tags=["spec-002"])
+writes = APIRouter(prefix="/api/v1", tags=["spec-002"], dependencies=[Depends(require_write)])
+reads = APIRouter(prefix="/api/v1", tags=["spec-002"], dependencies=[Depends(require_read)])
 
 
-@router.post(
-    "/bets", status_code=201, response_model=BetOut, dependencies=[Depends(require_app_key)]
-)
+@writes.post("/bets", status_code=201, response_model=BetOut)
 def create_bet(body: BetIn, journal: JournalApi = Depends(get_journal)) -> BetOut:
     try:
         bet = journal.bets.create(new_bet(body), confirm=body.confirm)
@@ -26,7 +26,7 @@ def create_bet(body: BetIn, journal: JournalApi = Depends(get_journal)) -> BetOu
     return bet_out(bet)
 
 
-@router.get("/bets", response_model=BetPage)
+@reads.get("/bets", response_model=BetPage)
 def list_bets(
     status: BetStatus | None = Query(None),
     kind: BetKind | None = Query(None),
@@ -48,7 +48,7 @@ def list_bets(
     return BetPage(items=[bet_out(b) for b in items], total=total, page=page, size=size)
 
 
-@router.post("/bets/settle", response_model=SettleOut, dependencies=[Depends(require_app_key)])
+@writes.post("/bets/settle", response_model=SettleOut)
 def settle(journal: JournalApi = Depends(get_journal)) -> SettleOut:
     result = journal.settle.run()
     return SettleOut(
@@ -59,7 +59,7 @@ def settle(journal: JournalApi = Depends(get_journal)) -> SettleOut:
     )
 
 
-@router.get("/bets/summary", response_model=SummaryOut)
+@reads.get("/bets/summary", response_model=SummaryOut)
 def summary(
     kind: str = Query("real", pattern="^(real|paper|all)$"),
     date_from: dt.date | None = Query(None, alias="from"),
@@ -70,13 +70,13 @@ def summary(
     return summary_out(journal.bets.summary(chosen, day_start(date_from), day_end(date_to)))
 
 
-@router.patch("/bets/{bet_id}", response_model=BetOut, dependencies=[Depends(require_app_key)])
+@writes.patch("/bets/{bet_id}", response_model=BetOut)
 def patch_bet(bet_id: int, body: BetPatch, journal: JournalApi = Depends(get_journal)) -> BetOut:
     status = None if body.status is None else BetStatus(body.status)
     return bet_out(journal.bets.update(bet_id, note=body.note, status=status))
 
 
-@router.delete("/bets/{bet_id}", status_code=204, dependencies=[Depends(require_app_key)])
+@writes.delete("/bets/{bet_id}", status_code=204)
 def delete_bet(bet_id: int, journal: JournalApi = Depends(get_journal)) -> Response:
     journal.bets.delete(bet_id)
     return Response(status_code=204)

@@ -34,23 +34,32 @@ from betting_ml.config import ensure_secure, get_settings
 
 logger = logging.getLogger(__name__)
 LOCALHOST_ORIGINS = r"https?://(localhost|127\.0\.0\.1|\[::1\])(:\d+)?"
-SPEC_002_ROUTERS = (odds, bookmakers, comparator, calculator, bets, settings, backtest)
+# Order = order of the paths in OpenAPI. Each router declares its access policy (api/security.py).
 ROUTERS = (
-    health,
-    leagues,
-    matches,
-    predictions,
-    model,
-    experiments,
-    tracking,
-    admin,
-    *SPEC_002_ROUTERS,
+    health.router,
+    leagues.router,
+    matches.router,
+    predictions.router,
+    model.router,
+    experiments.router,
+    tracking.router,
+    admin.router,
+    odds.writes,
+    odds.reads,
+    bookmakers.router,
+    comparator.router,
+    calculator.router,
+    bets.writes,
+    bets.reads,
+    settings.reads,
+    settings.writes,
+    backtest.router,
 )
 
 
 def create_app(services: ServicesApi | None = None) -> FastAPI:
-    """``services`` exposes predictor, tracking, leagues, read_experiments, admin_api_key and
-    refresher (see Container.api_services); by default it is built lazily at startup."""
+    """``services`` follows ServicesApi (see Container.api_services); by default it is built
+    lazily at startup."""
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
@@ -58,7 +67,6 @@ def create_app(services: ServicesApi | None = None) -> FastAPI:
             from betting_ml.container import Container
 
             ensure_secure(get_settings())  # before loading anything (spec 003, US3)
-
             app.state.container = Container().api_services()
         try:  # warm-up: load models and Elo state once
             app.state.container.predictor.state()
@@ -88,7 +96,7 @@ def create_app(services: ServicesApi | None = None) -> FastAPI:
     )
     register_error_handlers(app)
     for router in ROUTERS:
-        app.include_router(router.router)
+        app.include_router(router)
     return app
 
 

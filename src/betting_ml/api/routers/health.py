@@ -4,9 +4,10 @@ from fastapi import APIRouter, Depends
 
 from betting_ml.api.dependencies import ServicesApi, get_services
 from betting_ml.api.schemas import Health
+from betting_ml.api.security import public
 from betting_ml.application.predict_matches import ModelNotAvailableError
 
-router = APIRouter(tags=["health"])
+router = APIRouter(tags=["health"], dependencies=[Depends(public)])
 
 
 @router.get("/health", response_model=Health)

@@ -7,8 +7,9 @@ from typing import Any
 from fastapi import APIRouter, Depends
 
 from betting_ml.api.dependencies import JournalApi, get_journal
+from betting_ml.api.security import require_read
 
-router = APIRouter(prefix="/api/v1", tags=["spec-002"])
+router = APIRouter(prefix="/api/v1", tags=["spec-002"], dependencies=[Depends(require_read)])
 
 
 @router.get("/backtest/pinnacle")
