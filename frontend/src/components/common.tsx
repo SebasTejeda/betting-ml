@@ -110,7 +110,7 @@ export function Loading({
   );
 }
 
-/** Shows an API error with its message. */
+/** Shows an API error with its message (and a hint when retrying is enough). */
 export function ErrorBox({ error }: { error: unknown }) {
   const message =
     error instanceof ApiError
@@ -124,7 +124,10 @@ export function ErrorBox({ error }: { error: unknown }) {
       className="flex items-start gap-2 rounded-lg border border-negative/40 bg-negative-soft p-3 text-sm text-foreground"
     >
       <CircleAlert aria-hidden className="mt-0.5 size-4 shrink-0 text-negative" />
-      <span>{message}</span>
+      <span>
+        {message}
+        {error instanceof ApiError && error.code === "CSRF_FAILED" && " Vuelve a intentarlo."}
+      </span>
     </div>
   );
 }

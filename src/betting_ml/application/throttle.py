@@ -28,13 +28,35 @@ class TooManyAttemptsError(Exception):
         )
 
 
+class RateLimitedError(Exception):
+    def __init__(self, retry_after: float, message: str) -> None:
+        self.retry_after = max(1, math.ceil(retry_after))
+        super().__init__(message)
+
+
 @dataclass(frozen=True)
 class RateLimits:
-    """Request limits of the API: global per client IP and the paid odds refresh."""
+    """Request limits of the API: global per client and the paid odds refresh."""
 
     limiter: RateLimiter
     per_minute: int
     odds_refresh_per_hour: int
+
+    def take_request(self, client: str) -> None:
+        """Counted before authentication, by client: a forged cookie buys no extra quota."""
+        wait = self.limiter.hit(f"ip:{client}", self.per_minute, MINUTE)
+        if wait is not None:
+            raise RateLimitedError(
+                wait, "Demasiadas peticiones. Espera un momento antes de reintentar."
+            )
+
+    def take_odds_refresh(self) -> None:
+        """Manual refreshes spend The Odds API credits: one quota for the whole API."""
+        wait = self.limiter.hit("odds-refresh", self.odds_refresh_per_hour, HOUR)
+        if wait is not None:
+            raise RateLimitedError(
+                wait, f"Máximo {self.odds_refresh_per_hour} refrescos de cuotas por hora."
+            )
 
 
 class LoginThrottle:

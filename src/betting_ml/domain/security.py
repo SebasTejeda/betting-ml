@@ -44,3 +44,12 @@ class Principal:
 def keyed_digest(key: bytes, value: str) -> str:
     """HMAC-SHA256 hex digest: tokens and fingerprints are stored keyed by SESSION_SECRET."""
     return hmac.new(key, value.encode("utf-8"), hashlib.sha256).hexdigest()
+
+
+class PasswordCheckBusyError(Exception):
+    """Too many password checks are running: the login fails fast instead of queueing."""
+
+    retry_after = 5
+
+    def __init__(self) -> None:
+        super().__init__("El servidor está ocupado verificando otros inicios de sesión. Reintenta.")

@@ -161,3 +161,24 @@ def test_api_refuses_to_start_in_prod_with_insecure_config(
 def test_explicit_log_format_wins_over_the_environment_default() -> None:
     assert secure_prod(log_format="text").effective_log_format == "text"
     assert Settings(_env_file=None, log_format="json").effective_log_format == "json"
+
+
+@pytest.mark.parametrize(
+    "weak",
+    [
+        "$argon2id$v=19$m=1024,t=1,p=1$c2FsdHNhbHRzYWx0$aGFzaGhhc2hoYXNoaGFzaA",
+        "$argon2id$v=19$m=65536,t=1,p=4$c2FsdHNhbHRzYWx0$aGFzaGhhc2hoYXNoaGFzaA",
+        "$argon2id$v=19$m=8192,t=3,p=4$c2FsdHNhbHRzYWx0$aGFzaGhhc2hoYXNoaGFzaA",
+        "$argon2id$v=19$garbage",
+    ],
+)
+def test_prod_rejects_weak_argon2_parameters(weak: str) -> None:
+    """A hash made with test-grade parameters (m=1024, t=1) must not reach production."""
+    problems = secure_prod(app_password_hash=weak).production_problems()
+    assert any("parámetros Argon2id débiles" in p for p in problems)
+    assert weak not in " ".join(problems)
+
+
+def test_owasp_minimum_argon2_parameters_are_accepted() -> None:
+    minimum = "$argon2id$v=19$m=19456,t=2,p=1$c2FsdHNhbHRzYWx0$aGFzaGhhc2hoYXNoaGFzaA"
+    assert secure_prod(app_password_hash=minimum).production_problems() == []

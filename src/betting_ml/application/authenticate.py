@@ -46,9 +46,9 @@ class Authenticate:
         secret: bytes,
         idle: timedelta,
         max_age: timedelta,
+        throttle: LoginThrottle,  # required: there is no login without brute-force limits
         clock: Callable[[], datetime] = lambda: datetime.now(UTC),
         token_factory: Callable[[int], str] = secrets.token_urlsafe,
-        throttle: LoginThrottle | None = None,
     ) -> None:
         self.sessions = sessions
         self.hasher = hasher
@@ -70,12 +70,10 @@ class Authenticate:
     ) -> Login:
         if not self.enabled:
             raise LoginDisabledError()
-        if self.throttle is not None:
-            self.throttle.begin(client)  # before Argon2: a locked client costs no CPU
+        self.throttle.begin(client)  # before Argon2: a locked client costs no CPU
         if not self.hasher.verify(self.password_hash, password):
             raise InvalidCredentialsError()
-        if self.throttle is not None:
-            self.throttle.succeeded(client)
+        self.throttle.succeeded(client)
         if current_token:  # rotation: the previous session never survives a new login
             self.logout(current_token)
         self.purge()

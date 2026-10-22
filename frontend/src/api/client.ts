@@ -1,6 +1,6 @@
 import createClient, { type Middleware } from "openapi-fetch";
 
-import { getCsrfToken, notifyUnauthorized } from "../lib/session";
+import { getCsrfToken, notifyUnauthorized, setCsrfToken } from "../lib/session";
 import type { paths } from "./schema";
 
 /** Uniform error of the API (contracts/api.md): `{ "error": { code, message, details } }`. */
@@ -30,13 +30,33 @@ const auth: Middleware = {
     if (csrf && WRITE_METHODS.has(request.method)) request.headers.set("X-CSRF-Token", csrf);
     return request;
   },
-  onResponse({ request, response }) {
+  async onResponse({ request, response }) {
     if (response.status === 401 && new URL(request.url).pathname !== LOGIN_PATH) {
       notifyUnauthorized();
+    } else if (response.status === 403 && (await errorCode(response)) === "CSRF_FAILED") {
+      await refreshCsrf(); // a login in another tab rotated the session: the retry works
     }
     return response;
   },
 };
+
+async function errorCode(response: Response): Promise<string | undefined> {
+  try {
+    const body = (await response.clone().json()) as { error?: { code?: string } };
+    return body.error?.code;
+  } catch {
+    return undefined;
+  }
+}
+
+async function refreshCsrf(): Promise<void> {
+  try {
+    const { data } = await api.GET("/api/v1/auth/me");
+    if (data) setCsrfToken(data.csrf_token);
+  } catch {
+    // network error: the caller still gets the original 403 and can retry
+  }
+}
 
 export const api = createClient<paths>({
   baseUrl: globalThis.location?.origin ?? "",

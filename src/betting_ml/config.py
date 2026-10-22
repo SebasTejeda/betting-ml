@@ -17,6 +17,10 @@ CONFIGS_DIR = PROJECT_ROOT / "configs"
 SEASON_PATTERN = r"^\d{4}-\d{2}$"
 EXAMPLE_KEY = "cambia-esto"
 MIN_SECRET_LENGTH = 32
+ARGON2_PARAMS = re.compile(r"\$m=(\d+),t=(\d+),p=\d+\$")
+# OWASP minimum for Argon2id: 19 MiB of memory and 2 iterations (the CLI uses 64 MiB, t=3)
+MIN_ARGON2_MEMORY_KIB = 19_456
+MIN_ARGON2_TIME_COST = 2
 DEFAULT_MAX_BODY_BYTES = 65_536
 ORIGIN_PATTERN = re.compile(r"^https?://[^/\s*]+$")
 
@@ -108,9 +112,15 @@ class Settings(BaseSettings):
     def production_problems(self) -> list[str]:
         """What makes this configuration unfit for APP_ENV=prod (variable names only)."""
         problems: list[str] = []
-        if not self.app_password_hash.get_secret_value().startswith("$argon2id$"):
+        password_hash = self.app_password_hash.get_secret_value()
+        if not password_hash.startswith("$argon2id$"):
             problems.append(
                 "APP_PASSWORD_HASH debe ser un hash Argon2id (betting-ml hash-password)"
+            )
+        elif not _strong_argon2(password_hash):
+            problems.append(
+                "APP_PASSWORD_HASH usa parámetros Argon2id débiles: regenéralo con "
+                "betting-ml hash-password (mínimo m=19456, t=2)"
             )
         api_key = self.app_api_key.get_secret_value()
         if api_key == EXAMPLE_KEY or len(api_key) < MIN_SECRET_LENGTH:
@@ -392,3 +402,12 @@ def ensure_secure(settings: Settings) -> None:
     problems = settings.production_problems()
     if problems:
         raise InsecureConfigError(problems)
+
+
+def _strong_argon2(password_hash: str) -> bool:
+    match = ARGON2_PARAMS.search(password_hash)
+    return bool(
+        match
+        and int(match.group(1)) >= MIN_ARGON2_MEMORY_KIB
+        and int(match.group(2)) >= MIN_ARGON2_TIME_COST
+    )

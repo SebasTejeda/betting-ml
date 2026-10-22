@@ -138,3 +138,16 @@ def test_hash_password_rejects_short_or_mismatched_passwords() -> None:
     )
     assert mismatch.exit_code != 0
     assert "APP_PASSWORD_HASH=" not in mismatch.stdout
+
+
+def test_serve_does_not_trust_forwarded_headers(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Spec 003, T010: with uvicorn's default proxy_headers=True a local client could send a
+    fresh X-Forwarded-For per request and dodge the per-IP login lockout."""
+    import uvicorn
+
+    calls: list[dict[str, object]] = []
+    monkeypatch.setattr(uvicorn, "run", lambda *args, **kwargs: calls.append(kwargs))
+    result = runner.invoke(app, ["serve"])
+    assert result.exit_code == 0, result.output
+    assert calls[0]["proxy_headers"] is False
+    assert calls[0]["host"] == "127.0.0.1"

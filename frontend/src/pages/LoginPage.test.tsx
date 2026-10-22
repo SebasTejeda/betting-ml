@@ -83,6 +83,15 @@ test("nothing secret is stored in the browser and writes carry the in-memory CSR
   expect(screen.queryByRole("status")).not.toBeInTheDocument(); // own logout, not an expiry
 });
 
+test("the machine key left by older versions is wiped from the browser", async () => {
+  window.localStorage.setItem("betting-ml.apiKey", "old-app-api-key");
+  window.localStorage.setItem("betting-ml.theme", "light");
+  renderApp("/nope");
+  await screen.findByText("Página no encontrada.");
+  expect(window.localStorage.getItem("betting-ml.apiKey")).toBeNull();
+  expect(window.localStorage.getItem("betting-ml.theme")).toBe("light"); // preferences stay
+});
+
 test("too many attempts (429) shows the wait and blocks the button", async () => {
   anonymous();
   server.use(

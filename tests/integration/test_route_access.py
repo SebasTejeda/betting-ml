@@ -1,11 +1,12 @@
-"""Spec 003, T005/T007: every route declares exactly one access policy, built from app.routes
-so a new unclassified route fails here, and every private route (reads included) rejects missing
-or wrong credentials."""
+"""Spec 003, T005/T007/T010: every route declares exactly one access policy, built from
+app.routes so a new unclassified route fails here; every private route (reads included) rejects
+missing or wrong credentials, and every write made with the session needs its CSRF token."""
 
 from __future__ import annotations
 
 import re
 from collections.abc import Iterator
+from datetime import timedelta
 from types import SimpleNamespace
 from typing import Any
 
@@ -13,20 +14,39 @@ import pytest
 from fastapi.routing import RouteContext
 from fastapi.testclient import TestClient
 
+from betting_ml.adapters.argon2_hasher import Argon2Hasher
+from betting_ml.adapters.memory_rate_limiter import MemoryRateLimiter
+from betting_ml.adapters.sql.db import prepare, session_factory
+from betting_ml.adapters.sql.repositories import SqlSessionStore
 from betting_ml.api.main import create_app
-from betting_ml.api.security import Access, api_routes, route_access
+from betting_ml.api.security import Access, api_routes, client_ip, route_access
+from betting_ml.application.authenticate import Authenticate
+from betting_ml.application.throttle import LoginThrottle
 
 KEY = "route-access-test-key-0123456789abcdef"
 WRITE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
 PUBLIC = {("GET", "/health"), ("POST", "/api/v1/auth/login")}
 # POST that computes without changing state: authenticated like a read, no CSRF.
 READ_ONLY_POSTS = {("POST", "/api/v1/predictions")}
+PASSWORD = "route-access-owner-password"
+HASHER = Argon2Hasher(time_cost=1, memory_cost=1024, parallelism=1)
+HASH = HASHER.hash(PASSWORD)
 
 
 def _app(key: str = KEY) -> Any:
+    """Stub use cases, but the real session login: a forged cookie goes through validation."""
+    auth = Authenticate(
+        sessions=SqlSessionStore(session_factory(prepare("sqlite:///:memory:"))),
+        hasher=HASHER,
+        password_hash=HASH,
+        secret=b"route-access-secret-0123456789abcdef",
+        idle=timedelta(minutes=30),
+        max_age=timedelta(hours=12),
+        throttle=LoginThrottle(MemoryRateLimiter(), max_attempts=1000),
+    )
     services = SimpleNamespace(predictor=SimpleNamespace(state=lambda: None), app_api_key=key)
     services.journal = None
-    services.auth = None
+    services.auth = auth
     services.secure_cookies = False
     return create_app(services)  # type: ignore[arg-type]
 
@@ -119,3 +139,40 @@ def test_every_private_route_is_disabled_with_the_example_key() -> None:
             response = client.request(method, _url(path), headers={"X-API-Key": "cambia-esto"})
             assert response.status_code == 503, f"{method} {path}"
             assert response.json()["error"]["code"] == "WRITES_DISABLED"
+
+
+def test_every_session_write_needs_the_csrf_token() -> None:
+    """With a valid session cookie, each write answers 403 without the token, 403 with another
+    one, and passes the gate with its own (the stub use cases may fail afterwards)."""
+    with TestClient(_app(), raise_server_exceptions=False) as client:
+        login = client.post("/api/v1/auth/login", json={"password": PASSWORD})
+        assert login.status_code == 200
+        csrf = login.json()["csrf_token"]
+        writes = [w for w in _private(Access.WRITE) if w != ("POST", "/api/v1/auth/logout")]
+        assert len(writes) >= 8
+        for method, path in writes:
+            for headers in ({}, {"X-CSRF-Token": "forged"}, {"X-CSRF-Token": csrf + "x"}):
+                response = client.request(method, _url(path), headers=headers)
+                assert response.status_code == 403, f"{method} {path} {headers}"
+                assert response.json()["error"]["code"] == "CSRF_FAILED"
+            response = client.request(method, _url(path), headers={"X-CSRF-Token": csrf})
+            assert response.status_code not in (401, 403), f"{method} {path}"
+
+
+@pytest.mark.parametrize(
+    ("host", "identity"),
+    [
+        ("203.0.113.7", "203.0.113.7"),
+        ("::ffff:203.0.113.7", "203.0.113.7"),
+        ("2001:db8:1:2:aaaa::1", "2001:db8:1:2::/64"),
+        ("2001:db8:1:2:ffff:ffff:ffff:ffff", "2001:db8:1:2::/64"),
+        ("testclient", "testclient"),
+    ],
+)
+def test_client_identity_groups_an_ipv6_prefix(host: str, identity: str) -> None:
+    """One host usually owns a whole IPv6 /64: each address must not get its own quota."""
+    assert client_ip({"client": (host, 1)}) == identity
+
+
+def test_client_identity_without_a_connection_address() -> None:
+    assert client_ip({"client": None}) == "unknown"

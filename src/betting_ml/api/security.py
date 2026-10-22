@@ -11,6 +11,7 @@ it on their own).
 
 from __future__ import annotations
 
+import ipaddress
 import secrets
 from collections.abc import Callable, Mapping
 from enum import StrEnum
@@ -39,9 +40,20 @@ def _same(given: str, expected: str) -> bool:
 
 
 def client_ip(scope: Mapping[str, Any]) -> str:
-    """Client address of the connection (behind a proxy, uvicorn's --proxy-headers sets it)."""
+    """Rate-limit identity of the connection's client. An IPv6 client is its /64 (one host
+    usually owns the whole prefix) and an IPv4-mapped address is its IPv4. Behind a proxy,
+    the deployment sets the real address (uvicorn --proxy-headers, T020)."""
     client = scope.get("client")
-    return str(client[0]) if client else "unknown"
+    host = str(client[0]) if client else "unknown"
+    try:
+        address = ipaddress.ip_address(host)
+    except ValueError:
+        return host
+    if isinstance(address, ipaddress.IPv6Address):
+        if address.ipv4_mapped is not None:
+            return str(address.ipv4_mapped)
+        return str(ipaddress.IPv6Network(f"{address}/64", strict=False))
+    return str(address)
 
 
 def _unauthorized() -> ApiError:
@@ -109,9 +121,11 @@ def api_routes(app: FastAPI) -> list[RouteContext]:
 
 
 def route_access(route: RouteContext) -> list[Access]:
-    """Access policies declared on a route (router-level dependencies included)."""
-    return [
+    """Distinct access policies declared on a route (router-level dependencies included); a
+    handler may repeat its router's policy to receive the principal."""
+    found = [
         POLICIES[dependency.call]
         for dependency in route.dependant.dependencies
         if dependency.call in POLICIES
     ]
+    return list(dict.fromkeys(found))

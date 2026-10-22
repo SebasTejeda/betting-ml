@@ -11,10 +11,12 @@ import pytest
 from fastapi.testclient import TestClient
 
 from betting_ml.adapters.argon2_hasher import Argon2Hasher
+from betting_ml.adapters.memory_rate_limiter import MemoryRateLimiter
 from betting_ml.adapters.sql.db import prepare, session_factory
 from betting_ml.adapters.sql.repositories import SqlSessionStore
 from betting_ml.api.main import create_app
 from betting_ml.application.authenticate import Authenticate
+from betting_ml.application.throttle import LoginThrottle
 
 PASSWORD = "owner-password-for-tests"
 KEY = "machine-key-for-auth-tests-0123456789"
@@ -30,6 +32,7 @@ def _services(password_hash: str = HASH, secure_cookies: bool = False) -> Any:
         secret=b"api-auth-tests-secret-0123456789abcdef",
         idle=timedelta(minutes=30),
         max_age=timedelta(hours=12),
+        throttle=LoginThrottle(MemoryRateLimiter(), max_attempts=1000),
     )
     return SimpleNamespace(
         predictor=SimpleNamespace(state=lambda: None),

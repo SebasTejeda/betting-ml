@@ -33,7 +33,8 @@ from betting_ml.application.predict_matches import (
 )
 from betting_ml.application.read_backtest import BacktestReportNotFoundError
 from betting_ml.application.refresh_odds import OddsBudgetLowError
-from betting_ml.application.throttle import TooManyAttemptsError
+from betting_ml.application.throttle import RateLimitedError, TooManyAttemptsError
+from betting_ml.domain.security import PasswordCheckBusyError
 
 
 class ApiError(Exception):
@@ -67,6 +68,16 @@ def error_response(
 def retry_after(seconds: float) -> dict[str, str]:
     """``Retry-After`` header in whole seconds (at least 1)."""
     return {"Retry-After": str(max(1, math.ceil(seconds)))}
+
+
+def rate_limited_response(exc: RateLimitedError) -> JSONResponse:
+    return error_response(
+        429,
+        "RATE_LIMITED",
+        str(exc),
+        {"retry_after": exc.retry_after},
+        retry_after(exc.retry_after),
+    )
 
 
 def register_error_handlers(app: FastAPI) -> None:
@@ -153,6 +164,16 @@ def register_error_handlers(app: FastAPI) -> None:
             str(exc),
             {"retry_after": exc.retry_after},
             retry_after(exc.retry_after),
+        )
+
+    @app.exception_handler(RateLimitedError)
+    async def _rate_limited(_: Request, exc: RateLimitedError) -> JSONResponse:
+        return rate_limited_response(exc)
+
+    @app.exception_handler(PasswordCheckBusyError)
+    async def _login_busy(_: Request, exc: PasswordCheckBusyError) -> JSONResponse:
+        return error_response(
+            503, "LOGIN_BUSY", str(exc), {}, retry_after(PasswordCheckBusyError.retry_after)
         )
 
     @app.exception_handler(LoginDisabledError)

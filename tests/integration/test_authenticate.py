@@ -7,6 +7,7 @@ from datetime import UTC, datetime, timedelta
 import pytest
 
 from betting_ml.adapters.argon2_hasher import Argon2Hasher
+from betting_ml.adapters.memory_rate_limiter import MemoryRateLimiter
 from betting_ml.adapters.sql.db import prepare, session_factory
 from betting_ml.adapters.sql.repositories import SqlSessionStore
 from betting_ml.application.authenticate import (
@@ -14,6 +15,7 @@ from betting_ml.application.authenticate import (
     InvalidCredentialsError,
     LoginDisabledError,
 )
+from betting_ml.application.throttle import LoginThrottle
 
 PASSWORD = "correct horse battery staple"
 HASHER = Argon2Hasher(time_cost=1, memory_cost=1024, parallelism=1)  # cheap for tests
@@ -47,6 +49,7 @@ def _auth(store: SqlSessionStore, clock: Clock, **overrides: object) -> Authenti
         "secret": SECRET,
         "idle": timedelta(minutes=30),
         "max_age": timedelta(hours=12),
+        "throttle": LoginThrottle(MemoryRateLimiter(), max_attempts=1000),
         "clock": clock,
     }
     values.update(overrides)
@@ -161,3 +164,49 @@ def test_hasher_rejects_garbage_hashes() -> None:
     assert not HASHER.verify("garbage", PASSWORD)
     assert not HASHER.verify("", PASSWORD)
     assert HASH.startswith("$argon2id$")
+
+
+def test_argon2_verifications_are_bounded_in_parallel(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Each verification takes 64 MiB in production: a login burst must not run them all."""
+    import threading
+    import time
+    from types import SimpleNamespace
+
+    hasher = Argon2Hasher(time_cost=1, memory_cost=1024, parallelism=1, max_concurrent=2)
+    running = 0
+    peak = 0
+    guard = threading.Lock()
+
+    def slow_verify(password_hash: str, password: str) -> bool:
+        nonlocal running, peak
+        with guard:
+            running += 1
+            peak = max(peak, running)
+        time.sleep(0.02)
+        with guard:
+            running -= 1
+        return True
+
+    monkeypatch.setattr(hasher, "_hasher", SimpleNamespace(verify=slow_verify))
+    threads = [threading.Thread(target=hasher.verify, args=(HASH, PASSWORD)) for _ in range(12)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+    assert peak == 2
+
+
+def test_a_saturated_hasher_fails_fast_instead_of_queueing() -> None:
+    """Waiting forever for a slot would park the API's worker threads (all routes are sync)."""
+    from betting_ml.domain.security import PasswordCheckBusyError
+
+    hasher = Argon2Hasher(
+        time_cost=1, memory_cost=1024, parallelism=1, max_concurrent=1, busy_timeout=0.01
+    )
+    assert hasher._slots.acquire()  # another login holds the only slot
+    with pytest.raises(PasswordCheckBusyError):
+        hasher.verify(HASH, PASSWORD)
+    hasher._slots.release()
+    assert hasher.verify(HASH, PASSWORD) is True
+    assert hasher.verify(HASH, "wrong") is False  # the slot is released after each check
+    assert hasher.verify(HASH, PASSWORD) is True

@@ -80,7 +80,7 @@ Reglas de ejecución:
   - Tests con reloj falso: límites, bloqueo progresivo, `Retry-After`, 413.
   - Commit: `feat(security): rate limiting, login lockout and body size limit`
 
-- [ ] **T010** 🔍 Checkpoint de identidad y acceso
+- [x] **T010** 🔍 Checkpoint de identidad y acceso
   - `ml-reviewer` (arquitectura y tests) + revisión de seguridad del diff T003–T009 (`security-audit` o `/security-review`).
   - Corregir los hallazgos altos y críticos; registrar el resto en `decisions.md`.
   - Commit: `fix(security): ...` o `docs: checkpoint T010`

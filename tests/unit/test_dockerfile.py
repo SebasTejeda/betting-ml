@@ -23,3 +23,11 @@ def test_secrets_and_data_are_not_copied() -> None:
 def test_makefile_has_docker_target() -> None:
     makefile = (PROJECT_ROOT / "Makefile").read_text(encoding="utf-8")
     assert "docker build -t betting-ml:latest ." in makefile
+
+
+def test_the_api_does_not_trust_forwarded_headers() -> None:
+    """Spec 003, T010: like `betting-ml serve`, the image must not let X-Forwarded-For choose the
+    client IP of the login lockout (a trusted proxy is configured explicitly in T020)."""
+    cmd = next(line for line in DOCKERFILE.splitlines() if line.startswith("CMD ["))
+    assert '"--no-proxy-headers"' in cmd
+    assert "--forwarded-allow-ips" not in DOCKERFILE

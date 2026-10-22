@@ -2,7 +2,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 
 import { api, unwrap } from "@/api/client";
-import { onUnauthorized, setCsrfToken } from "@/lib/session";
+import { forgetLegacySecrets, onUnauthorized, setCsrfToken } from "@/lib/session";
 
 import { AuthContext, type AuthState, type AuthStatus } from "./context";
 
@@ -24,6 +24,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   useEffect(() => {
+    forgetLegacySecrets();
     let active = true;
     const unsubscribe = onUnauthorized(() => {
       if (active) end(true);

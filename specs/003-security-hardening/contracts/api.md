@@ -21,7 +21,7 @@ Se suma a [`../../001-prediction-model/contracts/api.md`](../../001-prediction-m
 { "csrf_token": "...", "expires_at": "2026-10-22T20:30:00Z", "idle_minutes": 30 }
 ```
 - Fija `Set-Cookie: bml_session=<token>; HttpOnly; SameSite=Strict; Path=/; Max-Age=43200` (+ `Secure` en `prod`).
-- `401 INVALID_CREDENTIALS` (mensaje genérico) · `429 TOO_MANY_ATTEMPTS` con `Retry-After` · `422` si falta `password`.
+- `401 INVALID_CREDENTIALS` (mensaje genérico) · `429 TOO_MANY_ATTEMPTS` con `Retry-After` · `422` si falta `password` · `503 LOGIN_DISABLED` sin hash configurado · `503 LOGIN_BUSY` con `Retry-After` si hay demasiadas verificaciones de contraseña en curso.
 
 ### `POST /api/v1/auth/logout`
 - Requiere sesión + `X-CSRF-Token`. `204`; borra la cookie e invalida la sesión en el servidor.
@@ -51,6 +51,7 @@ Se suma a [`../../001-prediction-model/contracts/api.md`](../../001-prediction-m
 | 409 | `VERSION_CONFLICT` | Edición concurrente. |
 | 413 | `PAYLOAD_TOO_LARGE` | Cuerpo > `MAX_BODY_BYTES`. |
 | 429 | `TOO_MANY_ATTEMPTS` / `RATE_LIMITED` | Login o límite global/ruta superado (`Retry-After`). |
+| 503 | `LOGIN_BUSY` | Todas las plazas de verificación Argon2 ocupadas; el login falla rápido (`Retry-After: 5`). |
 | 500 | `INTERNAL_ERROR` | Error no controlado; `details.request_id`, sin traza. |
 | 503 | `MODEL_INTEGRITY_ERROR` | El hash del modelo no coincide. |
 

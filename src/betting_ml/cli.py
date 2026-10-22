@@ -166,7 +166,10 @@ def serve(host: str = "127.0.0.1", port: int = 8000, reload: bool = False) -> No
     """Levanta la API REST (Swagger en /docs)."""
     import uvicorn
 
-    uvicorn.run("betting_ml.api.main:app", host=host, port=port, reload=reload)
+    # X-Forwarded-For is not trusted (uvicorn trusts it from 127.0.0.1 by default): a local
+    # client could otherwise pick a fresh IP per request and dodge the login lockout. A trusted
+    # reverse proxy is configured explicitly in the deployment (spec 003, T020).
+    uvicorn.run("betting_ml.api.main:app", host=host, port=port, reload=reload, proxy_headers=False)
 
 
 @app.command("backtest-002")
@@ -270,10 +273,6 @@ def _fmt(value: float | None) -> str:
     return "  —  " if value is None else f"{100 * value:+.2f}%"
 
 
-if __name__ == "__main__":  # pragma: no cover
-    app()
-
-
 @app.command("hash-password")
 def hash_password() -> None:
     """Pide la contraseña del dueño (sin eco) y muestra su hash Argon2id para APP_PASSWORD_HASH."""
@@ -284,3 +283,7 @@ def hash_password() -> None:
         typer.echo("Usa al menos 12 caracteres.", err=True)
         raise typer.Exit(code=1)
     typer.echo(f"APP_PASSWORD_HASH={Argon2Hasher().hash(password)}")
+
+
+if __name__ == "__main__":  # pragma: no cover
+    app()

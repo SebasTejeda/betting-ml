@@ -34,7 +34,7 @@ class Clock:
 
 class SpyHasher(Argon2Hasher):
     def __init__(self) -> None:
-        super().__init__(time_cost=1, memory_cost=1024, parallelism=1)
+        super().__init__(time_cost=1, memory_cost=1024, parallelism=1, busy_timeout=0.01)
         self.verified = 0
 
     def verify(self, password_hash: str, password: str) -> bool:
@@ -239,3 +239,16 @@ def test_default_body_limit_applies_without_configuration() -> None:
     with TestClient(create_app(services)) as client:
         response = client.post(LOGIN, content=b"x" * 70_000)
         assert response.status_code == 413
+
+
+def test_a_saturated_password_check_is_503_login_busy(client: TestClient, services: Any) -> None:
+    slots = services.hasher._slots
+    assert slots.acquire() and slots.acquire()  # both slots taken by other logins
+    response = client.post(LOGIN, json={"password": PASSWORD})
+    assert response.status_code == 503
+    assert _code(response) == "LOGIN_BUSY"
+    assert response.headers["Retry-After"] == "5"
+    assert "set-cookie" not in response.headers
+    slots.release()
+    slots.release()
+    assert client.post(LOGIN, json={"password": PASSWORD}).status_code == 200

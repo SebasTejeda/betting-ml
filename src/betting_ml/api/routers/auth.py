@@ -10,7 +10,6 @@ from betting_ml.api.schemas_auth import LoginIn, LoginOut, MeOut
 from betting_ml.api.security import (
     SESSION_COOKIE,
     client_ip,
-    current_principal,
     public,
     require_read,
     require_write,
@@ -60,9 +59,7 @@ def login(
 
 
 @reads.get("/me", response_model=MeOut)
-def me(principal: Principal | None = Depends(current_principal)) -> MeOut:
-    if principal is None:
-        raise ApiError(401, "UNAUTHORIZED", "Credenciales inválidas o ausentes")
+def me(principal: Principal = Depends(require_read)) -> MeOut:
     session = principal.session
     return MeOut(
         authenticated=True,

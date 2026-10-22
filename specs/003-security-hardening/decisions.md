@@ -105,3 +105,29 @@ Formato:
 - Decisión: si los servicios no traen `rate_limits`, no hay límite de peticiones (`ApiServices` lo deja en `None` por defecto; el `Container` siempre lo configura). El límite de cuerpo aplica siempre, con 64 KB por defecto.
 - Motivo: no hay que tocar los tests funcionales y la configuración real no puede quedarse sin límites.
 - Impacto: `tests/integration/test_api_limits.py` prueba los límites con servicios que sí los traen.
+
+## 2026-10-22 — Checkpoint T010: hallazgos corregidos y riesgos aceptados
+- Contexto: revisión de T003–T009 (incluida T008) con `ml-reviewer` (veredicto BLOQUEADO por un bloqueante) y una revisión de seguridad independiente (`security-audit`, sin hallazgos críticos ni altos).
+- Decisión — corregido en este checkpoint:
+  - **Bloqueante:** el cableado real de los controles (`Container.api_services`) no tenía tests. Ahora `test_container_security.py` comprueba el freno del login, los límites, el tamaño máximo del cuerpo y la cookie `Secure` en prod. Además, `Authenticate` exige `throttle`: ya no existe un modo sin freno.
+  - `test_route_access` usa un `Authenticate` real (la cookie inventada pasa por la validación) y prueba el CSRF en **cada** escritura con sesión: sin token, con un token falso o con uno ajeno → 403.
+  - El cupo de refrescos y el límite global pasan a `application/throttle.py` (`RateLimits.take_*`, `RateLimitedError`): los routers no tienen lógica.
+  - La identidad del cliente para los límites agrupa IPv6 por /64 y convierte la IPv4 mapeada en IPv4.
+  - Como máximo 2 verificaciones Argon2 en paralelo (64 MiB cada una), para que una ráfaga de logins desde muchas direcciones no agote la memoria.
+  - `betting-ml serve` no confía en `X-Forwarded-For` (`proxy_headers=False`). Con el valor por defecto de uvicorn, un cliente local podía usar una IP nueva en cada petición y saltarse el bloqueo.
+  - El frontend borra la clave `betting-ml.apiKey` que dejaron las versiones anteriores en `localStorage`, y ante `403 CSRF_FAILED` (por ejemplo, un login en otra pestaña) vuelve a pedir el token, así que reintentar funciona.
+  - `APP_ENV=prod` rechaza un hash Argon2id con parámetros por debajo del mínimo de OWASP (m=19456, t=2).
+  - `hash-password` se registra antes del bloque `__main__` (`python -m betting_ml.cli hash-password` fallaba).
+  - Se quita el código muerto de `/auth/me`. `route_access` deduplica la política cuando un handler repite la de su router.
+  - Segunda revisión de `ml-reviewer`: APROBADO CON OBSERVACIONES. Se corrigen también:
+    - El semáforo de Argon2 esperaba sin límite y podía ocupar todos los hilos de la API. Ahora falla rápido: si no hay plaza en 2 s, responde `503 LOGIN_BUSY` con `Retry-After: 5`.
+    - El `Dockerfile` arranca uvicorn con `--no-proxy-headers`, igual que `serve`.
+    - `refreshCsrf` del frontend no tapa el 403 original si falla la red.
+- Decisión — aceptado o asignado:
+  - Con más de 10 000 claves, el limitador expulsa los contadores más antiguos (puede reiniciar el nivel de bloqueo de una IP o el cupo de refrescos), nunca los bloqueos vivos. Riesgo bajo: requiere más de 10 000 direcciones, y los créditos tienen además la reserva mínima de la spec 002.
+  - Una página de terceros que el dueño visite puede gastar su cupo global por IP (peticiones simples sin credencial). Es una denegación de servicio menor y temporal (60 s). Si se observa, se dará un cupo aparte a las sesiones válidas.
+  - `CORS_ORIGINS` acepta `http://` en prod pero el mensaje dice `https://`: se resuelve en T011 junto con CORS.
+  - Las lecturas con la clave de ejemplo responden `WRITES_DISABLED`; el nombre se mantiene por compatibilidad con el contrato 002.
+  - `SessionStore` tipado con `Any`: se deja así porque el puerto no importa el modelo.
+- Motivo: corregir todo lo barato y con un camino de explotación concreto; documentar el resto con su condición de disparo.
+- Impacto: suben los tests de backend y de frontend; el contrato de la API no cambia.
