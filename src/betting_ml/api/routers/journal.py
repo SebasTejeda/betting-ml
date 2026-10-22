@@ -145,7 +145,10 @@ def _bet_out(bet: Bet) -> BetOut:
         home_team=bet.home_team,
         away_team=bet.away_team,
         kickoff=bet.kickoff_utc,
-        outcome=bet.outcome.label,  # type: ignore[arg-type]
+        outcome=bet.outcome.label if bet.outcome is not None else None,  # type: ignore[arg-type]
+        market=bet.market,
+        selection=bet.selection,
+        line=bet.line,
         bookmaker=bet.bookmaker,
         odds=float(bet.odds),
         stake=bet.stake,
@@ -284,10 +287,21 @@ def create_bet(body: BetIn, container: Any = Depends(get_container)) -> BetOut:
 
 
 def _create(container: Any, body: BetIn) -> Bet:
+    if body.market == "h2h":
+        if body.outcome is None:
+            raise ValueError("una apuesta 1X2 necesita `outcome` (home, draw o away)")
+        outcome: Outcome | None = OUTCOME_BY_NAME[body.outcome]
+    else:
+        if body.outcome is not None:
+            raise ValueError("`outcome` solo se usa en 1X2; en otros mercados va `selection`")
+        outcome = None
     return _services(container).bets.create(
         NewBet(
             match_id=body.match_id,
-            outcome=OUTCOME_BY_NAME[body.outcome],
+            outcome=outcome,
+            market=body.market,
+            selection=body.selection,
+            line=body.line,
             bookmaker=body.bookmaker,
             odds=body.odds,
             stake=body.stake,

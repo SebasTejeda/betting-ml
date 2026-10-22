@@ -1212,10 +1212,579 @@
           }
         }
       }
+    },
+    "/api/v1/teams/search": {
+      "get": {
+        "tags": [
+          "spec-003"
+        ],
+        "summary": "Search Teams",
+        "operationId": "search_teams_api_v1_teams_search_get",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "title": "Q"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TeamOut"
+                  },
+                  "title": "Response Search Teams Api V1 Teams Search Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/analysis/fixture": {
+      "get": {
+        "tags": [
+          "spec-003"
+        ],
+        "summary": "Find Fixture",
+        "operationId": "find_fixture_api_v1_analysis_fixture_get",
+        "parameters": [
+          {
+            "name": "home",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "title": "Home"
+            }
+          },
+          {
+            "name": "away",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "title": "Away"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FixtureOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/analysis": {
+      "get": {
+        "tags": [
+          "spec-003"
+        ],
+        "summary": "Analyze",
+        "operationId": "analyze_api_v1_analysis_get",
+        "parameters": [
+          {
+            "name": "home",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "title": "Home"
+            }
+          },
+          {
+            "name": "away",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "title": "Away"
+            }
+          },
+          {
+            "name": "match_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Match Id"
+            }
+          },
+          {
+            "name": "date",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Date"
+            }
+          },
+          {
+            "name": "competition",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Competition"
+            }
+          },
+          {
+            "name": "kickoff",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Kickoff"
+            }
+          },
+          {
+            "name": "min_edge",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "maximum": 1,
+                  "minimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Min Edge"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalysisOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/analysis/{match_id}/odds/estimate": {
+      "get": {
+        "tags": [
+          "spec-003"
+        ],
+        "summary": "Estimate Event Odds",
+        "operationId": "estimate_event_odds_api_v1_analysis__match_id__odds_estimate_get",
+        "parameters": [
+          {
+            "name": "match_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Match Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EstimateOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/analysis/{match_id}/odds/refresh": {
+      "post": {
+        "tags": [
+          "spec-003"
+        ],
+        "summary": "Refresh Event Odds",
+        "operationId": "refresh_event_odds_api_v1_analysis__match_id__odds_refresh_post",
+        "parameters": [
+          {
+            "name": "match_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Match Id"
+            }
+          },
+          {
+            "name": "home",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "title": "Home"
+            }
+          },
+          {
+            "name": "away",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "title": "Away"
+            }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventRefreshOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/markets/calibration": {
+      "get": {
+        "tags": [
+          "spec-003"
+        ],
+        "summary": "Market Calibration",
+        "operationId": "market_calibration_api_v1_markets_calibration_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalibrationOut"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
     "schemas": {
+      "AdviceItemOut": {
+        "properties": {
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "market": {
+            "type": "string",
+            "title": "Market"
+          },
+          "selection": {
+            "type": "string",
+            "title": "Selection"
+          },
+          "line": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Line"
+          },
+          "probability": {
+            "type": "number",
+            "title": "Probability"
+          },
+          "fair_odds": {
+            "type": "number",
+            "title": "Fair Odds"
+          },
+          "best_odds": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Best Odds"
+          },
+          "bookmaker": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bookmaker"
+          },
+          "ev": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ev"
+          },
+          "verdict": {
+            "type": "string",
+            "enum": [
+              "valor",
+              "justo",
+              "evitar",
+              "sin_cuota"
+            ],
+            "title": "Verdict"
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "alta",
+              "media",
+              "baja"
+            ],
+            "title": "Confidence"
+          },
+          "experimental": {
+            "type": "boolean",
+            "title": "Experimental"
+          },
+          "price_comment": {
+            "type": "string",
+            "title": "Price Comment"
+          },
+          "reasons": {
+            "items": {
+              "$ref": "#/components/schemas/ReasonOut"
+            },
+            "type": "array",
+            "title": "Reasons"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Warnings"
+          }
+        },
+        "type": "object",
+        "required": [
+          "label",
+          "market",
+          "selection",
+          "line",
+          "probability",
+          "fair_odds",
+          "best_odds",
+          "bookmaker",
+          "ev",
+          "verdict",
+          "confidence",
+          "experimental",
+          "price_comment",
+          "reasons",
+          "warnings"
+        ],
+        "title": "AdviceItemOut"
+      },
+      "AnalysisOut": {
+        "properties": {
+          "match": {
+            "$ref": "#/components/schemas/betting_ml__api__schemas_003__MatchOut"
+          },
+          "best_options": {
+            "items": {
+              "$ref": "#/components/schemas/AdviceItemOut"
+            },
+            "type": "array",
+            "title": "Best Options"
+          },
+          "best_options_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Best Options Note"
+          },
+          "most_likely": {
+            "items": {
+              "$ref": "#/components/schemas/AdviceItemOut"
+            },
+            "type": "array",
+            "title": "Most Likely"
+          },
+          "no_value_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "No Value Message"
+          },
+          "markets": {
+            "items": {
+              "$ref": "#/components/schemas/MarketOut"
+            },
+            "type": "array",
+            "title": "Markets"
+          },
+          "form": {
+            "$ref": "#/components/schemas/FormOut"
+          }
+        },
+        "type": "object",
+        "required": [
+          "match",
+          "best_options",
+          "best_options_note",
+          "most_likely",
+          "no_value_message",
+          "markets",
+          "form"
+        ],
+        "title": "AnalysisOut"
+      },
       "BankrollOut": {
         "properties": {
           "initial": {
@@ -1280,13 +1849,47 @@
             "title": "Match Id"
           },
           "outcome": {
-            "type": "string",
-            "enum": [
-              "home",
-              "draw",
-              "away"
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "home",
+                  "draw",
+                  "away"
+                ]
+              },
+              {
+                "type": "null"
+              }
             ],
             "title": "Outcome"
+          },
+          "market": {
+            "type": "string",
+            "title": "Market",
+            "default": "h2h"
+          },
+          "selection": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Selection"
+          },
+          "line": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Line"
           },
           "bookmaker": {
             "type": "string",
@@ -1353,7 +1956,6 @@
         "type": "object",
         "required": [
           "match_id",
-          "outcome",
           "bookmaker",
           "odds",
           "stake",
@@ -1409,13 +2011,47 @@
             "title": "Kickoff"
           },
           "outcome": {
-            "type": "string",
-            "enum": [
-              "home",
-              "draw",
-              "away"
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "home",
+                  "draw",
+                  "away"
+                ]
+              },
+              {
+                "type": "null"
+              }
             ],
             "title": "Outcome"
+          },
+          "market": {
+            "type": "string",
+            "title": "Market",
+            "default": "h2h"
+          },
+          "selection": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Selection"
+          },
+          "line": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Line"
           },
           "bookmaker": {
             "type": "string",
@@ -1902,6 +2538,33 @@
         ],
         "title": "CalculatorOut"
       },
+      "CalibrationOut": {
+        "properties": {
+          "leagues": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Leagues"
+          },
+          "europe": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Europe"
+          }
+        },
+        "type": "object",
+        "required": [
+          "leagues",
+          "europe"
+        ],
+        "title": "CalibrationOut"
+      },
       "ComparatorDetailOut": {
         "properties": {
           "match_id": {
@@ -2171,6 +2834,107 @@
         ],
         "title": "ComparatorOut"
       },
+      "EstimateOut": {
+        "properties": {
+          "markets": {
+            "type": "integer",
+            "title": "Markets"
+          },
+          "regions": {
+            "type": "integer",
+            "title": "Regions"
+          },
+          "estimated_credits": {
+            "type": "integer",
+            "title": "Estimated Credits"
+          },
+          "credits_remaining": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Credits Remaining"
+          }
+        },
+        "type": "object",
+        "required": [
+          "markets",
+          "regions",
+          "estimated_credits",
+          "credits_remaining"
+        ],
+        "title": "EstimateOut"
+      },
+      "EventRefreshOut": {
+        "properties": {
+          "match_id": {
+            "type": "string",
+            "title": "Match Id"
+          },
+          "markets": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Markets"
+          },
+          "credits_used": {
+            "type": "integer",
+            "title": "Credits Used"
+          },
+          "credits_remaining": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Credits Remaining"
+          },
+          "fetched_at": {
+            "type": "string",
+            "title": "Fetched At"
+          },
+          "from_cache": {
+            "type": "boolean",
+            "title": "From Cache"
+          }
+        },
+        "type": "object",
+        "required": [
+          "match_id",
+          "markets",
+          "credits_used",
+          "credits_remaining",
+          "fetched_at",
+          "from_cache"
+        ],
+        "title": "EventRefreshOut"
+      },
+      "ExpectedGoalsOut": {
+        "properties": {
+          "home": {
+            "type": "number",
+            "title": "Home"
+          },
+          "away": {
+            "type": "number",
+            "title": "Away"
+          }
+        },
+        "type": "object",
+        "required": [
+          "home",
+          "away"
+        ],
+        "title": "ExpectedGoalsOut"
+      },
       "FairOut": {
         "properties": {
           "source": {
@@ -2191,6 +2955,327 @@
           "odds"
         ],
         "title": "FairOut"
+      },
+      "FixtureOut": {
+        "properties": {
+          "found": {
+            "type": "boolean",
+            "title": "Found"
+          },
+          "match_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Match Id"
+          },
+          "competition": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Competition"
+          },
+          "kickoff": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kickoff"
+          },
+          "date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date"
+          }
+        },
+        "type": "object",
+        "required": [
+          "found",
+          "match_id",
+          "competition",
+          "kickoff",
+          "date"
+        ],
+        "title": "FixtureOut"
+      },
+      "FormMatchOut": {
+        "properties": {
+          "date": {
+            "type": "string",
+            "title": "Date"
+          },
+          "opponent": {
+            "type": "string",
+            "title": "Opponent"
+          },
+          "competition": {
+            "type": "string",
+            "title": "Competition"
+          },
+          "venue": {
+            "type": "string",
+            "enum": [
+              "home",
+              "away"
+            ],
+            "title": "Venue"
+          },
+          "goals_for": {
+            "type": "integer",
+            "title": "Goals For"
+          },
+          "goals_against": {
+            "type": "integer",
+            "title": "Goals Against"
+          },
+          "xg_for": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Xg For"
+          },
+          "xg_against": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Xg Against"
+          },
+          "result": {
+            "type": "string",
+            "enum": [
+              "W",
+              "D",
+              "L"
+            ],
+            "title": "Result"
+          }
+        },
+        "type": "object",
+        "required": [
+          "date",
+          "opponent",
+          "competition",
+          "venue",
+          "goals_for",
+          "goals_against",
+          "xg_for",
+          "xg_against",
+          "result"
+        ],
+        "title": "FormMatchOut"
+      },
+      "FormOut": {
+        "properties": {
+          "home": {
+            "$ref": "#/components/schemas/TeamFormOut"
+          },
+          "away": {
+            "$ref": "#/components/schemas/TeamFormOut"
+          },
+          "h2h": {
+            "$ref": "#/components/schemas/H2HOut"
+          }
+        },
+        "type": "object",
+        "required": [
+          "home",
+          "away",
+          "h2h"
+        ],
+        "title": "FormOut"
+      },
+      "FormSummaryOut": {
+        "properties": {
+          "n": {
+            "type": "integer",
+            "title": "N"
+          },
+          "goals_for_avg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Goals For Avg"
+          },
+          "goals_against_avg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Goals Against Avg"
+          },
+          "xg_for_avg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Xg For Avg"
+          },
+          "xg_against_avg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Xg Against Avg"
+          },
+          "over25_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Over25 Pct"
+          },
+          "btts_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Btts Pct"
+          },
+          "scored_2plus": {
+            "type": "integer",
+            "title": "Scored 2Plus"
+          },
+          "failed_to_score": {
+            "type": "integer",
+            "title": "Failed To Score"
+          },
+          "clean_sheets": {
+            "type": "integer",
+            "title": "Clean Sheets"
+          },
+          "streak": {
+            "type": "string",
+            "title": "Streak"
+          }
+        },
+        "type": "object",
+        "required": [
+          "n",
+          "goals_for_avg",
+          "goals_against_avg",
+          "xg_for_avg",
+          "xg_against_avg",
+          "over25_pct",
+          "btts_pct",
+          "scored_2plus",
+          "failed_to_score",
+          "clean_sheets",
+          "streak"
+        ],
+        "title": "FormSummaryOut"
+      },
+      "H2HMatchOut": {
+        "properties": {
+          "date": {
+            "type": "string",
+            "title": "Date"
+          },
+          "competition": {
+            "type": "string",
+            "title": "Competition"
+          },
+          "home_team": {
+            "type": "string",
+            "title": "Home Team"
+          },
+          "away_team": {
+            "type": "string",
+            "title": "Away Team"
+          },
+          "home_goals": {
+            "type": "integer",
+            "title": "Home Goals"
+          },
+          "away_goals": {
+            "type": "integer",
+            "title": "Away Goals"
+          }
+        },
+        "type": "object",
+        "required": [
+          "date",
+          "competition",
+          "home_team",
+          "away_team",
+          "home_goals",
+          "away_goals"
+        ],
+        "title": "H2HMatchOut"
+      },
+      "H2HOut": {
+        "properties": {
+          "matches": {
+            "items": {
+              "$ref": "#/components/schemas/H2HMatchOut"
+            },
+            "type": "array",
+            "title": "Matches"
+          },
+          "note": {
+            "type": "string",
+            "title": "Note"
+          }
+        },
+        "type": "object",
+        "required": [
+          "matches",
+          "note"
+        ],
+        "title": "H2HOut"
       },
       "HTTPValidationError": {
         "properties": {
@@ -2385,77 +3470,46 @@
         ],
         "title": "Market"
       },
-      "MatchOut": {
+      "MarketOut": {
         "properties": {
-          "match_id": {
-            "type": "string",
-            "title": "Match Id"
-          },
-          "league": {
-            "type": "string",
-            "title": "League"
-          },
-          "kickoff": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "date-time"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Kickoff"
-          },
-          "home_team": {
-            "type": "string",
-            "title": "Home Team"
-          },
-          "away_team": {
-            "type": "string",
-            "title": "Away Team"
-          },
-          "probabilities": {
-            "$ref": "#/components/schemas/betting_ml__api__schemas__Triple"
-          },
-          "fair_odds": {
-            "$ref": "#/components/schemas/betting_ml__api__schemas__Triple"
-          },
           "market": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/Market"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "type": "string",
+            "title": "Market"
           },
-          "value_bets": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "alta",
+              "media",
+              "baja"
+            ],
+            "title": "Confidence"
+          },
+          "experimental": {
+            "type": "boolean",
+            "title": "Experimental"
+          },
+          "selections": {
             "items": {
-              "$ref": "#/components/schemas/ValueBetOut"
+              "$ref": "#/components/schemas/SelectionOut"
             },
             "type": "array",
-            "title": "Value Bets"
-          },
-          "over_under_2_5": {
-            "type": "null",
-            "title": "Over Under 2 5"
+            "title": "Selections"
           }
         },
         "type": "object",
         "required": [
-          "match_id",
-          "league",
-          "kickoff",
-          "home_team",
-          "away_team",
-          "probabilities",
-          "fair_odds",
           "market",
-          "value_bets"
+          "name",
+          "confidence",
+          "experimental",
+          "selections"
         ],
-        "title": "MatchOut"
+        "title": "MarketOut"
       },
       "MatchesResponse": {
         "properties": {
@@ -2492,7 +3546,7 @@
           },
           "matches": {
             "items": {
-              "$ref": "#/components/schemas/MatchOut"
+              "$ref": "#/components/schemas/betting_ml__api__schemas__MatchOut"
             },
             "type": "array",
             "title": "Matches"
@@ -2799,6 +3853,63 @@
         ],
         "title": "PredictionResponse"
       },
+      "RatingsOut": {
+        "properties": {
+          "home": {
+            "type": "number",
+            "title": "Home"
+          },
+          "away": {
+            "type": "number",
+            "title": "Away"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "date": {
+            "type": "string",
+            "title": "Date"
+          }
+        },
+        "type": "object",
+        "required": [
+          "home",
+          "away",
+          "source",
+          "date"
+        ],
+        "title": "RatingsOut"
+      },
+      "ReasonOut": {
+        "properties": {
+          "stance": {
+            "type": "string",
+            "enum": [
+              "for",
+              "against",
+              "context"
+            ],
+            "title": "Stance"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "evidence": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Evidence"
+          }
+        },
+        "type": "object",
+        "required": [
+          "stance",
+          "text",
+          "evidence"
+        ],
+        "title": "ReasonOut"
+      },
       "RefreshOut": {
         "properties": {
           "snapshot_id": {
@@ -2886,6 +3997,108 @@
           "fixtures"
         ],
         "title": "RefreshResponse"
+      },
+      "SelectionOut": {
+        "properties": {
+          "selection": {
+            "type": "string",
+            "title": "Selection"
+          },
+          "line": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Line"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "probability": {
+            "type": "number",
+            "title": "Probability"
+          },
+          "fair_odds": {
+            "type": "number",
+            "title": "Fair Odds"
+          },
+          "best_odds": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Best Odds"
+          },
+          "bookmaker": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bookmaker"
+          },
+          "ev": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ev"
+          },
+          "verdict": {
+            "type": "string",
+            "enum": [
+              "valor",
+              "justo",
+              "evitar",
+              "sin_cuota"
+            ],
+            "title": "Verdict"
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "alta",
+              "media",
+              "baja"
+            ],
+            "title": "Confidence"
+          },
+          "information_only": {
+            "type": "boolean",
+            "title": "Information Only"
+          }
+        },
+        "type": "object",
+        "required": [
+          "selection",
+          "line",
+          "label",
+          "probability",
+          "fair_odds",
+          "best_odds",
+          "bookmaker",
+          "ev",
+          "verdict",
+          "confidence",
+          "information_only"
+        ],
+        "title": "SelectionOut"
       },
       "SeriesPoint": {
         "properties": {
@@ -3283,6 +4496,79 @@
         ],
         "title": "Team"
       },
+      "TeamFormOut": {
+        "properties": {
+          "team": {
+            "type": "string",
+            "title": "Team"
+          },
+          "last6": {
+            "items": {
+              "$ref": "#/components/schemas/FormMatchOut"
+            },
+            "type": "array",
+            "title": "Last6"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/FormSummaryOut"
+          },
+          "summary_venue": {
+            "$ref": "#/components/schemas/VenueSummaryOut"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Warnings"
+          }
+        },
+        "type": "object",
+        "required": [
+          "team",
+          "last6",
+          "summary",
+          "summary_venue",
+          "warnings"
+        ],
+        "title": "TeamFormOut"
+      },
+      "TeamOut": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "league": {
+            "type": "string",
+            "title": "League"
+          },
+          "rating": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rating"
+          },
+          "rating_source": {
+            "type": "string",
+            "const": "elo_propio",
+            "title": "Rating Source",
+            "default": "elo_propio"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "league",
+          "rating"
+        ],
+        "title": "TeamOut"
+      },
       "TrackingSummaryOut": {
         "properties": {
           "predictions": {
@@ -3420,6 +4706,125 @@
         ],
         "title": "ValueBetOut"
       },
+      "VenueSummaryOut": {
+        "properties": {
+          "n": {
+            "type": "integer",
+            "title": "N"
+          },
+          "goals_for_avg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Goals For Avg"
+          },
+          "goals_against_avg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Goals Against Avg"
+          },
+          "xg_for_avg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Xg For Avg"
+          },
+          "xg_against_avg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Xg Against Avg"
+          },
+          "over25_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Over25 Pct"
+          },
+          "btts_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Btts Pct"
+          },
+          "scored_2plus": {
+            "type": "integer",
+            "title": "Scored 2Plus"
+          },
+          "failed_to_score": {
+            "type": "integer",
+            "title": "Failed To Score"
+          },
+          "clean_sheets": {
+            "type": "integer",
+            "title": "Clean Sheets"
+          },
+          "streak": {
+            "type": "string",
+            "title": "Streak"
+          },
+          "venue": {
+            "type": "string",
+            "enum": [
+              "home",
+              "away"
+            ],
+            "title": "Venue"
+          },
+          "fallback_to_all": {
+            "type": "boolean",
+            "title": "Fallback To All"
+          }
+        },
+        "type": "object",
+        "required": [
+          "n",
+          "goals_for_avg",
+          "goals_against_avg",
+          "xg_for_avg",
+          "xg_against_avg",
+          "over25_pct",
+          "btts_pct",
+          "scored_2plus",
+          "failed_to_score",
+          "clean_sheets",
+          "streak",
+          "venue",
+          "fallback_to_all"
+        ],
+        "title": "VenueSummaryOut"
+      },
       "betting_ml__api__schemas_002__Triple": {
         "properties": {
           "home": {
@@ -3458,6 +4863,167 @@
         },
         "type": "object",
         "title": "Triple"
+      },
+      "betting_ml__api__schemas_003__MatchOut": {
+        "properties": {
+          "match_id": {
+            "type": "string",
+            "title": "Match Id"
+          },
+          "competition": {
+            "type": "string",
+            "title": "Competition"
+          },
+          "kickoff": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kickoff"
+          },
+          "date": {
+            "type": "string",
+            "title": "Date"
+          },
+          "home_team": {
+            "type": "string",
+            "title": "Home Team"
+          },
+          "away_team": {
+            "type": "string",
+            "title": "Away Team"
+          },
+          "cross_league": {
+            "type": "boolean",
+            "title": "Cross League"
+          },
+          "ratings": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RatingsOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "expected_goals": {
+            "$ref": "#/components/schemas/ExpectedGoalsOut"
+          },
+          "model": {
+            "type": "string",
+            "title": "Model"
+          },
+          "odds_snapshot_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Odds Snapshot At"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Warnings"
+          }
+        },
+        "type": "object",
+        "required": [
+          "match_id",
+          "competition",
+          "kickoff",
+          "date",
+          "home_team",
+          "away_team",
+          "cross_league",
+          "ratings",
+          "expected_goals",
+          "model",
+          "warnings"
+        ],
+        "title": "MatchOut"
+      },
+      "betting_ml__api__schemas__MatchOut": {
+        "properties": {
+          "match_id": {
+            "type": "string",
+            "title": "Match Id"
+          },
+          "league": {
+            "type": "string",
+            "title": "League"
+          },
+          "kickoff": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kickoff"
+          },
+          "home_team": {
+            "type": "string",
+            "title": "Home Team"
+          },
+          "away_team": {
+            "type": "string",
+            "title": "Away Team"
+          },
+          "probabilities": {
+            "$ref": "#/components/schemas/betting_ml__api__schemas__Triple"
+          },
+          "fair_odds": {
+            "$ref": "#/components/schemas/betting_ml__api__schemas__Triple"
+          },
+          "market": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Market"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "value_bets": {
+            "items": {
+              "$ref": "#/components/schemas/ValueBetOut"
+            },
+            "type": "array",
+            "title": "Value Bets"
+          },
+          "over_under_2_5": {
+            "type": "null",
+            "title": "Over Under 2 5"
+          }
+        },
+        "type": "object",
+        "required": [
+          "match_id",
+          "league",
+          "kickoff",
+          "home_team",
+          "away_team",
+          "probabilities",
+          "fair_odds",
+          "market",
+          "value_bets"
+        ],
+        "title": "MatchOut"
       },
       "betting_ml__api__schemas__Triple": {
         "properties": {

@@ -148,7 +148,11 @@ class CalculatorOut(BaseModel):
 
 class BetIn(BaseModel):
     match_id: str = Field(min_length=3)
-    outcome: OutcomeName
+    outcome: OutcomeName | None = None  # 1X2 bets (spec 002)
+    # Spec 003: any market of the catalog; 1X2 by default (then ``outcome`` is required).
+    market: str = "h2h"
+    selection: str | None = None
+    line: float | None = None
     bookmaker: str = Field(min_length=1)
     odds: Decimal = Field(gt=1, max_digits=8, decimal_places=3)
     stake: Decimal = Field(gt=0, max_digits=12, decimal_places=2)
@@ -171,7 +175,10 @@ class BetOut(BaseModel):
     home_team: str
     away_team: str
     kickoff: datetime | None
-    outcome: OutcomeName
+    outcome: OutcomeName | None
+    market: str = "h2h"
+    selection: str | None = None
+    line: float | None = None
     bookmaker: str
     odds: float
     stake: Money

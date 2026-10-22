@@ -132,6 +132,7 @@ export function bet(overrides: Partial<Bet> = {}): Bet {
     away_team: "Chelsea",
     kickoff: "2026-10-10T11:30:00Z",
     outcome: "away",
+    market: "h2h",
     bookmaker: "teapuesto",
     odds: 4.4,
     stake: 5,

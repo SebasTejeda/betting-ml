@@ -102,3 +102,13 @@ Costo estimado antes de refrescar: `{ "markets": 6, "regions": 1, "estimated_cre
 
 ## GET `/api/v1/markets/calibration`
 Devuelve `reports/market_calibration.json`.
+
+## Cambios de implementación (T015, 2026-10-22; ver decisions.md)
+
+- **Rating:** ClubElo está caído; el rating es el Elo propio entre ligas. `GET /teams/search` devuelve `{ "name", "league", "rating", "rating_source": "elo_propio" }` (en vez de `clubelo`); en el análisis, `match.ratings.source = "elo_propio"`. `league` es el código de liga (E0…) o el país (NED, POR…) para clubes de ligas medianas.
+- **Análisis:** `best_options` llega vacío mientras la sección esté desactivada y se agrega `best_options_note` con el motivo. Cada elemento de `most_likely` lleva además `reasons` y `warnings`; cada selección de `markets` lleva `confidence` propia e `information_only` (`true` si es `baja`). `match` agrega `date`, `model` (`dixon_coles_xg` | `cross_league_elo`) y `odds_snapshot_at` (hora de la última cuota por evento en caché).
+- **`GET /analysis/fixture`:** agrega `date`; busca en los partidos con cuotas (spec 002) y los fixtures de liga (spec 001); los partidos europeos próximos solo aparecen cuando hay cuotas por evento.
+- **`POST /analysis/{match_id}/odds/refresh`:** recibe `home` y `away` como query (el `match_id` solo da competición y fecha). Errores: `404 EVENT_NOT_FOUND`, `429 ODDS_BUDGET_LOW`, `503 ODDS_API_NOT_CONFIGURED` (sin `ODDS_API_KEY`), `503 WRITES_DISABLED` (sin `APP_API_KEY`). Coste: mercados × regiones (6 × 2 = 12 créditos con `eu,uk`).
+- **Errores del análisis:** además de `404 TEAM_NOT_FOUND`, `422 SAME_TEAM` y `503 RATINGS_UNAVAILABLE`: `422 NO_HISTORY` (equipo sin partidos previos en su liga).
+- **`GET /markets/calibration`:** `{ "leagues": <market_calibration.json>, "europe": <market_calibration_europe.json> | null }`.
+- **`POST /bets`:** `outcome` pasa a ser opcional; `market` (por defecto `h2h`), `selection` y `line`. 1X2 exige `outcome`; los demás mercados, `selection` válida (y `line` donde corresponde); `outcome` con otro mercado → 422. `BetOut` agrega `market`, `selection`, `line` y `outcome` puede ser `null`.

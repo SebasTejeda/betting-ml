@@ -209,7 +209,7 @@ class SqlBetRepository:
         row.home_team = bet.home_team
         row.away_team = bet.away_team
         row.kickoff_utc = bet.kickoff_utc
-        row.outcome = bet.outcome.value
+        row.outcome = bet.outcome.value if bet.outcome is not None else None
         row.bookmaker = bet.bookmaker
         row.odds = bet.odds
         row.stake = bet.stake
@@ -226,6 +226,9 @@ class SqlBetRepository:
         row.settled_at = bet.settled_at
         row.result_source = bet.result_source
         row.no_reference = bet.no_reference
+        row.market = bet.market
+        row.selection = bet.selection
+        row.line = bet.line
         return row
 
     @staticmethod
@@ -234,7 +237,7 @@ class SqlBetRepository:
             id=row.id,
             match_id=row.match_id,
             league=row.league,
-            outcome=Outcome(row.outcome),
+            outcome=Outcome(row.outcome) if row.outcome else None,
             bookmaker=row.bookmaker,
             odds=Decimal(row.odds),
             stake=Decimal(row.stake),
@@ -255,6 +258,9 @@ class SqlBetRepository:
             settled_at=_utc(row.settled_at),
             result_source=row.result_source,
             no_reference=bool(row.no_reference),
+            market=row.market or "h2h",
+            selection=row.selection,
+            line=row.line,
         )
 
     def add(self, bet: Bet) -> Bet:

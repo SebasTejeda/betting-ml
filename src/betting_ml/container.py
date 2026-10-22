@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from functools import cached_property
 from pathlib import Path
 from typing import Any
@@ -107,6 +108,16 @@ class JournalServices:
 
 
 @dataclass
+class AnalysisServices:
+    """Spec-003 use cases used by the API (built lazily: data is read on first use)."""
+
+    analyze: Callable[[], AnalyzeMatch]
+    event_odds: Callable[[], EventOddsService]
+    event_odds_prices: Callable[[str], tuple[dict[PriceKey, tuple[float, str]], Any]]
+    reports_path: Path
+
+
+@dataclass
 class ApiServices:
     """What the API needs (injected into FastAPI's app.state)."""
 
@@ -117,6 +128,7 @@ class ApiServices:
     admin_api_key: str
     refresher: RefreshData
     journal: JournalServices | None = None
+    analysis: AnalysisServices | None = None
 
 
 class Container:
@@ -366,7 +378,44 @@ class Container:
             advice=load_advice(self.settings.configs_dir / "advice.yaml").to_settings(),
             min_edge=lambda: self.settings_repository.get().min_edge,
             prices=self.analysis_prices,
+            upcoming=self.upcoming_fixtures,
         )
+
+    def upcoming_fixtures(self) -> list[dict[str, Any]]:
+        """Known upcoming matches: odds snapshots (spec 002) and league fixtures (spec 001)."""
+        now = datetime.now(UTC)
+        rows: dict[str, dict[str, Any]] = {}
+        for q in self.odds_repository.latest_quotes(kickoff_from=now):
+            if q.kickoff_utc is None:
+                continue
+            rows.setdefault(
+                q.match_id,
+                {
+                    "match_id": q.match_id,
+                    "competition": q.league,
+                    "home_team": q.home_team,
+                    "away_team": q.away_team,
+                    "kickoff": q.kickoff_utc.isoformat(),
+                    "date": q.match_id.split("-", 1)[1][:10],
+                },
+            )
+        try:
+            fixtures = self.fixtures.fetch_fixtures()
+        except Exception:  # pragma: no cover - the source is optional here
+            fixtures = []
+        for f in fixtures:
+            rows.setdefault(
+                f.match_id,
+                {
+                    "match_id": f.match_id,
+                    "competition": f.league,
+                    "home_team": f.home_team,
+                    "away_team": f.away_team,
+                    "kickoff": f.kickoff_utc.isoformat(),
+                    "date": f.match_id.split("-", 1)[1][:10],
+                },
+            )
+        return list(rows.values())
 
     def validate_cross_league(self) -> ValidateCrossLeague:
         return ValidateCrossLeague(self.repository, self.settings.reports_path)
@@ -522,6 +571,12 @@ class Container:
                 app_api_key=self.settings.app_api_key,
                 reports_path=self.settings.reports_path,
                 start_auto_refresh=self._auto_refresh if self.settings.odds_auto_refresh else None,
+            ),
+            analysis=AnalysisServices(
+                analyze=lambda: self.analyze_match,
+                event_odds=lambda: self.event_odds,
+                event_odds_prices=lambda match_id: self.event_odds.prices(match_id),
+                reports_path=self.settings.reports_path,
             ),
         )
 

@@ -87,6 +87,12 @@ const TOOLTIP_STYLE = {
   color: "var(--popover-foreground)",
 };
 
+/** Bets on the spec-003 markets: "totals · over 2.5". */
+function selectionLabel(bet: Bet): string {
+  const line = bet.line === null || bet.line === undefined ? "" : ` ${bet.line}`;
+  return `${bet.market} · ${bet.selection ?? ""}${line}`;
+}
+
 export function BetsPage() {
   const [kind, setKind] = useState<SummaryKind>("real");
   const [status, setStatus] = useState<BetsParams["status"]>(undefined);
@@ -522,8 +528,8 @@ function BetRow({
         </div>
       </TableCell>
       <TableCell className="min-w-40 whitespace-normal">
-        {OUTCOME_LABEL[bet.outcome]} <span className="tabular-nums">{odds(bet.odds)}</span> ·{" "}
-        {bet.bookmaker}
+        {bet.outcome ? OUTCOME_LABEL[bet.outcome] : selectionLabel(bet)}{" "}
+        <span className="tabular-nums">{odds(bet.odds)}</span> · {bet.bookmaker}
         <div className="mt-1 flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
           <Badge variant="outline" className="font-normal">
             {bet.kind === "paper" ? "Papel" : "Real"}

@@ -18,7 +18,7 @@ import pandas as pd
 from betting_ml.domain.clv import bet_clv
 from betting_ml.domain.entities import OUTCOMES, OddsTriple, Outcome, make_match_id
 from betting_ml.domain.journal import Bet, BetFilters, BetStatus, QuoteSource
-from betting_ml.domain.odds import exchange_net_odds
+from betting_ml.domain.odds import exchange_net_odds, normalize_shin
 from betting_ml.domain.ports import (
     BetRepository,
     MatchDataSource,
@@ -112,6 +112,27 @@ class SettleBets:
                 return OddsTriple(*(float(v) for v in values)), FOOTBALL_DATA_PSC
         return self._api_closing(bet)
 
+    def _bet_clv(self, bet: Bet, row: pd.Series | None) -> tuple[float | None, str | None]:
+        """CLV against Pinnacle's closing price: 1X2 (spec 002) and, for spec 003 markets, only
+        Over/Under 2.5 of league matches (football-data closing ``psc_*25``)."""
+        if bet.market == "h2h" and bet.outcome is not None:
+            closing, source = self._closing(bet, row)
+            if closing is None:
+                return None, None
+            return bet_clv(float(bet.odds), bet.outcome, closing), source
+        if bet.market == "totals" and bet.line == 2.5 and row is not None:
+            over, under = row.get("psc_over25"), row.get("psc_under25")
+            if (
+                over is None
+                or under is None
+                or not (np.isfinite(float(over)) and np.isfinite(float(under)))
+            ):
+                return None, None
+            p_over, p_under = normalize_shin([float(over), float(under)])
+            p = float(p_over if bet.selection == "over" else p_under)
+            return float(bet.odds) * p - 1.0, FOOTBALL_DATA_PSC
+        return None, None
+
     def run(self) -> SettleResult:
         pending = self.bets.all(BetFilters(status=BetStatus.PENDING))
         now = self.clock()
@@ -129,7 +150,7 @@ class SettleBets:
             row = results.get(bet.match_id)
             if row is None:
                 continue
-            real = bet.result_status(_outcome(row))
+            real = bet.status_for_score(int(row["home_goals"]), int(row["away_goals"]))
             if bet.status is not real:
                 fixed = replace(bet.settle(real, now), clv=bet.clv, clv_source=bet.clv_source)
                 fixed = replace(
@@ -146,23 +167,19 @@ class SettleBets:
             row = results.get(bet.match_id)
             if row is None:
                 continue
-            updated = bet.settle(bet.result_status(_outcome(row)), now)
-            closing, source = self._closing(bet, row)
-            if closing is not None:
-                updated = replace(
-                    updated, clv=bet_clv(float(bet.odds), bet.outcome, closing), clv_source=source
-                )
+            updated = bet.settle(
+                bet.status_for_score(int(row["home_goals"]), int(row["away_goals"])), now
+            )
+            clv, source = self._bet_clv(bet, row)
+            if clv is not None:
+                updated = replace(updated, clv=clv, clv_source=source)
                 clv_count += 1
             self.bets.update(updated)
             settled += 1
         for bet in missing_clv:  # manually settled bets: add the CLV when possible
-            closing, source = self._closing(bet, results.get(bet.match_id))
-            if closing is not None:
-                self.bets.update(
-                    replace(
-                        bet, clv=bet_clv(float(bet.odds), bet.outcome, closing), clv_source=source
-                    )
-                )
+            clv, source = self._bet_clv(bet, results.get(bet.match_id))
+            if clv is not None:
+                self.bets.update(replace(bet, clv=clv, clv_source=source))
                 clv_count += 1
         return SettleResult(settled, clv_count, len(pending) - settled, corrected)
 

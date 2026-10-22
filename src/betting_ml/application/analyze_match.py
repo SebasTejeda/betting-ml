@@ -105,6 +105,7 @@ class AnalyzeMatch:
         min_edge: Callable[[], float],
         prices: PriceLookup | None = None,
         today: Callable[[], date] = date.today,
+        upcoming: Callable[[], list[dict[str, Any]]] = lambda: [],
     ) -> None:
         self.league_results = league_results
         self.europe_results = europe_results
@@ -121,6 +122,7 @@ class AnalyzeMatch:
         self.min_edge = min_edge
         self.prices = prices
         self.today = today
+        self.upcoming = upcoming
 
     # ------------------------------------------------------------------ teams
     def find_team(self, name: str, day: date | None = None) -> TeamRef:
@@ -157,6 +159,43 @@ class AnalyzeMatch:
             ):
                 out.append({"name": club, "league": country, "elo": rating})
         return sorted(out, key=lambda r: (-(r["elo"] or 0), r["name"]))[:limit]
+
+    def find_fixture(self, home_name: str, away_name: str) -> dict[str, Any]:
+        """Next known fixture between two teams (league fixtures and odds snapshots).
+
+        ``upcoming`` rows: ``match_id``, ``competition``, ``home_team``, ``away_team``,
+        ``kickoff`` (ISO, UTC) and ``date``."""
+        home = self.find_team(home_name)
+        away = self.find_team(away_name)
+        if home.name == away.name:
+            raise SameTeamError("home and away are the same team")
+        today = self.today().isoformat()
+        candidates = sorted(
+            (
+                row
+                for row in self.upcoming()
+                if str(row.get("date", "")) >= today
+                and slugify(str(row.get("home_team", ""))) == slugify(home.name)
+                and slugify(str(row.get("away_team", ""))) == slugify(away.name)
+            ),
+            key=lambda row: str(row.get("date", "")),
+        )
+        if not candidates:
+            return {
+                "found": False,
+                "match_id": None,
+                "competition": None,
+                "kickoff": None,
+                "date": None,
+            }
+        row = candidates[0]
+        return {
+            "found": True,
+            "match_id": row["match_id"],
+            "competition": row["competition"],
+            "kickoff": row.get("kickoff"),
+            "date": row["date"],
+        }
 
     # ------------------------------------------------------------------ matrix
     def _matrix(

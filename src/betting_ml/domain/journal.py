@@ -8,6 +8,9 @@ from decimal import Decimal
 from enum import StrEnum
 
 from betting_ml.domain.entities import Outcome
+from betting_ml.domain.markets import Market, validate_selection
+from betting_ml.domain.markets import Outcome as MarketOutcome
+from betting_ml.domain.markets import settle as settle_market
 
 CENT = Decimal("0.01")
 
@@ -57,7 +60,7 @@ class OddsSnapshot:
 class Bet:
     match_id: str
     league: str
-    outcome: Outcome
+    outcome: Outcome | None  # 1X2 bets; None for the other markets of spec 003
     bookmaker: str
     odds: Decimal
     stake: Decimal
@@ -81,6 +84,10 @@ class Bet:
     # No reference price was available when it was registered (no API odds for the match):
     # it counts for every limit but is left out of the value signal.
     no_reference: bool = False
+    # Spec 003: any market of domain.markets ("h2h" keeps using ``outcome``).
+    market: str = "h2h"
+    selection: str | None = None
+    line: float | None = None
     id: int | None = None
 
     def __post_init__(self) -> None:
@@ -88,6 +95,15 @@ class Bet:
             raise ValueError("odds must be > 1")
         if self.stake <= 0:
             raise ValueError("stake must be positive")
+        if self.market == Market.H2H.value:
+            if self.outcome is None:
+                raise ValueError("a 1X2 bet needs an outcome")
+        else:
+            if self.outcome is not None:
+                raise ValueError("only 1X2 bets have an outcome")
+            if self.selection is None:
+                raise ValueError(f"a {self.market} bet needs a selection")
+            validate_selection(self.market, self.selection, self.line)
 
     def settle(self, status: BetStatus, at: datetime, source: str = "official") -> Bet:
         """Return a settled copy with its profit (void → 0; won → stake × (odds − 1))."""
@@ -103,6 +119,28 @@ class Bet:
 
     def result_status(self, result: Outcome) -> BetStatus:
         return BetStatus.WON if result is self.outcome else BetStatus.LOST
+
+    def status_for_score(self, home_goals: int, away_goals: int) -> BetStatus:
+        """Settlement from the 90-minute score (draw no bet returns the stake on a draw)."""
+        if self.market == Market.H2H.value:
+            hg, ag = home_goals, away_goals
+            result = Outcome.HOME if hg > ag else Outcome.AWAY if hg < ag else Outcome.DRAW
+            return self.result_status(result)
+        assert self.selection is not None
+        outcome = settle_market(self.market, self.selection, self.line, home_goals, away_goals)
+        return {
+            MarketOutcome.WON: BetStatus.WON,
+            MarketOutcome.LOST: BetStatus.LOST,
+            MarketOutcome.VOID: BetStatus.VOID,
+        }[outcome]
+
+    @property
+    def selection_label(self) -> str:
+        """``team_totals / home_over / 1.5`` style key of what was bet on."""
+        if self.market == Market.H2H.value:
+            return f"h2h / {self.outcome.value if self.outcome else '?'}"
+        line = "" if self.line is None else f" / {self.line:g}"
+        return f"{self.market} / {self.selection}{line}"
 
 
 @dataclass(frozen=True)

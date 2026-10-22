@@ -38,6 +38,10 @@ from betting_ml.domain.value import reference_probabilities
 
 MATCH_ID = re.compile(r"^(?P<league>[A-Z0-9]+)-(?P<date>\d{4}-\d{2}-\d{2})-[a-z0-9-]+$")
 ROI_NOTE = "Con menos de 300 apuestas el ROI es mayormente ruido; mira el CLV."
+NO_MARKET_REFERENCE_WARNING = (
+    "Mercado sin cuota de referencia sharp: no hay EV de referencia y el CLV solo se calcula si "
+    "existe cierre de Pinnacle (Más/Menos 2.5 de ligas). Cuenta para los límites."
+)
 NO_REFERENCE_WARNING = (
     "Sin cuota de referencia: el partido no tiene cuotas de la API. Cuenta para los límites, "
     "queda fuera de la señal de valor y su CLV se calculará con el cierre de Pinnacle de "
@@ -80,13 +84,17 @@ class BetStateError(BetNotPendingError):
 @dataclass(frozen=True)
 class NewBet:
     match_id: str
-    outcome: Outcome
+    outcome: Outcome | None
     bookmaker: str
     odds: Decimal
     stake: Decimal
     kind: BetKind
     note: str | None = None
     from_experimental_signal: bool = False
+    # Spec 003: any market (default 1X2 with ``outcome``).
+    market: str = "h2h"
+    selection: str | None = None
+    line: float | None = None
 
 
 @dataclass
@@ -244,10 +252,18 @@ class ManageBets:
             raise MonthlyLimitReachedError(result)
         if result.status is LimitStatus.WARNING and not confirm:
             raise LimitWarningError(result)
-        fair, ev = self._fair(request.match_id, request.outcome, request.odds, info["kickoff_utc"])
+        if request.market == "h2h" and request.outcome is not None:
+            fair, ev = self._fair(
+                request.match_id, request.outcome, request.odds, info["kickoff_utc"]
+            )
+        else:  # no sharp reference for the other markets yet (spec 003)
+            fair, ev = None, None
         warnings = result.messages
         if fair is None:
-            warnings = (*warnings, NO_REFERENCE_WARNING)
+            warnings = (
+                *warnings,
+                NO_REFERENCE_WARNING if request.market == "h2h" else NO_MARKET_REFERENCE_WARNING,
+            )
         if info["kickoff_utc"] is not None and self.clock() >= info["kickoff_utc"]:
             warnings = (
                 *warnings,
@@ -271,6 +287,9 @@ class ManageBets:
             ev=ev,
             warnings=warnings,
             no_reference=fair is None,
+            market=request.market,
+            selection=request.selection,
+            line=request.line,
         )
         return self.bets.add(bet)
 
@@ -367,7 +386,7 @@ class ManageBets:
                 for q in self.odds.latest_quotes(
                     match_ids=[bet.match_id], before=bet.created_at, source=QuoteSource.API
                 )
-                if q.outcome is bet.outcome
+                if bet.market == "h2h" and q.outcome is bet.outcome
             ]
             if quotes:
                 uplifts.append(float(bet.odds) / (sum(quotes) / len(quotes)) - 1.0)

@@ -79,6 +79,7 @@ export function RegisterBetForm({
     send({
       match_id: matchId,
       outcome,
+      market: "h2h",
       bookmaker,
       odds,
       stake: values.stake,

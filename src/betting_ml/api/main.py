@@ -14,6 +14,7 @@ from betting_ml import __version__
 from betting_ml.api.errors import register_error_handlers
 from betting_ml.api.routers import (
     admin,
+    analysis,
     experiments,
     health,
     journal,
@@ -27,7 +28,18 @@ from betting_ml.application.predict_matches import ModelNotAvailableError
 
 logger = logging.getLogger(__name__)
 LOCALHOST_ORIGINS = r"https?://(localhost|127\.0\.0\.1|\[::1\])(:\d+)?"
-ROUTERS = (health, leagues, matches, predictions, model, experiments, tracking, admin, journal)
+ROUTERS = (
+    health,
+    leagues,
+    matches,
+    predictions,
+    model,
+    experiments,
+    tracking,
+    admin,
+    journal,
+    analysis,
+)
 
 
 def create_app(services: Any | None = None) -> FastAPI:
