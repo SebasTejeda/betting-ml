@@ -53,11 +53,11 @@ Regla de procesos: si levantas servidores para probar o tomar capturas, hazlo en
 
 ## Fase 4 — Opcional (P3)
 
-- [ ] **T022** Córners y tarjetas (US7) con su validación. Solo si el dueño lo confirma al llegar aquí; si no, marcar como "pospuesto" en `PROGRESS.md`.
+- [~] **T022** (pospuesto por decisión del dueño, 2026-10-22) Córners y tarjetas (US7) con su validación. Solo si el dueño lo confirma al llegar aquí; si no, marcar como "pospuesto" en `PROGRESS.md`.
 
 ## Fase 5 — Cierre
 
-- [ ] **T023** README: sección spec 003 (cómo leer el análisis, qué significa cada nivel de confianza, por qué "lo más probable" no es "lo mejor", comandos sin make).
+- [x] **T023** README: sección spec 003 (cómo leer el análisis, qué significa cada nivel de confianza, por qué "lo más probable" no es "lo mejor", comandos sin make).
 - [ ] 🔍 **T024** Auditoría final `ml-reviewer`.
 - [ ] **T025** Verificación final: tests en verde; levantar API y frontend en segundo plano; analizar un partido real próximo de liga y uno de Champions (máximo 2 llamadas de cuotas por evento, dentro del límite de 3 de la spec); capturas de la página Análisis; registrar una apuesta en papel de un mercado nuevo; cerrar todos los procesos. Resumen en `PROGRESS.md`.
   - Commit: `chore: spec 003 final verification`
