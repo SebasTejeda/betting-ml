@@ -56,6 +56,41 @@ def data_europe(verbose: bool = False) -> None:
     )
 
 
+@app.command()
+def analyze(
+    home: str,
+    away: str,
+    day: str = typer.Option(None, "--date", help="Fecha del partido (YYYY-MM-DD); hoy por defecto"),
+    competition: str = typer.Option(None, help="Liga (E0, SP1…) o UCL/UEL"),
+) -> None:
+    """Análisis de un partido por consola (spec 003): mercados, lo más probable y forma."""
+    from datetime import date as _date
+
+    from betting_ml.container import Container
+
+    analysis = Container().analyze_match.analyze(
+        home, away, _date.fromisoformat(day) if day else None, competition
+    )
+    m = analysis.match
+    eg = m["expected_goals"]
+    typer.echo(
+        f"{m['home_team']} vs {m['away_team']} · {m['competition']} · {m['date']} · "
+        f"goles esperados {eg['home']:.2f} - {eg['away']:.2f} ({m['model']})"
+    )
+    for warning in m["warnings"]:
+        typer.echo(f"  ! {warning}")
+    if analysis.best_options_note:
+        typer.echo(f"Mejores opciones: {analysis.best_options_note}")
+    typer.echo("Lo más probable:")
+    for item in analysis.most_likely:
+        typer.echo(f"  - {item['label']}: {item['price_comment']} [{item['confidence']}]")
+        for reason in item["reasons"]:
+            typer.echo(f"      · {reason['text']}")
+    for side in ("home", "away"):
+        form = analysis.form[side]
+        typer.echo(f"Forma {form['team']}: {form['summary']['streak']}")
+
+
 @app.command("validate-cross-league")
 def validate_cross_league(
     final: bool = typer.Option(False, "--final", help="Test europeo 2025-26, UNA sola vez (lock)"),

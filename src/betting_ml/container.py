@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from betting_ml.adapters.clubelo import ClubEloSource
 from betting_ml.adapters.elo_snapshots import EloSnapshotSource
-from betting_ml.adapters.europe_names import EuropeTeamResolver
+from betting_ml.adapters.europe_names import LEAGUE_COUNTRY, EuropeTeamResolver
 from betting_ml.adapters.experiment_store import FileExperimentStore
 from betting_ml.adapters.fixtures import FootballDataFixtures
 from betting_ml.adapters.football_data import FootballDataSource
@@ -33,12 +33,17 @@ from betting_ml.adapters.team_names import TeamNameResolver
 from betting_ml.adapters.the_odds_api import MappedOdds, TheOddsApiClient, map_events
 from betting_ml.adapters.tracking_store import ParquetTrackingStore
 from betting_ml.adapters.understat import UnderstatSource
+from betting_ml.application.analyze_match import AnalyzeMatch, PriceKey
 from betting_ml.application.backtest_pinnacle import BacktestPinnacle
 from betting_ml.application.build_club_elo import BuildClubElo
 from betting_ml.application.build_dataset import BuildDataset
 from betting_ml.application.build_europe import BuildEuropeDataset
 from betting_ml.application.catalog import RefreshData
-from betting_ml.application.compare_matches import CompareMatches, EvaluateManualOdds
+from betting_ml.application.compare_matches import (
+    CompareMatches,
+    EvaluateManualOdds,
+    MatchNotFoundError,
+)
 from betting_ml.application.evaluate_holdout import EvaluateHoldout
 from betting_ml.application.generate_report import GenerateReport
 from betting_ml.application.manage_bets import ManageBets
@@ -47,6 +52,7 @@ from betting_ml.application.refresh_odds import RefreshOdds
 from betting_ml.application.run_experiment import RunExperiment
 from betting_ml.application.select_champion import SelectChampion
 from betting_ml.application.settle_bets import SettleBets
+from betting_ml.application.team_form import TeamFormService, combine_results
 from betting_ml.application.track_predictions import TrackPredictions
 from betting_ml.application.train_production import TrainProduction
 from betting_ml.application.validate_cross_league import (
@@ -60,6 +66,7 @@ from betting_ml.config import (
     LeaguesFile,
     Settings,
     get_settings,
+    load_advice,
     load_bookmakers,
     load_data_overrides,
     load_elo_leagues,
@@ -69,6 +76,9 @@ from betting_ml.config import (
     load_markets,
     load_team_aliases,
 )
+from betting_ml.domain.entities import Outcome
+from betting_ml.ml.models.cross_league import CrossLeagueModel
+from betting_ml.ml.models.goal_model import ScoreMatrixModel
 
 
 @dataclass
@@ -209,6 +219,108 @@ class Container:
             catalog=load_markets(self.settings.configs_dir / "markets.yaml"),
             experiment_path=self.settings.reports_path / "experiments" / "E09.json",
             reports_dir=self.settings.reports_path,
+        )
+
+    # --- spec 003: match analysis
+
+    @cached_property
+    def analysis_repository(self) -> ParquetMatchRepository:
+        """Analysis reads every played league match: both holdouts were already used (T009)."""
+        return ParquetMatchRepository(self.settings.processed_path, allow_holdout=True)
+
+    @cached_property
+    def league_results(self) -> pd.DataFrame:
+        frames = [
+            self.analysis_repository.load(name)
+            for name in ("matches", "holdout", "current")
+            if self.analysis_repository.exists(name)
+        ]
+        return pd.concat(frames, ignore_index=True)
+
+    @cached_property
+    def europe_results(self) -> pd.DataFrame:
+        frames = [
+            self.analysis_repository.load(name)
+            for name in ("europe_matches", "europe_holdout")
+            if self.analysis_repository.exists(name)
+        ]
+        return pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
+
+    @cached_property
+    def foreign_league_results(self) -> pd.DataFrame:
+        """League matches of the medium leagues (openfootball/europe, already in the own Elo)."""
+        if not self.analysis_repository.exists("club_elo_matches"):
+            return pd.DataFrame()
+        elo = self.analysis_repository.load("club_elo_matches")
+        rows = elo[elo["source"] == "openfootball_league"]
+        return pd.DataFrame(
+            {
+                "date": rows["date"],
+                "competition": rows["home_country"],
+                "home_team": rows["home_key"].str.split("|", n=1).str[1],
+                "away_team": rows["away_key"].str.split("|", n=1).str[1],
+                "home_goals": rows["home_goals"],
+                "away_goals": rows["away_goals"],
+            }
+        )
+
+    @cached_property
+    def team_form_service(self) -> TeamFormService:
+        others = pd.concat(
+            [f for f in (self.europe_results, self.foreign_league_results) if not f.empty],
+            ignore_index=True,
+        )
+        return TeamFormService(combine_results(self.league_results, others))
+
+    @cached_property
+    def cross_league_model(self) -> CrossLeagueModel:
+        payload = json.loads(
+            (self.settings.reports_path / "market_validation_003_europe.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        return CrossLeagueModel(**payload["final_model"])
+
+    def _levels(self, file: str) -> dict[str, str]:
+        path = self.settings.reports_path / file
+        if not path.exists():
+            return {}
+        return dict(json.loads(path.read_text(encoding="utf-8"))["levels"])
+
+    def h2h_prices(self, match_id: str) -> dict[PriceKey, tuple[float, str]]:
+        """Best accessible 1X2 prices of the spec 002 comparator (other markets: T014)."""
+        try:
+            comparison, _ = self.compare_matches.detail(match_id, accessible_only=True)
+        except MatchNotFoundError:
+            return {}
+        names = {Outcome.HOME: "home", Outcome.DRAW: "draw", Outcome.AWAY: "away"}
+        return {
+            ("h2h", names[outcome], None): (best.odds, best.bookmaker)
+            for outcome, best in comparison.best.items()
+        }
+
+    @cached_property
+    def analyze_match(self) -> AnalyzeMatch:
+        countries = {
+            lg.code: LEAGUE_COUNTRY[lg.code]
+            for lg in self.leagues.leagues
+            if lg.code in LEAGUE_COUNTRY
+        }
+        return AnalyzeMatch(
+            league_results=lambda: self.league_results,
+            europe_results=lambda: self.europe_results,
+            teams_by_league={code: self.team_names.teams(code) for code in countries},
+            league_country=countries,
+            matrix_model=ScoreMatrixModel(),
+            cross_model=lambda: self.cross_league_model,
+            ratings=self.club_ratings,
+            form_service=lambda: self.team_form_service,
+            catalog=load_markets(self.settings.configs_dir / "markets.yaml"),
+            local_levels=self._levels("market_calibration.json"),
+            europe_levels=self._levels("market_calibration_europe.json"),
+            advice=load_advice(self.settings.configs_dir / "advice.yaml").to_settings(),
+            min_edge=lambda: self.settings_repository.get().min_edge,
+            prices=self.h2h_prices,
         )
 
     def validate_cross_league(self) -> ValidateCrossLeague:
