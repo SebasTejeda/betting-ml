@@ -192,3 +192,80 @@ export function useBacktest() {
     staleTime: Infinity,
   });
 }
+
+// --- spec 003: match analysis
+export type AnalysisParams = {
+  home: string;
+  away: string;
+  date?: string;
+  competition?: string;
+  matchId?: string;
+};
+
+export function useTeamSearch(query: string) {
+  const q = query.trim();
+  return useQuery({
+    queryKey: ["teams", "search", q],
+    queryFn: () => unwrap(api.GET("/api/v1/teams/search", { params: { query: { q } } })),
+    enabled: q.length >= 2,
+    staleTime: 5 * 60_000,
+  });
+}
+
+export function useFixture(home: string, away: string) {
+  return useQuery({
+    queryKey: ["analysis", "fixture", home, away],
+    queryFn: () =>
+      unwrap(api.GET("/api/v1/analysis/fixture", { params: { query: { home, away } } })),
+    enabled: Boolean(home && away),
+    retry: false,
+  });
+}
+
+export function useAnalysis(params: AnalysisParams | null) {
+  return useQuery({
+    queryKey: ["analysis", params],
+    queryFn: () =>
+      unwrap(
+        api.GET("/api/v1/analysis", {
+          params: {
+            query: {
+              home: params!.home,
+              away: params!.away,
+              date: params!.date || undefined,
+              competition: params!.competition || undefined,
+              match_id: params!.matchId || undefined,
+            },
+          },
+        }),
+      ),
+    enabled: params !== null,
+    retry: false,
+  });
+}
+
+export function useEventOddsEstimate(matchId: string | undefined) {
+  return useQuery({
+    queryKey: ["analysis", "estimate", matchId],
+    queryFn: () =>
+      unwrap(
+        api.GET("/api/v1/analysis/{match_id}/odds/estimate", {
+          params: { path: { match_id: matchId! } },
+        }),
+      ),
+    enabled: Boolean(matchId),
+  });
+}
+
+export function useRefreshEventOdds() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ matchId, home, away }: { matchId: string; home: string; away: string }) =>
+      unwrap(
+        api.POST("/api/v1/analysis/{match_id}/odds/refresh", {
+          params: { path: { match_id: matchId }, query: { home, away } },
+        }),
+      ),
+    onSettled: () => void client.invalidateQueries({ queryKey: ["analysis"] }),
+  });
+}

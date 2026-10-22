@@ -21,15 +21,27 @@ const schema = z.object({
     .transform((v) => Number(v.replace(",", ".")))
     .refine((v) => v > 0, "El stake debe ser mayor que 0"),
   note: z.string().max(500).optional(),
+  // Only when the selection has no price yet (analysis without odds): typed by the user.
+  manualOdds: z.string().optional(),
+  manualBookmaker: z.string().max(40).optional(),
 });
 type FormValues = z.infer<typeof schema>;
 
 type Props = {
   matchId: string;
-  outcome: Outcome;
-  bookmaker: string;
-  odds: number;
+  /** 1X2 bets (spec 002). For the other markets use `market` + `selection` (+ `line`). */
+  outcome?: Outcome;
+  market?: string;
+  selection?: string | null;
+  line?: number | null;
+  /** What is shown to the user ("Real Madrid más de 1.5 goles"); 1X2 uses the outcome name. */
+  label?: string;
+  /** Without a price the user types the odds and the bookmaker. */
+  bookmaker?: string | null;
+  odds?: number | null;
   fromSignal?: boolean;
+  /** Initial "Tipo" (paper by default from the analysis; the signal is always paper). */
+  defaultKind?: "paper" | "real";
   suggestedStake?: number;
   /** The match has no reference price (no API odds): shown before registering. */
   noReference?: boolean;
@@ -40,9 +52,14 @@ type Props = {
 export function RegisterBetForm({
   matchId,
   outcome,
+  market = "h2h",
+  selection = null,
+  line = null,
+  label,
   bookmaker,
   odds,
   fromSignal = false,
+  defaultKind,
   suggestedStake,
   noReference = false,
 }: Props) {
@@ -54,15 +71,19 @@ export function RegisterBetForm({
     handleSubmit,
     control,
     setValue,
+    setError,
     formState: { errors },
   } = useForm<z.input<typeof schema>, unknown, FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
-      kind: fromSignal ? "paper" : "real",
+      kind: fromSignal ? "paper" : (defaultKind ?? "real"),
       stake: suggestedStake && suggestedStake > 0 ? suggestedStake.toFixed(2) : "",
       note: "",
+      manualOdds: "",
+      manualBookmaker: "",
     },
   });
+  const needsPrice = !odds || !bookmaker;
   const kind = useWatch({ control, name: "kind" });
 
   function send(body: BetIn) {
@@ -75,20 +96,36 @@ export function RegisterBetForm({
     });
   }
 
-  const submit = handleSubmit((values) =>
+  const submit = handleSubmit((values) => {
+    let price = odds ?? 0;
+    let book = bookmaker ?? "";
+    if (needsPrice) {
+      price = Number((values.manualOdds ?? "").replace(",", "."));
+      book = (values.manualBookmaker ?? "").trim();
+      if (!Number.isFinite(price) || price <= 1) {
+        setError("manualOdds", { message: "Cuota inválida (mayor que 1)" });
+        return;
+      }
+      if (!book) {
+        setError("manualBookmaker", { message: "Indica la casa" });
+        return;
+      }
+    }
     send({
       match_id: matchId,
-      outcome,
-      market: "h2h",
-      bookmaker,
-      odds,
+      ...(market === "h2h"
+        ? { outcome: outcome ?? null, market: "h2h" }
+        : { outcome: null, market, selection, line }),
+      bookmaker: book,
+      odds: price,
       stake: values.stake,
       kind: values.kind,
       note: values.note || null,
       from_experimental_signal: fromSignal,
       confirm: false,
-    }),
-  );
+    });
+  });
+  const shown = label ?? (outcome ? OUTCOME_LABEL[outcome] : (selection ?? market));
 
   if (saved) {
     return (
@@ -128,12 +165,37 @@ export function RegisterBetForm({
     >
       <div className="flex flex-wrap items-center gap-2 text-sm">
         <span>
-          {OUTCOME_LABEL[outcome]} a <strong className="tabular-nums">{fmtOdds(odds)}</strong> en{" "}
-          {bookmaker}
+          {shown}
+          {!needsPrice && (
+            <>
+              {" "}
+              a <strong className="tabular-nums">{fmtOdds(odds)}</strong> en {bookmaker}
+            </>
+          )}
         </span>
         {fromSignal && <ExperimentalBadge />}
       </div>
       {noReference && <NoReferenceNotice />}
+      {needsPrice && (
+        <div className="grid gap-3 sm:grid-cols-2">
+          <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+            Cuota que te ofrecen
+            <input inputMode="decimal" className="field tabular-nums" {...register("manualOdds")} />
+            {errors.manualOdds && (
+              <span className="text-xs font-normal text-negative">{errors.manualOdds.message}</span>
+            )}
+          </label>
+          <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+            Casa
+            <input className="field" {...register("manualBookmaker")} />
+            {errors.manualBookmaker && (
+              <span className="text-xs font-normal text-negative">
+                {errors.manualBookmaker.message}
+              </span>
+            )}
+          </label>
+        </div>
+      )}
       <fieldset className="flex flex-col gap-2">
         <legend className="mb-1 text-xs font-medium text-muted-foreground">Tipo</legend>
         <div className="grid grid-cols-2 gap-2">

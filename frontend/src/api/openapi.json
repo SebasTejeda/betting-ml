@@ -1721,10 +1721,99 @@
         ],
         "title": "AdviceItemOut"
       },
+      "AnalysisMatchOut": {
+        "properties": {
+          "match_id": {
+            "type": "string",
+            "title": "Match Id"
+          },
+          "competition": {
+            "type": "string",
+            "title": "Competition"
+          },
+          "kickoff": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kickoff"
+          },
+          "date": {
+            "type": "string",
+            "title": "Date"
+          },
+          "home_team": {
+            "type": "string",
+            "title": "Home Team"
+          },
+          "away_team": {
+            "type": "string",
+            "title": "Away Team"
+          },
+          "cross_league": {
+            "type": "boolean",
+            "title": "Cross League"
+          },
+          "ratings": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RatingsOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "expected_goals": {
+            "$ref": "#/components/schemas/ExpectedGoalsOut"
+          },
+          "model": {
+            "type": "string",
+            "title": "Model"
+          },
+          "odds_snapshot_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Odds Snapshot At"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Warnings"
+          }
+        },
+        "type": "object",
+        "required": [
+          "match_id",
+          "competition",
+          "kickoff",
+          "date",
+          "home_team",
+          "away_team",
+          "cross_league",
+          "ratings",
+          "expected_goals",
+          "model",
+          "warnings"
+        ],
+        "title": "AnalysisMatchOut"
+      },
       "AnalysisOut": {
         "properties": {
           "match": {
-            "$ref": "#/components/schemas/betting_ml__api__schemas_003__MatchOut"
+            "$ref": "#/components/schemas/AnalysisMatchOut"
           },
           "best_options": {
             "items": {
@@ -3511,6 +3600,192 @@
         ],
         "title": "MarketOut"
       },
+      "MarketSummaryOut": {
+        "properties": {
+          "market": {
+            "type": "string",
+            "title": "Market"
+          },
+          "bets": {
+            "type": "integer",
+            "title": "Bets"
+          },
+          "settled": {
+            "type": "integer",
+            "title": "Settled"
+          },
+          "roi": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Roi"
+          },
+          "clv_mean_pinnacle": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Clv Mean Pinnacle"
+          },
+          "clv_n_pinnacle": {
+            "type": "integer",
+            "title": "Clv N Pinnacle"
+          },
+          "clv_mean_market_average": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Clv Mean Market Average"
+          },
+          "clv_n_market_average": {
+            "type": "integer",
+            "title": "Clv N Market Average"
+          },
+          "clv_mean_other": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Clv Mean Other"
+          },
+          "clv_n_other": {
+            "type": "integer",
+            "title": "Clv N Other"
+          },
+          "paper_with_clv": {
+            "type": "integer",
+            "title": "Paper With Clv"
+          },
+          "paper_clv_mean": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Paper Clv Mean"
+          },
+          "evidence_target": {
+            "type": "integer",
+            "title": "Evidence Target"
+          },
+          "evidence_met": {
+            "type": "boolean",
+            "title": "Evidence Met"
+          }
+        },
+        "type": "object",
+        "required": [
+          "market",
+          "bets",
+          "settled",
+          "roi",
+          "clv_mean_pinnacle",
+          "clv_n_pinnacle",
+          "clv_mean_market_average",
+          "clv_n_market_average",
+          "clv_mean_other",
+          "clv_n_other",
+          "paper_with_clv",
+          "paper_clv_mean",
+          "evidence_target",
+          "evidence_met"
+        ],
+        "title": "MarketSummaryOut",
+        "description": "Spec 003 US6: one market of the journal."
+      },
+      "MatchOut": {
+        "properties": {
+          "match_id": {
+            "type": "string",
+            "title": "Match Id"
+          },
+          "league": {
+            "type": "string",
+            "title": "League"
+          },
+          "kickoff": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kickoff"
+          },
+          "home_team": {
+            "type": "string",
+            "title": "Home Team"
+          },
+          "away_team": {
+            "type": "string",
+            "title": "Away Team"
+          },
+          "probabilities": {
+            "$ref": "#/components/schemas/betting_ml__api__schemas__Triple"
+          },
+          "fair_odds": {
+            "$ref": "#/components/schemas/betting_ml__api__schemas__Triple"
+          },
+          "market": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Market"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "value_bets": {
+            "items": {
+              "$ref": "#/components/schemas/ValueBetOut"
+            },
+            "type": "array",
+            "title": "Value Bets"
+          },
+          "over_under_2_5": {
+            "type": "null",
+            "title": "Over Under 2 5"
+          }
+        },
+        "type": "object",
+        "required": [
+          "match_id",
+          "league",
+          "kickoff",
+          "home_team",
+          "away_team",
+          "probabilities",
+          "fair_odds",
+          "market",
+          "value_bets"
+        ],
+        "title": "MatchOut"
+      },
       "MatchesResponse": {
         "properties": {
           "date": {
@@ -3546,7 +3821,7 @@
           },
           "matches": {
             "items": {
-              "$ref": "#/components/schemas/betting_ml__api__schemas__MatchOut"
+              "$ref": "#/components/schemas/MatchOut"
             },
             "type": "array",
             "title": "Matches"
@@ -4437,6 +4712,14 @@
             "type": "array",
             "title": "By Bookmaker"
           },
+          "by_market": {
+            "items": {
+              "$ref": "#/components/schemas/MarketSummaryOut"
+            },
+            "type": "array",
+            "title": "By Market",
+            "default": []
+          },
           "month": {
             "$ref": "#/components/schemas/MonthOut"
           },
@@ -4863,167 +5146,6 @@
         },
         "type": "object",
         "title": "Triple"
-      },
-      "betting_ml__api__schemas_003__MatchOut": {
-        "properties": {
-          "match_id": {
-            "type": "string",
-            "title": "Match Id"
-          },
-          "competition": {
-            "type": "string",
-            "title": "Competition"
-          },
-          "kickoff": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Kickoff"
-          },
-          "date": {
-            "type": "string",
-            "title": "Date"
-          },
-          "home_team": {
-            "type": "string",
-            "title": "Home Team"
-          },
-          "away_team": {
-            "type": "string",
-            "title": "Away Team"
-          },
-          "cross_league": {
-            "type": "boolean",
-            "title": "Cross League"
-          },
-          "ratings": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/RatingsOut"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "expected_goals": {
-            "$ref": "#/components/schemas/ExpectedGoalsOut"
-          },
-          "model": {
-            "type": "string",
-            "title": "Model"
-          },
-          "odds_snapshot_at": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Odds Snapshot At"
-          },
-          "warnings": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Warnings"
-          }
-        },
-        "type": "object",
-        "required": [
-          "match_id",
-          "competition",
-          "kickoff",
-          "date",
-          "home_team",
-          "away_team",
-          "cross_league",
-          "ratings",
-          "expected_goals",
-          "model",
-          "warnings"
-        ],
-        "title": "MatchOut"
-      },
-      "betting_ml__api__schemas__MatchOut": {
-        "properties": {
-          "match_id": {
-            "type": "string",
-            "title": "Match Id"
-          },
-          "league": {
-            "type": "string",
-            "title": "League"
-          },
-          "kickoff": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "date-time"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Kickoff"
-          },
-          "home_team": {
-            "type": "string",
-            "title": "Home Team"
-          },
-          "away_team": {
-            "type": "string",
-            "title": "Away Team"
-          },
-          "probabilities": {
-            "$ref": "#/components/schemas/betting_ml__api__schemas__Triple"
-          },
-          "fair_odds": {
-            "$ref": "#/components/schemas/betting_ml__api__schemas__Triple"
-          },
-          "market": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/Market"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "value_bets": {
-            "items": {
-              "$ref": "#/components/schemas/ValueBetOut"
-            },
-            "type": "array",
-            "title": "Value Bets"
-          },
-          "over_under_2_5": {
-            "type": "null",
-            "title": "Over Under 2 5"
-          }
-        },
-        "type": "object",
-        "required": [
-          "match_id",
-          "league",
-          "kickoff",
-          "home_team",
-          "away_team",
-          "probabilities",
-          "fair_odds",
-          "market",
-          "value_bets"
-        ],
-        "title": "MatchOut"
       },
       "betting_ml__api__schemas__Triple": {
         "properties": {

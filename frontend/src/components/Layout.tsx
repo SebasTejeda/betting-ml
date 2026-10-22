@@ -6,6 +6,7 @@ import {
   ListOrdered,
   Settings,
   ShieldCheck,
+  Sparkles,
   Wallet,
 } from "lucide-react";
 import { Suspense } from "react";
@@ -20,6 +21,7 @@ import { ThemeToggle } from "./ThemeToggle";
 const LINKS = [
   { to: "/", label: "Hoy", icon: CalendarDays, end: true },
   { to: "/top", label: "Top del día", short: "Top", icon: ListOrdered },
+  { to: "/analysis", label: "Análisis", icon: Sparkles },
   { to: "/calculator", label: "Calculadora", short: "Calcular", icon: Calculator },
   { to: "/bets", label: "Mis apuestas", short: "Apuestas", icon: Wallet },
   { to: "/backtest", label: "Backtest", icon: ChartLine },

@@ -512,9 +512,34 @@ export interface components {
             /** Warnings */
             warnings: string[];
         };
+        /** AnalysisMatchOut */
+        AnalysisMatchOut: {
+            /** Match Id */
+            match_id: string;
+            /** Competition */
+            competition: string;
+            /** Kickoff */
+            kickoff: string | null;
+            /** Date */
+            date: string;
+            /** Home Team */
+            home_team: string;
+            /** Away Team */
+            away_team: string;
+            /** Cross League */
+            cross_league: boolean;
+            ratings: components["schemas"]["RatingsOut"] | null;
+            expected_goals: components["schemas"]["ExpectedGoalsOut"];
+            /** Model */
+            model: string;
+            /** Odds Snapshot At */
+            odds_snapshot_at?: string | null;
+            /** Warnings */
+            warnings: string[];
+        };
         /** AnalysisOut */
         AnalysisOut: {
-            match: components["schemas"]["betting_ml__api__schemas_003__MatchOut"];
+            match: components["schemas"]["AnalysisMatchOut"];
             /** Best Options */
             best_options: components["schemas"]["AdviceItemOut"][];
             /** Best Options Note */
@@ -1040,6 +1065,60 @@ export interface components {
             /** Selections */
             selections: components["schemas"]["SelectionOut"][];
         };
+        /**
+         * MarketSummaryOut
+         * @description Spec 003 US6: one market of the journal.
+         */
+        MarketSummaryOut: {
+            /** Market */
+            market: string;
+            /** Bets */
+            bets: number;
+            /** Settled */
+            settled: number;
+            /** Roi */
+            roi: number | null;
+            /** Clv Mean Pinnacle */
+            clv_mean_pinnacle: number | null;
+            /** Clv N Pinnacle */
+            clv_n_pinnacle: number;
+            /** Clv Mean Market Average */
+            clv_mean_market_average: number | null;
+            /** Clv N Market Average */
+            clv_n_market_average: number;
+            /** Clv Mean Other */
+            clv_mean_other: number | null;
+            /** Clv N Other */
+            clv_n_other: number;
+            /** Paper With Clv */
+            paper_with_clv: number;
+            /** Paper Clv Mean */
+            paper_clv_mean: number | null;
+            /** Evidence Target */
+            evidence_target: number;
+            /** Evidence Met */
+            evidence_met: boolean;
+        };
+        /** MatchOut */
+        MatchOut: {
+            /** Match Id */
+            match_id: string;
+            /** League */
+            league: string;
+            /** Kickoff */
+            kickoff: string | null;
+            /** Home Team */
+            home_team: string;
+            /** Away Team */
+            away_team: string;
+            probabilities: components["schemas"]["betting_ml__api__schemas__Triple"];
+            fair_odds: components["schemas"]["betting_ml__api__schemas__Triple"];
+            market: components["schemas"]["Market"] | null;
+            /** Value Bets */
+            value_bets: components["schemas"]["ValueBetOut"][];
+            /** Over Under 2 5 */
+            over_under_2_5?: null;
+        };
         /** MatchesResponse */
         MatchesResponse: {
             /**
@@ -1054,7 +1133,7 @@ export interface components {
             /** Message */
             message: string | null;
             /** Matches */
-            matches: components["schemas"]["betting_ml__api__schemas__MatchOut"][];
+            matches: components["schemas"]["MatchOut"][];
         };
         /** ModelInfo */
         ModelInfo: {
@@ -1362,6 +1441,11 @@ export interface components {
             by_bookmaker: {
                 [key: string]: unknown;
             }[];
+            /**
+             * By Market
+             * @default []
+             */
+            by_market: components["schemas"]["MarketSummaryOut"][];
             month: components["schemas"]["MonthOut"];
             experimental_signal: components["schemas"]["SignalProgressOut"];
             /** Best Odds Uplift Mean */
@@ -1486,51 +1570,6 @@ export interface components {
             draw?: number | null;
             /** Away */
             away?: number | null;
-        };
-        /** MatchOut */
-        betting_ml__api__schemas_003__MatchOut: {
-            /** Match Id */
-            match_id: string;
-            /** Competition */
-            competition: string;
-            /** Kickoff */
-            kickoff: string | null;
-            /** Date */
-            date: string;
-            /** Home Team */
-            home_team: string;
-            /** Away Team */
-            away_team: string;
-            /** Cross League */
-            cross_league: boolean;
-            ratings: components["schemas"]["RatingsOut"] | null;
-            expected_goals: components["schemas"]["ExpectedGoalsOut"];
-            /** Model */
-            model: string;
-            /** Odds Snapshot At */
-            odds_snapshot_at?: string | null;
-            /** Warnings */
-            warnings: string[];
-        };
-        /** MatchOut */
-        betting_ml__api__schemas__MatchOut: {
-            /** Match Id */
-            match_id: string;
-            /** League */
-            league: string;
-            /** Kickoff */
-            kickoff: string | null;
-            /** Home Team */
-            home_team: string;
-            /** Away Team */
-            away_team: string;
-            probabilities: components["schemas"]["betting_ml__api__schemas__Triple"];
-            fair_odds: components["schemas"]["betting_ml__api__schemas__Triple"];
-            market: components["schemas"]["Market"] | null;
-            /** Value Bets */
-            value_bets: components["schemas"]["ValueBetOut"][];
-            /** Over Under 2 5 */
-            over_under_2_5?: null;
         };
         /** Triple */
         betting_ml__api__schemas__Triple: {

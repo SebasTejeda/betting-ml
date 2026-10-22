@@ -37,7 +37,7 @@ class ExpectedGoalsOut(BaseModel):
     away: float
 
 
-class MatchOut(BaseModel):
+class AnalysisMatchOut(BaseModel):
     match_id: str
     competition: str
     kickoff: str | None
@@ -158,7 +158,7 @@ class FormOut(BaseModel):
 
 
 class AnalysisOut(BaseModel):
-    match: MatchOut
+    match: AnalysisMatchOut
     best_options: list[AdviceItemOut]
     best_options_note: str | None
     most_likely: list[AdviceItemOut]
