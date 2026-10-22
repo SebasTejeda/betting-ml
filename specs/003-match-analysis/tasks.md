@@ -30,7 +30,7 @@ Regla de procesos: si levantas servidores para probar o tomar capturas, hazlo en
 - [x] 🔍 **T008** Checkpoint `ml-reviewer` (fuga, uso de cuotas de cierre solo para CLV, calibración creíble).
 - [x] **T009** `validate-markets --final` una sola vez (lock `HOLDOUT_003_USED.lock`), `reports/market_calibration.json` con niveles de confianza y `reports/REPORT_003_markets.md` con nivel de la spec §5.
   - Commit: `exp(003): final market validation — <nivel>`
-- [ ] **T010** 🚦 **Puerta:** si ningún mercado P1 tiene confianza `alta` o `media`, detener aquí y avisar al dueño. Registrar en `decisions.md`.
+- [x] **T010** 🚦 **Puerta:** si ningún mercado P1 tiene confianza `alta` o `media`, detener aquí y avisar al dueño. Registrar en `decisions.md`.
 
 ## Fase 2 — Análisis y consejos
 

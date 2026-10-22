@@ -126,3 +126,9 @@ Formato:
   - **Nivel de la spec (§5):** `Bueno` si ≥ 4 grupos `alta` en el test **y** CLV medio de Bet365 (escenario principal) ≥ 0; `Excelente` si además CLV > 0 y el IC 95 % del ROI excluye el 0 con ≥ 300 apuestas; si no, `Mínimo` siempre que todos los mercados P1 tengan nivel, con la salvedad de que el análisis de partido (T013) y la parte europea aún no existen.
 - Motivo: fijar todo antes de mirar el test, como en las specs 001 y 002.
 - Impacto: T010 (puerta) se decide con los niveles publicados.
+
+## 2026-10-22 — Puerta T010: pasa en lo formal, sin ningún mercado `alta`
+- Contexto: la puerta dice "si ningún mercado P1 tiene confianza `alta` o `media`, detener aquí". Resultado publicado de T009 (ligas locales): 0 `alta`, 9 `media`, 9 `baja`.
+- Decisión: la puerta **pasa** (hay 9 grupos `media`: 1X2, doble oportunidad, empate no apuesta, Más/Menos 0.5, ambos marcan, goles del local Más/Menos 0.5 y 1.5, goles del visitante Más/Menos 0.5 y 1.5). La ejecución se **pausa** aquí a la espera del dueño, como pidió al entregar la spec.
+- Motivo: la evidencia es débil: ningún mercado llega a `alta` en el test, los mercados de goles (Más/Menos 1.5–4.5, hándicaps, marcador exacto) quedan `baja` por el sesgo del modelo hacia los goles, y el backtest de Más/Menos 2.5 no tiene valor (CLV −5.7 % ≈ placebo).
+- Impacto si se sigue con la fase 2: los consejos de "Mejores opciones" solo pueden salir de los 9 grupos `media` y siempre como EXPERIMENTAL — solo papel; los `baja` se muestran como información con aviso. Cambios a considerar antes de T011: (1) recalibrar λ del modelo (escala elegida en validación interna) como experimento registrado; si mejora, solo se podría volver a medir con datos nuevos (2026-27), porque el test 2025-26 ya se usó; (2) dejar la sección "Mejores opciones" desactivada hasta tener evidencia y mostrar solo "Lo más probable" con el precio honesto.
