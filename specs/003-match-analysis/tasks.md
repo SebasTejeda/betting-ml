@@ -15,7 +15,7 @@ Regla de procesos: si levantas servidores para probar o tomar capturas, hazlo en
 
 ## Fase 1 — Mercados derivados y validación (puerta)
 
-- [ ] **T002** `domain/markets.py` + `configs/markets.yaml` con todos los mercados P1, nombres en español y líneas. Tests de propiedades y casos a mano.
+- [x] **T002** `domain/markets.py` + `configs/markets.yaml` con todos los mercados P1, nombres en español y líneas. Tests de propiedades y casos a mano.
   - Commit: `feat(domain): derived goal markets`
 - [ ] **T003** Fuentes europeas: adaptadores `clubelo.py` y `openfootball.py` (verificar formato real de ambos; caché; mapeo de nombres con `team_aliases.yaml`, fallando si falta alguno), comando `data-europe`. Fixtures de test sin red.
   - Commit: `feat(adapters): clubelo and openfootball sources`

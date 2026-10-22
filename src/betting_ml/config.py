@@ -7,8 +7,16 @@ from pathlib import Path
 from typing import Any, Literal
 
 import yaml
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+from betting_ml.domain.markets import (
+    LINE_MARKETS,
+    SELECTIONS,
+    Market,
+    MarketSpec,
+    validate_selection,
+)
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 CONFIGS_DIR = PROJECT_ROOT / "configs"
@@ -265,6 +273,76 @@ class BookmakersFile(BaseModel):
 
 def load_bookmakers(path: Path | None = None) -> BookmakersFile:
     return BookmakersFile.model_validate(_read_yaml(path or CONFIGS_DIR / "bookmakers.yaml"))
+
+
+class BettingMarketConfig(BaseModel):
+    """One entry of configs/markets.yaml (spec 003)."""
+
+    key: Market
+    name: str
+    lines: list[float] = Field(default_factory=list)
+    odds_source: Literal["api", "manual"]
+    odds_key: str | None = None
+    experimental: bool = True
+    labels: dict[str, str]
+
+    @model_validator(mode="after")
+    def _check(self) -> BettingMarketConfig:
+        if self.odds_source == "api" and not self.odds_key:
+            raise ValueError(f"{self.key.value}: api markets need an odds_key")
+        for line in self.lines:
+            validate_selection(self.key, _any_selection(self.key), line)
+        if self.key in LINE_MARKETS and not self.lines:
+            raise ValueError(f"{self.key.value} needs lines")
+        if self.key not in LINE_MARKETS and self.lines:
+            raise ValueError(f"{self.key.value} takes no lines")
+        expected = SELECTIONS[self.key]
+        wanted = set(expected) if expected is not None else {"score"}
+        if set(self.labels) != wanted:
+            raise ValueError(f"{self.key.value}: labels must be exactly {sorted(wanted)}")
+        return self
+
+    @property
+    def spec(self) -> MarketSpec:
+        return MarketSpec(self.key, tuple(self.lines))
+
+    def label(self, selection: str, line: float | None, home: str, away: str) -> str:
+        if self.key is Market.CORRECT_SCORE:
+            return self.labels["score"].format(score=selection)
+        shown = (
+            ""
+            if line is None
+            else (f"{line:+g}" if self.key is Market.EUROPEAN_HANDICAP else f"{line:g}")
+        )
+        return self.labels[selection].format(home=home, away=away, line=shown)
+
+
+def _any_selection(market: Market) -> str:
+    selections = SELECTIONS[market]
+    return selections[0] if selections is not None else "0-0"
+
+
+class BettingMarketsFile(BaseModel):
+    markets: list[BettingMarketConfig] = Field(min_length=1)
+
+    @field_validator("markets")
+    @classmethod
+    def _unique(cls, value: list[BettingMarketConfig]) -> list[BettingMarketConfig]:
+        keys = [m.key for m in value]
+        if len(keys) != len(set(keys)):
+            raise ValueError("duplicated market keys")
+        return value
+
+    def get(self, key: Market | str) -> BettingMarketConfig | None:
+        return next((m for m in self.markets if m.key == key), None)
+
+    @property
+    def specs(self) -> list[MarketSpec]:
+        return [m.spec for m in self.markets]
+
+
+def load_markets(path: Path | None = None) -> BettingMarketsFile:
+    return BettingMarketsFile.model_validate(_read_yaml(path or CONFIGS_DIR / "markets.yaml"))
 
 
 def load_data_overrides(path: Path | None = None) -> DataOverrides:

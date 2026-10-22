@@ -1,0 +1,71 @@
+# Catálogo de mercados de la spec 003 (domain/markets.py los deriva de la matriz de marcadores).
+#   key           mercado canónico (domain.markets.Market)
+#   name          nombre en español para la interfaz
+#   lines         líneas a derivar (Más/Menos y goles de un equipo: medias líneas; hándicap
+#                 europeo: enteros, aplicados al local)
+#   labels        plantilla por selección; {home}, {away} y {line} se reemplazan al mostrarla
+#   odds_source   api (The Odds API, `odds_key`) | manual (cuota ingresada en la calculadora)
+#   odds_key      clave de mercado en The Odds API (se verifica con una respuesta real en T004)
+#   experimental  true hasta que el mercado tenga ≥ 100 apuestas en papel con CLV medio > 0 (US6);
+#                 el cambio es manual y se registra en specs/003-match-analysis/decisions.md
+markets:
+  - key: h2h
+    name: Resultado (1X2)
+    odds_source: api
+    odds_key: h2h
+    experimental: true
+    labels: {home: "Gana {home}", draw: Empate, away: "Gana {away}"}
+
+  - key: double_chance
+    name: Doble oportunidad
+    odds_source: api
+    odds_key: double_chance
+    experimental: true
+    labels: {"1X": "{home} o empate", "X2": "Empate o {away}", "12": "{home} o {away}"}
+
+  - key: draw_no_bet
+    name: Empate no apuesta
+    odds_source: api
+    odds_key: draw_no_bet
+    experimental: true
+    labels: {home: "{home} (empate no apuesta)", away: "{away} (empate no apuesta)"}
+
+  - key: totals
+    name: Más/Menos goles
+    lines: [0.5, 1.5, 2.5, 3.5, 4.5]
+    odds_source: api
+    odds_key: totals
+    experimental: true
+    labels: {over: "Más de {line} goles", under: "Menos de {line} goles"}
+
+  - key: btts
+    name: Ambos marcan
+    odds_source: api
+    odds_key: btts
+    experimental: true
+    labels: {"yes": "Ambos marcan: sí", "no": "Ambos marcan: no"}
+
+  - key: team_totals
+    name: Goles de cada equipo
+    lines: [0.5, 1.5, 2.5]
+    odds_source: api
+    odds_key: team_totals
+    experimental: true
+    labels:
+      home_over: "{home} más de {line} goles"
+      home_under: "{home} menos de {line} goles"
+      away_over: "{away} más de {line} goles"
+      away_under: "{away} menos de {line} goles"
+
+  - key: european_handicap
+    name: Hándicap europeo
+    lines: [-1, 1]
+    odds_source: manual
+    experimental: true
+    labels: {home: "{home} ({line})", draw: "Empate ({line})", away: "{away} (hándicap del local {line})"}
+
+  - key: correct_score
+    name: Marcador exacto (5 más probables)
+    odds_source: manual
+    experimental: true
+    labels: {score: "Marcador {score}"}
