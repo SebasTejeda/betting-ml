@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ipaddress
 import logging
 import re
 from functools import lru_cache
@@ -79,12 +80,23 @@ class Settings(BaseSettings):
     max_body_bytes: int = Field(default=DEFAULT_MAX_BODY_BYTES, gt=0)
     backup_keep: int = Field(default=14, gt=0)
     log_format: Literal["text", "json"] | None = None
+    # Addresses of the reverse proxy whose X-Forwarded-For is trusted (empty: none, the client
+    # address is the connection's). Only the proxy in front of the API, never '*' in prod.
+    forwarded_allow_ips: CommaList = Field(default_factory=list)
 
-    @field_validator("allowed_hosts", "cors_origins", mode="before")
+    @field_validator("allowed_hosts", "cors_origins", "forwarded_allow_ips", mode="before")
     @classmethod
     def _split_commas(cls, value: Any) -> Any:
         if isinstance(value, str):
             return [item.strip() for item in value.split(",") if item.strip()]
+        return value
+
+    @field_validator("forwarded_allow_ips")
+    @classmethod
+    def _addresses(cls, value: list[str]) -> list[str]:
+        for entry in value:
+            if entry != "*":
+                ipaddress.ip_network(entry, strict=False)  # ValueError: not an IP or CIDR
         return value
 
     @field_validator("log_format", mode="before")
@@ -134,6 +146,11 @@ class Settings(BaseSettings):
             problems.append("ALLOWED_HOSTS debe listar los hosts permitidos (sin '*')")
         if any(not ORIGIN_PATTERN.match(origin) for origin in self.cors_origins):
             problems.append("CORS_ORIGINS solo admite orígenes explícitos (https://host[:puerto])")
+        if "*" in self.forwarded_allow_ips:
+            problems.append(
+                "FORWARDED_ALLOW_IPS no admite '*': cualquier cliente elegiría su IP y "
+                "esquivaría el bloqueo del login; pon solo la IP del proxy"
+            )
         return problems
 
     def resolve(self, path: Path) -> Path:

@@ -164,13 +164,47 @@ def track() -> None:
 
 @app.command()
 def serve(host: str = "127.0.0.1", port: int = 8000, reload: bool = False) -> None:
-    """Levanta la API REST (Swagger en /docs)."""
+    """Levanta la API REST (Swagger en /docs en dev). Detrás de un proxy, FORWARDED_ALLOW_IPS
+    lista su IP: solo de ella se cree X-Forwarded-For."""
     import uvicorn
 
-    # X-Forwarded-For is not trusted (uvicorn trusts it from 127.0.0.1 by default): a local
-    # client could otherwise pick a fresh IP per request and dodge the login lockout. A trusted
-    # reverse proxy is configured explicitly in the deployment (spec 003, T020).
-    uvicorn.run("betting_ml.api.main:app", host=host, port=port, reload=reload, proxy_headers=False)
+    from betting_ml.config import get_settings
+    from betting_ml.logging_config import configure_logging
+
+    settings = get_settings()
+    configure_logging(settings)  # uvicorn's own config is skipped: one format from the start
+    # Without a configured proxy X-Forwarded-For is ignored (uvicorn would trust it from
+    # 127.0.0.1): a client could pick a fresh IP per request and dodge the login lockout.
+    proxies = settings.forwarded_allow_ips
+    uvicorn.run(
+        "betting_ml.api.main:app",
+        host=host,
+        port=port,
+        reload=reload,
+        proxy_headers=bool(proxies),
+        forwarded_allow_ips=",".join(proxies) if proxies else None,
+        log_config=None,
+    )
+
+
+@app.command()
+def healthcheck(port: int = 8000) -> None:
+    """HEALTHCHECK de Docker: código 0 si /health responde 200. Usa el primer host de
+    ALLOWED_HOSTS como Host, para que el filtro de hosts de prod no la rechace."""
+    import urllib.request
+
+    from betting_ml.config import get_settings
+
+    hosts = get_settings().allowed_hosts
+    request = urllib.request.Request(
+        f"http://127.0.0.1:{port}/health", headers={"Host": hosts[0] if hosts else "localhost"}
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=4) as response:  # noqa: S310 - fixed http URL
+            healthy = response.status == 200
+    except (OSError, ValueError):
+        healthy = False
+    raise typer.Exit(code=0 if healthy else 1)
 
 
 @app.command("backtest-002")

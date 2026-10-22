@@ -429,3 +429,55 @@ No corregido (riesgo aceptado, con su alcance real):
   - **H-19 (resuelto)** con lo anterior.
   - H-01 a H-16 y H-21 se resolvieron en T003–T018 (ver cada entrada). **H-20** (imagen Docker y TLS) es T020.
 - Verificación local: ruff `S` limpio; `pip-audit` sin vulnerabilidades conocidas (producción y desarrollo); `npm audit` con 0; `gitleaks git` sin fugas en 126 commits. `gitleaks dir` excluye ahora `__pycache__/`, donde el bytecode de los secretos falsos de los tests daba un falso positivo.
+
+## 2026-10-22 — T020: imagen endurecida, Caddy delante y guía de despliegue
+- Contexto: H-20 de la línea base. La imagen usaba una etiqueta móvil, no tenía `HEALTHCHECK` y desactivaba `--proxy-headers` sin forma de confiar en un proxy concreto. No había guía de TLS ni de rotación de claves.
+- Decisión:
+  - **Imágenes por digest.** `python:3.12.15-slim@sha256:…`, `ghcr.io/astral-sh/uv:0.12.5@sha256:…` y `caddy:2.11.6@sha256:…` (digest del índice multiarquitectura).
+    - Se elige Caddy 2.11.6 y no la 2.11.7, publicada el mismo día: no da tiempo a que se detecte un problema.
+    - Dependabot no actualiza el `Dockerfile` ni el compose; la guía explica cómo renovar los digest a mano.
+  - **Código propiedad de `root`.** El `chown` se limita a `data/`, `models/` y `reports/`: el usuario `app` (uid 10001) no puede reescribir el código aunque la raíz no fuese de solo lectura.
+  - **`HEALTHCHECK` con `betting-ml healthcheck`** y no con `curl`, que la imagen slim no trae.
+    - Envía como `Host` el primer valor de `ALLOWED_HOSTS`. Sin eso, `TrustedHostMiddleware` respondería 400 a `127.0.0.1` en `prod` y el contenedor nunca quedaría sano.
+    - Sale con 1 ante cualquier error o estado distinto de 200.
+  - **Proxy de confianza explícito.** `FORWARDED_ALLOW_IPS` (IP o red, validada con `ipaddress`). Vacío (por defecto) significa que no se cree ninguna cabecera `X-Forwarded-*`; `*` solo se admite en `dev` y `prod` lo rechaza.
+    - `betting-ml serve` pasa `proxy_headers` y `forwarded_allow_ips` a uvicorn según ese valor y usa nuestro logging (`log_config=None`).
+    - La imagen no fija la variable: la pone el compose con la IP fija de Caddy (`172.30.0.2`), así el bloqueo del login ve la IP real y nadie más puede elegirla.
+  - **Compose** (`deploy/compose.yaml`).
+    - Los dos servicios: raíz de solo lectura, `tmpfs` en `/tmp`, `cap_drop: ALL` y `no-new-privileges`.
+    - API: sin puertos publicados; solo `data/` escribible; `models/` y `reports/` de solo lectura; secretos por `env_file`.
+    - Caddy: solo conserva `NET_BIND_SERVICE`.
+  - **Caddyfile.**
+    - Un solo origen para el frontend y `/api`, de modo que la cookie sigue `SameSite=Strict` sin CORS.
+    - El frontend recibe la misma CSP que la API y `vite preview`, más HSTS.
+    - `admin off`.
+    - Log de acceso en JSON sin `X-Api-Key`, `X-CSRF-Token` ni claves en la query (Caddy ya oculta `Cookie` y `Authorization`).
+  - **Prueba de arranque `--read-only` en CI.** Aquí no hay Docker, así que el job `docker` hace la prueba:
+    - construye la imagen;
+    - la arranca con `--read-only`, `--cap-drop ALL` y `tmpfs` en `/tmp` y `/app/data`;
+    - comprueba `/health`, `id -u` = 10001, que no exista `/app/.env`, que `/app/src` no se pueda escribir y el `HEALTHCHECK`;
+    - valida el `Caddyfile` con la propia imagen de Caddy y el compose con `docker compose config`.
+    - Hasta el primer `git push` (lo hace el dueño) esa prueba no se ha ejecutado. Los tests locales cubren la configuración de forma estática.
+  - **`docs/deploy.md`** cubre:
+    - arquitectura;
+    - `.env` de `prod`, variable por variable;
+    - permisos de `data/` (uid 10001);
+    - arranque y comprobaciones;
+    - logs y eventos de seguridad;
+    - copias diarias y fuera del servidor (con su `.sha256`);
+    - restauración;
+    - rotación de `APP_API_KEY`, `SESSION_SECRET`, contraseña y `ODDS_API_KEY`, con el efecto de cada una;
+    - respuesta ante una filtración;
+    - actualización de digest.
+- Tests:
+  - `test_dockerfile.py` ampliado: digest en cada `FROM`/`--from`, `USER app` antes de `CMD`, `chown` sin el código, `HEALTHCHECK` y ninguna confianza en `X-Forwarded-*` desde la imagen.
+  - `test_deploy_config.py` cubre:
+    - el bloqueo del compose;
+    - las cabeceras y el filtro de log del Caddyfile;
+    - los argumentos de uvicorn con y sin proxy;
+    - el `Host` del `healthcheck`, contra un servidor HTTP local;
+    - el contenido de la guía.
+  - `test_settings_security.py`: `FORWARDED_ALLOW_IPS=*` bloquea `prod` y los valores deben ser IP o red.
+  - Mutaciones, ambas detectadas por un test: `proxy_headers` siempre activo; `prod` aceptando `*`.
+- Riesgo aceptado: la IP fija de Caddy en la red `edge` depende de que nadie más se conecte a esa red. Solo la usan los dos servicios del compose.
+

@@ -236,3 +236,12 @@ Spec activa: [`specs/003-security-hardening/`](specs/003-security-hardening/). T
   - CLI de shadcn sustituida por su CSS copiado (MIT): 0 vulnerabilidades npm y CSS idéntico.
   - Asserts y `git` corregidos.
   - 912 tests backend (cobertura 99 %), 59 frontend.
+- 2026-10-22 · T020 · Docker y despliegue.
+  - Imágenes python, uv y caddy fijadas por digest; código propiedad de root y `app` (uid 10001) solo escribe en data/models/reports.
+  - `HEALTHCHECK` con `betting-ml healthcheck` (Host de ALLOWED_HOSTS).
+  - `FORWARDED_ALLOW_IPS` validado (`*` prohibido en prod) y `serve` solo cree al proxy configurado.
+  - deploy/compose.yaml (solo lectura, sin capacidades, API sin puertos) y deploy/Caddyfile (TLS, CSP y HSTS, log sin credenciales).
+  - Job docker de CI con arranque --read-only (pendiente del primer push).
+  - docs/deploy.md con .env de prod, copias, restauración y rotación de claves.
+  - 929 tests backend (cobertura 99 %), 59 frontend.
+

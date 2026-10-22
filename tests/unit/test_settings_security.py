@@ -78,6 +78,7 @@ def test_prod_with_defaults_fails_listing_every_problem() -> None:
         ({"cors_origins": ["*"]}, "CORS_ORIGINS"),
         ({"cors_origins": ["bets.example.com"]}, "CORS_ORIGINS"),
         ({"cors_origins": ["http://bets.example.com"]}, "CORS_ORIGINS"),
+        ({"forwarded_allow_ips": ["*"]}, "FORWARDED_ALLOW_IPS"),
     ],
 )
 def test_each_insecure_value_blocks_prod(override: dict[str, Any], variable: str) -> None:
@@ -183,3 +184,13 @@ def test_prod_rejects_weak_argon2_parameters(weak: str) -> None:
 def test_owasp_minimum_argon2_parameters_are_accepted() -> None:
     minimum = "$argon2id$v=19$m=19456,t=2,p=1$c2FsdHNhbHRzYWx0$aGFzaGhhc2hoYXNoaGFzaA"
     assert secure_prod(app_password_hash=minimum).production_problems() == []
+
+
+def test_forwarded_allow_ips_are_addresses() -> None:
+    """Spec 003, T020: only the proxy's address (or network) is trusted for X-Forwarded-For."""
+    assert Settings(_env_file=None).forwarded_allow_ips == []
+    settings = Settings(_env_file=None, forwarded_allow_ips="172.30.0.2, 10.0.0.0/8")
+    assert settings.forwarded_allow_ips == ["172.30.0.2", "10.0.0.0/8"]
+    assert secure_prod(forwarded_allow_ips=["172.30.0.2"]).production_problems() == []
+    with pytest.raises(ValueError, match="does not appear to be an IPv4 or IPv6"):
+        Settings(_env_file=None, forwarded_allow_ips="caddy")

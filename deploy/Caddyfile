@@ -1,0 +1,57 @@
+# Caddy in front of betting-ml (spec 003, T020; docs/deploy.md). Automatic TLS for {$DOMAIN},
+# HTTP redirected to HTTPS, the API under /api and /health, the built frontend for the rest.
+{
+	admin off # no admin endpoint inside the container
+}
+
+{$DOMAIN} {
+	encode zstd gzip
+
+	# Same origin for the app and the API: the session cookie stays SameSite=Strict and CORS
+	# is not involved. The API sets its own security headers (contract §4).
+	@api path /api/* /health
+	handle @api {
+		reverse_proxy api:8000
+	}
+
+	# The built frontend (frontend/dist): the same headers as `vite preview`
+	# (frontend/security-headers.ts) plus HSTS; index.html for every client-side route.
+	handle {
+		root * /srv
+		header {
+			Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'; object-src 'none'"
+			X-Content-Type-Options "nosniff"
+			X-Frame-Options "DENY"
+			Referrer-Policy "no-referrer"
+			Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=()"
+			Cross-Origin-Opener-Policy "same-origin"
+			Strict-Transport-Security "max-age=31536000; includeSubDomains"
+			Cache-Control "no-cache"
+		}
+		@assets path /assets/*
+		header @assets Cache-Control "public, max-age=31536000, immutable" # hashed file names
+		try_files {path} /index.html
+		file_server
+	}
+
+	header -Server
+
+	# Access log without credentials: Caddy hides Cookie and Authorization itself; the API key,
+	# the CSRF token and any key a client puts in the query string are removed here.
+	log {
+		output stdout
+		format filter {
+			fields {
+				request>headers>X-Api-Key delete
+				request>headers>X-Csrf-Token delete
+				request>uri query {
+					delete apiKey
+					delete api_key
+					delete password
+					delete token
+				}
+			}
+			wrap json
+		}
+	}
+}

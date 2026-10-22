@@ -147,7 +147,7 @@ Reglas de ejecución:
   - Resolver o justificar en `decisions.md` cada hallazgo restante de la línea base.
   - Commit: `ci: security job, pinned actions and dependabot`
 
-- [ ] **T020** Docker y despliegue
+- [x] **T020** Docker y despliegue
   - Imagen base fijada por digest; `HEALTHCHECK` sobre `/health`; `--proxy-headers` solo con proxy de confianza; prueba de arranque con `--read-only`.
   - `docs/deploy.md`: Caddy con TLS delante de la API y del frontend construido, variables de `prod` y rotación de claves.
   - Tests: `test_dockerfile.py` ampliado (usuario no root, sin `.env` en la imagen, digest fijado).
