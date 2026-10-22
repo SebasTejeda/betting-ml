@@ -204,6 +204,8 @@ def test_probability_matches_settlement(matrix: np.ndarray) -> None:
         (Market.H2H, "home", 1.5),
         (Market.TOTALS, "over", None),
         (Market.TOTALS, "over", 2.0),
+        (Market.TOTALS, "over", -0.5),
+        (Market.TEAM_TOTALS, "home_over", -1.5),
         (Market.EUROPEAN_HANDICAP, "home", -0.5),
         (Market.CORRECT_SCORE, "2:1", None),
     ],

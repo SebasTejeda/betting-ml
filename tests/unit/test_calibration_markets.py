@@ -15,14 +15,17 @@ from betting_ml.ml.calibration_markets import (
     Group,
     baseline_rates,
     binary_metrics,
+    calibrate,
     calibration_curve,
     choose_threshold,
-    confidence_level,
     groups_for,
     placebo_ou_clv,
     select_ou_bets,
+    selection_level,
     selection_records,
     summarize_bets,
+    weighted_placebo,
+    worst,
 )
 
 
@@ -83,6 +86,7 @@ def test_selection_records_probabilities_and_outcomes() -> None:
     cs = rec[rec["group"] == "correct_score"]
     assert (cs.groupby("match_id").size() == 5).all()
     assert cs["y"].isin([0.0, 1.0]).all()
+    assert set(cs["slot"]) == {"top1", "top2", "top3", "top4", "top5"}
     assert selection_records(scored.iloc[0:0], groups).empty
 
 
@@ -116,13 +120,66 @@ def test_binary_metrics_and_curve_by_hand() -> None:
 
 
 @pytest.mark.parametrize(
-    ("ece", "beats", "level"),
-    [(0.015, True, "alta"), (0.015, False, "media"), (0.03, True, "media"), (0.05, True, "baja")],
+    ("ece", "bias", "z", "positives", "beats", "level"),
+    [
+        (0.015, 0.02, 1.0, 1000, True, "alta"),
+        (0.015, 0.02, 1.0, 1000, False, "media"),  # does not beat the baseline
+        (0.015, 0.02, 0.3, 300, True, "media"),  # too few cases to certify < 5 %
+        (0.015, -0.07, -2.5, 1000, True, "media"),
+        (0.03, 0.02, 1.0, 1000, True, "media"),
+        (0.015, 0.12, 2.4, 1000, True, "baja"),  # +12 % and significant = fake EV
+        (0.015, 0.15, 1.1, 120, True, "media"),  # large but not significant: insufficient sample
+        (0.05, 0.0, 0.0, 1000, True, "baja"),
+    ],
 )
-def test_confidence_levels(ece: float, beats: bool, level: str) -> None:
-    model = {"ece": ece, "log_loss": 0.5, "brier": 0.2}
-    base = {"ece": 0.0, "log_loss": 0.6 if beats else 0.4, "brier": 0.25}
-    assert confidence_level(model, base) == level
+def test_selection_levels(
+    ece: float, bias: float, z: float, positives: int, beats: bool, level: str
+) -> None:
+    metrics = {"ece": ece, "rel_bias": bias, "rel_bias_z": z, "positives": positives}
+    assert selection_level(metrics, beats) == level
+
+
+def test_bias_standard_error() -> None:
+    p = np.full(10000, 0.55)
+    y = (np.arange(10000) < 5000).astype(float)  # rate 0.5
+    m = binary_metrics(p, y)
+    assert m["rel_bias"] == pytest.approx(0.10)
+    assert m["positives"] == 5000
+    assert m["rel_bias_se"] == pytest.approx(1.1 * np.sqrt(0.5 / (10000 * 0.5)))
+    assert m["rel_bias_z"] == pytest.approx(0.10 / m["rel_bias_se"])
+
+
+def test_group_takes_its_worst_selection() -> None:
+    assert worst(["alta", "media", "alta"]) == "media"
+    assert worst(["alta", "baja"]) == "baja"
+
+
+def test_pooling_complements_would_hide_miscalibration() -> None:
+    """Checkpoint T008: an over that is overestimated and its complementary under fall in the
+    same bins and cancel out; per-selection metrics expose the bias."""
+    rng = np.random.default_rng(7)
+    p_true = rng.uniform(0.40, 0.60, 20000)
+    y = (rng.uniform(size=p_true.size) < p_true).astype(float)
+    p_model = np.clip(p_true + 0.04, 0, 1)  # the model overestimates the over by 4 points
+    groups = [Group(Market.TOTALS, 2.5)]
+    records = pd.DataFrame(
+        {
+            "match_id": np.r_[np.arange(p_true.size), np.arange(p_true.size)],
+            "fold": "F1",
+            "league": "E0",
+            "group": "totals:2.5",
+            "selection": ["over"] * p_true.size + ["under"] * p_true.size,
+            "slot": ["over"] * p_true.size + ["under"] * p_true.size,
+            "p": np.r_[p_model, 1 - p_model],
+            "y": np.r_[y, 1 - y],
+            "p_base": 0.5,
+        }
+    )
+    pooled = binary_metrics(records["p"].to_numpy(), records["y"].to_numpy())
+    cal = calibrate(records, groups)[0]
+    assert pooled["ece"] < 0.02  # the pooled metric looks fine…
+    assert cal.by_selection["over"]["ece"] > 0.03  # …but each side is off by ~4 points
+    assert cal.confidence != "alta"
 
 
 def test_baseline_rates_are_smoothed_per_league() -> None:
@@ -186,7 +243,10 @@ def test_select_ou_bets_one_per_match_and_clv_from_closing() -> None:
     assert summary["roi_flat"] == pytest.approx(((2.0 - 1) + (1.6 - 1)) / 2)
     empty = summarize_bets(select_ou_bets(frame, 0.9, "b365"))
     assert empty["n_bets"] == 0 and np.isnan(empty["roi_flat"])
-    assert placebo_ou_clv(frame, "b365")["n"] == 8
+    placebo = placebo_ou_clv(frame, "b365")
+    assert placebo["n"] == 8 and placebo["n_over"] == 4 and placebo["n_under"] == 4
+    assert placebo["clv_mean"] == pytest.approx((placebo["clv_over"] + placebo["clv_under"]) / 2)
+    assert weighted_placebo(placebo, 1.0) == pytest.approx(placebo["clv_over"])
 
 
 def test_choose_threshold_rule() -> None:
@@ -256,6 +316,10 @@ def test_validate_markets_use_case(tmp_path: Path) -> None:
     levels = result.levels()
     assert set(levels.values()) <= {"alta", "media", "baja"}
     assert "totals:2.5" in levels and "correct_score" in levels
+    double = next(c for c in result.calibration if c.group == "double_chance")
+    assert double.derived_from == "h2h"
+    totals = next(c for c in result.calibration if c.group == "totals:2.5")
+    assert set(totals.by_selection) == {"over", "under"}
     payload = json.loads((reports / "market_validation_003.json").read_text(encoding="utf-8"))
     assert payload["levels"] == levels
     assert set(payload["ou25_backtest"]["scenarios"]) == {"b365", "avg", "max"}

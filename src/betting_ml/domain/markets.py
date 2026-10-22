@@ -123,8 +123,8 @@ def validate_selection(market: Market | str, selection: str, line: float | None)
         if mk is Market.EUROPEAN_HANDICAP:
             if float(line) != int(line):
                 raise InvalidSelectionError("european handicap lines are whole numbers")
-        elif (float(line) * 2) % 2 != 1:
-            raise InvalidSelectionError("goal lines must be half lines (0.5, 1.5, …)")
+        elif float(line) <= 0 or (float(line) * 2) % 2 != 1:
+            raise InvalidSelectionError("goal lines must be positive half lines (0.5, 1.5, …)")
     elif line is not None:
         raise InvalidSelectionError(f"{mk.value} takes no line")
     return mk

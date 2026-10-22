@@ -36,6 +36,7 @@ from betting_ml.ml.calibration_markets import (
     select_ou_bets,
     selection_records,
     summarize_bets,
+    weighted_placebo,
 )
 from betting_ml.ml.models.goal_model import FoldSpec, folds_from_experiment, validation_matrices
 from betting_ml.ml.plots import cumulative_plot, market_calibration_plot
@@ -116,8 +117,16 @@ class ValidateMarkets:
                 t: summarize_bets(select_ou_bets(frame, t, scenario)) for t in OU_THRESHOLDS
             }
             chosen = choose_threshold(by_threshold)
+            placebo = placebo_ou_clv(frame, scenario)
+            chosen_summary = by_threshold[chosen] if chosen is not None else None
             out["scenarios"][scenario] = {
                 "chosen_threshold": chosen,
+                "chosen_at_grid_edge": chosen in (OU_THRESHOLDS[0], OU_THRESHOLDS[-1]),
+                "placebo_same_side_mix": (
+                    weighted_placebo(placebo, chosen_summary["over_share"])
+                    if chosen_summary is not None
+                    else None
+                ),
                 "by_threshold": {
                     f"{t:g}": {k: v for k, v in r.items() if k != "cumulative_profit"}
                     for t, r in by_threshold.items()
@@ -136,7 +145,7 @@ class ValidateMarkets:
                     if chosen is not None
                     else {}
                 ),
-                "placebo": placebo_ou_clv(frame, scenario),
+                "placebo": placebo,
             }
             if chosen is not None:
                 cumulative_plot(
@@ -149,7 +158,9 @@ class ValidateMarkets:
     def _write(self, result: MarketValidation, folds: list[FoldSpec]) -> None:
         by_market: dict[str, dict[str, list[dict[str, float]]]] = {}
         for cal in result.calibration:
-            by_market.setdefault(cal.market, {})[cal.group] = cal.curve
+            for slot, metrics in cal.by_selection.items():
+                label = slot if cal.line is None else f"{slot} {cal.line:g}"
+                by_market.setdefault(cal.market, {})[label] = metrics["curve"]
         for market, curves in by_market.items():
             entry = self.catalog.get(market)
             market_calibration_plot(
@@ -163,8 +174,9 @@ class ValidateMarkets:
             "folds": [asdict(f) for f in folds],
             "n_matches": result.n_matches,
             "rules": {
-                "alta": "ECE < 0.02 y mejor que la línea base (log loss y Brier)",
-                "media": "ECE < 0.04",
+                "nivel": "por selección; el grupo toma el de su peor selección (checkpoint T008)",
+                "alta": "ECE < 0.02, |sesgo relativo| < 5 % y el grupo mejora a la línea base",
+                "media": "ECE < 0.04 y |sesgo relativo| < 10 %",
                 "baja": "resto",
             },
             "levels": result.levels(),

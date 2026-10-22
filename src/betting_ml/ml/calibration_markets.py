@@ -4,13 +4,22 @@ Every probability comes from an out-of-sample score matrix (`goal_model.validati
 A *group* is what gets one confidence level: a market at one line (``totals:2.5``), one team
 of ``team_totals`` at one line (``team_totals:home:1.5``) or a market without lines (``h2h``).
 
-Calibration metrics are binary and pooled over the selections of a group (every selection is a
-yes/no event): log loss, Brier and ECE with 10 equal-width bins. The baseline is the frequency
-of each selection in the same league during the fold's training seasons. Draw no bet is
-evaluated on decided matches only (a draw returns the stake), with p = P(win) / (1 − P(draw)).
+Every selection is a yes/no event with binary metrics: log loss, Brier, ECE with 10 equal-width
+bins and the relative bias ``mean(p) / frequency − 1``. The baseline is the frequency of each
+selection in the same league during the fold's training seasons. Draw no bet is evaluated on
+decided matches only (a draw returns the stake), with p = P(win) / (1 − P(draw)). Correct
+scores are evaluated by rank (the most likely score of each match, the second, …).
 
-Confidence (spec US1): ``alta`` if ECE < 0.02 and the model beats the baseline (log loss and
-Brier), ``media`` if ECE < 0.04, ``baja`` otherwise.
+Confidence is decided **per selection** and the group takes its worst selection (checkpoint
+T008: pooling complementary selections lets their errors cancel inside a bin, and an absolute
+ECE hides large relative errors of unlikely selections, which become fake EV):
+
+- ``baja``: ECE ≥ 0.04, or a relative bias above 10 % that is significant (|z| ≥ 2);
+- ``alta``: ECE < 0.02, |relative bias| < 5 %, the group beats the baseline (log loss and
+  Brier) and at least 400 positive cases (fewer cannot certify a bias below 5 %);
+- ``media``: anything else (including a large but not significant bias: insufficient sample).
+
+The standard error of the relative bias is ``(mean_p / rate) · sqrt((1 − rate) / (n · rate))``.
 """
 
 from __future__ import annotations
@@ -35,6 +44,13 @@ from betting_ml.ml.betting import bootstrap_roi, max_drawdown
 N_BINS = 10
 HIGH_ECE = 0.02
 MEDIUM_ECE = 0.04
+HIGH_REL_BIAS = 0.05
+MEDIUM_REL_BIAS = 0.10
+MIN_POSITIVES_HIGH = 400
+SIGNIFICANT_Z = 2.0
+LEVEL_ORDER: dict[str, int] = {"baja": 0, "media": 1, "alta": 2}
+# Markets whose selections are binary complements of another market's (same metrics).
+DERIVED_FROM = {Market.DOUBLE_CHANCE.value: Market.H2H.value}
 MIN_CURVE_BIN = 10
 EPS = 1e-12
 GRID = 11
@@ -92,9 +108,12 @@ def selection_records(scored: pd.DataFrame, groups: Sequence[Group]) -> pd.DataF
     """One row per (match, selection): model probability ``p`` and outcome ``y`` (1/0).
 
     ``scored`` has ``match_id``, ``fold``, ``league``, ``home_goals``, ``away_goals`` and
-    ``matrix``. Voided bets (draw no bet on a draw) are dropped."""
+    ``matrix``. ``slot`` is what calibration groups by: the selection, or the rank (``top1`` …)
+    for correct scores. Voided bets (draw no bet on a draw) are dropped."""
     if scored.empty:
-        return pd.DataFrame(columns=["match_id", "fold", "league", "group", "selection", "p", "y"])
+        return pd.DataFrame(
+            columns=["match_id", "fold", "league", "group", "selection", "slot", "p", "y"]
+        )
     mats = np.stack(scored["matrix"].to_numpy())
     home, away = _goals(scored)
     base = scored[["match_id", "fold", "league"]].reset_index(drop=True)
@@ -110,6 +129,7 @@ def selection_records(scored: pd.DataFrame, groups: Sequence[Group]) -> pd.DataF
                     base.assign(
                         group=group.key,
                         selection=[f"{a}-{b}" for a, b in zip(r, c, strict=True)],
+                        slot=f"top{rank + 1}",
                         p=flat[np.arange(len(flat)), cell],
                         y=((home == r) & (away == c)).astype(float),
                     )
@@ -121,7 +141,9 @@ def selection_records(scored: pd.DataFrame, groups: Sequence[Group]) -> pd.DataF
             p_void = (mats * void).sum(axis=(1, 2))
             decided = ~void[home, away]
             p = p_win / np.clip(1.0 - p_void, EPS, None)
-            part = base.assign(group=group.key, selection=sel, p=p, y=won[home, away].astype(float))
+            part = base.assign(
+                group=group.key, selection=sel, slot=sel, p=p, y=won[home, away].astype(float)
+            )
             parts.append(part[decided])
     return pd.concat(parts, ignore_index=True)
 
@@ -184,7 +206,17 @@ def binary_metrics(p: np.ndarray, y: np.ndarray, n_bins: int = N_BINS) -> dict[s
         "n": int(p.size),
         "mean_p": float(p.mean()),
         "rate": float(y.mean()),
+        "rel_bias": float(p.mean() / y.mean() - 1.0) if y.mean() > 0 else float("inf"),
+        "positives": int(y.sum()),
+        **_bias_error(float(p.mean()), float(y.mean()), int(p.size)),
     }
+
+
+def _bias_error(mean_p: float, rate: float, n: int) -> dict[str, float]:
+    if rate <= 0 or rate >= 1:
+        return {"rel_bias_se": float("inf"), "rel_bias_z": 0.0}
+    se = (mean_p / rate) * float(np.sqrt((1 - rate) / (n * rate)))
+    return {"rel_bias_se": se, "rel_bias_z": (mean_p / rate - 1.0) / se}
 
 
 def calibration_curve(p: np.ndarray, y: np.ndarray, n_bins: int = N_BINS) -> list[dict[str, float]]:
@@ -200,13 +232,24 @@ def calibration_curve(p: np.ndarray, y: np.ndarray, n_bins: int = N_BINS) -> lis
     return curve
 
 
-def confidence_level(model: dict[str, float], baseline: dict[str, float]) -> Confidence:
-    beats = model["log_loss"] < baseline["log_loss"] and model["brier"] < baseline["brier"]
-    if model["ece"] < HIGH_ECE and beats:
+def selection_level(metrics: dict[str, float], beats_baseline: bool) -> Confidence:
+    """Level of one selection (see the module docstring)."""
+    ece, bias = metrics["ece"], abs(metrics["rel_bias"])
+    significant = abs(metrics["rel_bias_z"]) >= SIGNIFICANT_Z
+    if ece >= MEDIUM_ECE or (bias > MEDIUM_REL_BIAS and significant):
+        return "baja"
+    if (
+        ece < HIGH_ECE
+        and bias < HIGH_REL_BIAS
+        and beats_baseline
+        and metrics["positives"] >= MIN_POSITIVES_HIGH
+    ):
         return "alta"
-    if model["ece"] < MEDIUM_ECE:
-        return "media"
-    return "baja"
+    return "media"
+
+
+def worst(levels: Iterable[Confidence]) -> Confidence:
+    return min(levels, key=lambda level: LEVEL_ORDER[level])
 
 
 @dataclass
@@ -216,15 +259,16 @@ class GroupCalibration:
     line: float | None
     team: str | None
     confidence: Confidence
-    model: dict[str, float]
+    model: dict[str, float]  # pooled over the selections (for log loss/Brier vs baseline only)
     baseline: dict[str, float]
+    by_selection: dict[str, dict[str, Any]] = field(default_factory=dict)
     by_fold: dict[str, dict[str, float]] = field(default_factory=dict)
     by_league: dict[str, dict[str, float]] = field(default_factory=dict)
-    curve: list[dict[str, float]] = field(default_factory=list)
+    derived_from: str | None = None
 
 
 def calibrate(records: pd.DataFrame, groups: Sequence[Group]) -> list[GroupCalibration]:
-    """``records`` must carry ``p`` (model), ``p_base`` (baseline) and ``y``."""
+    """``records`` must carry ``slot``, ``p`` (model), ``p_base`` (baseline) and ``y``."""
     out: list[GroupCalibration] = []
     for group in groups:
         rec = records[records["group"] == group.key]
@@ -232,15 +276,28 @@ def calibrate(records: pd.DataFrame, groups: Sequence[Group]) -> list[GroupCalib
             continue
         p, y, pb = rec["p"].to_numpy(), rec["y"].to_numpy(), rec["p_base"].to_numpy()
         model, baseline = binary_metrics(p, y), binary_metrics(pb, y)
+        beats = model["log_loss"] < baseline["log_loss"] and model["brier"] < baseline["brier"]
+        by_selection: dict[str, dict[str, Any]] = {}
+        for slot, sub in rec.groupby("slot", sort=False):
+            sp, sy = sub["p"].to_numpy(), sub["y"].to_numpy()
+            metrics: dict[str, Any] = binary_metrics(sp, sy)
+            metrics["level"] = selection_level(metrics, beats)
+            metrics["by_fold"] = {
+                str(f): binary_metrics(g["p"].to_numpy(), g["y"].to_numpy())
+                for f, g in sub.groupby("fold")
+            }
+            metrics["curve"] = calibration_curve(sp, sy)
+            by_selection[str(slot)] = metrics
         out.append(
             GroupCalibration(
                 group=group.key,
                 market=group.market.value,
                 line=group.line,
                 team=group.team,
-                confidence=confidence_level(model, baseline),
+                confidence=worst(s["level"] for s in by_selection.values()),
                 model=model,
                 baseline=baseline,
+                by_selection=by_selection,
                 by_fold={
                     str(f): binary_metrics(g["p"].to_numpy(), g["y"].to_numpy())
                     for f, g in rec.groupby("fold")
@@ -249,7 +306,7 @@ def calibrate(records: pd.DataFrame, groups: Sequence[Group]) -> list[GroupCalib
                     str(lg): binary_metrics(g["p"].to_numpy(), g["y"].to_numpy())
                     for lg, g in rec.groupby("league")
                 },
-                curve=calibration_curve(p, y),
+                derived_from=DERIVED_FROM.get(group.market.value),
             )
         )
     return out
@@ -342,13 +399,24 @@ def summarize_bets(bets: pd.DataFrame) -> dict[str, Any]:
 
 
 def placebo_ou_clv(frame: pd.DataFrame, scenario: OuScenario) -> dict[str, float]:
-    """CLV of backing both sides of every match at the scenario price (no selection)."""
+    """CLV of backing every match at the scenario price with no selection, per side and both.
+
+    Compare a strategy with ``weighted_placebo`` (same over/under mix), not with the pooled one:
+    the two sides have different placebo CLV."""
     clv = _ou_odds(frame, scenario) * closing_ou_probabilities(frame) - 1.0
-    values = clv[np.isfinite(clv)]
-    return {
-        "n": int(values.size),
-        "clv_mean": float(values.mean()) if values.size else float("nan"),
-    }
+    out: dict[str, float] = {}
+    for name, values in (("both", clv), ("over", clv[:, 0]), ("under", clv[:, 1])):
+        finite = values[np.isfinite(values)]
+        out["n" if name == "both" else f"n_{name}"] = int(finite.size)
+        out["clv_mean" if name == "both" else f"clv_{name}"] = (
+            float(finite.mean()) if finite.size else float("nan")
+        )
+    return out
+
+
+def weighted_placebo(placebo: dict[str, float], over_share: float) -> float:
+    """Placebo CLV with the same over/under mix as a strategy's bets."""
+    return float(over_share * placebo["clv_over"] + (1 - over_share) * placebo["clv_under"])
 
 
 def choose_threshold(results: dict[float, dict[str, Any]]) -> float | None:

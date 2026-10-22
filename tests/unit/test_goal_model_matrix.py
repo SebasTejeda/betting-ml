@@ -101,7 +101,12 @@ def test_walk_forward_ignores_history_after_the_first_target() -> None:
     data = _league()
     targets = data[data["date"] >= "2021-08-10"]
     clean = ScoreMatrixModel().walk_forward(data[data["date"] < "2021-08-10"], targets)
-    leaky = ScoreMatrixModel().walk_forward(data.assign(home_goals=data["home_goals"]), targets)
+    # The history passed in also contains every target (and later) row, with absurd results:
+    # walk_forward must ignore them and only learn from targets block by block.
+    tampered = data.copy()
+    future = tampered["date"] >= "2021-08-10"
+    tampered.loc[future, ["home_goals", "away_goals", "home_xg", "away_xg"]] = [9, 0, 6.0, 0.1]
+    leaky = ScoreMatrixModel().walk_forward(tampered, targets)
     np.testing.assert_allclose(clean, leaky)
     assert ScoreMatrixModel().walk_forward(data, targets.iloc[0:0]).shape == (0, 11, 11)
 

@@ -58,9 +58,12 @@ def validate_markets(verbose: bool = False) -> None:
     _setup_logging(verbose)
     result = Container().validate_markets().run()
     for cal in result.calibration:
+        worst_ece = max(s["ece"] for s in cal.by_selection.values())
+        slot, sel = max(cal.by_selection.items(), key=lambda kv: abs(kv[1]["rel_bias"]))
         typer.echo(
-            f"{cal.group:<24} {cal.confidence:<5} ece={cal.model['ece']:.4f} "
-            f"ll={cal.model['log_loss']:.4f} (base {cal.baseline['log_loss']:.4f}) n={cal.model['n']}"
+            f"{cal.group:<24} {cal.confidence:<5} max_ece={worst_ece:.4f} "
+            f"mayor_sesgo={slot} {sel['rel_bias']:+.1%} (z {sel['rel_bias_z']:+.1f}) "
+            f"ll={cal.model['log_loss']:.4f} (base {cal.baseline['log_loss']:.4f})"
         )
     for scenario, data in result.ou_backtest["scenarios"].items():
         typer.echo(f"ou25 {scenario}: umbral={data['chosen_threshold']}")
