@@ -38,6 +38,7 @@ from betting_ml.application.refresh_odds import OddsBudgetLowError
 from betting_ml.application.throttle import RateLimitedError, TooManyAttemptsError
 from betting_ml.domain.journal import VersionConflictError
 from betting_ml.domain.security import PasswordCheckBusyError
+from betting_ml.logging_config import security_event
 
 
 class ApiError(Exception):
@@ -96,9 +97,17 @@ def rate_limited_response(exc: RateLimitedError) -> JSONResponse:
     )
 
 
+def _who(request: Request) -> dict[str, str]:
+    from betting_ml.api.security import client_ip  # it imports this module
+
+    return {"method": request.method, "path": request.url.path, "client": client_ip(request.scope)}
+
+
 def register_error_handlers(app: FastAPI) -> None:
     @app.exception_handler(ApiError)
-    async def _api_error(_: Request, exc: ApiError) -> JSONResponse:
+    async def _api_error(request: Request, exc: ApiError) -> JSONResponse:
+        if exc.status in (401, 403):  # missing or wrong credentials, CSRF
+            security_event("ACCESS_DENIED", **_who(request), status=exc.status, code=exc.code)
         return error_response(exc.status, exc.code, exc.message, exc.details, exc.headers)
 
     @app.exception_handler(UnknownLeagueError)
@@ -183,11 +192,13 @@ def register_error_handlers(app: FastAPI) -> None:
         return error_response(422, "NO_REFERENCE", str(exc), {"match_id": exc.match_id})
 
     @app.exception_handler(InvalidCredentialsError)
-    async def _credentials(_: Request, exc: InvalidCredentialsError) -> JSONResponse:
+    async def _credentials(request: Request, exc: InvalidCredentialsError) -> JSONResponse:
+        security_event("LOGIN_FAILED", **_who(request))
         return error_response(401, "INVALID_CREDENTIALS", str(exc))
 
     @app.exception_handler(TooManyAttemptsError)
-    async def _too_many(_: Request, exc: TooManyAttemptsError) -> JSONResponse:
+    async def _too_many(request: Request, exc: TooManyAttemptsError) -> JSONResponse:
+        security_event("LOGIN_LOCKED", **_who(request), retry_after=exc.retry_after)
         return error_response(
             429,
             "TOO_MANY_ATTEMPTS",

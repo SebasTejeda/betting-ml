@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import re
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -11,6 +12,7 @@ from typing import Any
 
 from betting_ml.domain.audit import AuditInfo, AuditRecord, verify_chain, verify_states
 from betting_ml.domain.ports import DatabaseFiles, IntegritySource, ModelHashes
+from betting_ml.logging_config import security_event
 
 STATEFUL_ENTITIES = ("bet", "settings", "settings_change")
 HASH_LENGTH = 64
@@ -52,6 +54,10 @@ class VerifyIntegrity:
             current = self.source.current_states(entity)
             checked[entity] = len(current)
             problems += verify_states(entity, current, last_events(records, entity))
+        if problems:
+            security_event(
+                "INTEGRITY_CHECK_FAILED", logging.ERROR, problems=len(problems), first=problems[:3]
+            )
         return IntegrityReport(records=len(records), checked=checked, problems=problems)
 
 

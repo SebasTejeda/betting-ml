@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+
 from fastapi import APIRouter, Depends, Request, Response
 
 from betting_ml.api.dependencies import ServicesApi, get_services
@@ -16,6 +18,7 @@ from betting_ml.api.security import (
 )
 from betting_ml.application.authenticate import Authenticate
 from betting_ml.domain.security import Principal
+from betting_ml.logging_config import security_event
 
 PREFIX = "/api/v1/auth"
 login_router = APIRouter(prefix=PREFIX, tags=["auth"], dependencies=[Depends(public)])
@@ -37,11 +40,11 @@ def login(
     auth: Authenticate = Depends(get_auth),
     services: ServicesApi = Depends(get_services),
 ) -> LoginOut:
+    client = client_ip(request.scope)
     result = auth.login(
-        body.password,
-        current_token=request.cookies.get(SESSION_COOKIE),
-        client=client_ip(request.scope),
+        body.password, current_token=request.cookies.get(SESSION_COOKIE), client=client
     )
+    security_event("LOGIN_OK", logging.INFO, client=client)
     response.set_cookie(
         SESSION_COOKIE,
         result.token,
@@ -77,6 +80,7 @@ def logout(
     token = request.cookies.get(SESSION_COOKIE)
     if token and services.auth is not None:
         services.auth.logout(token)
+        security_event("LOGOUT", logging.INFO, client=client_ip(request.scope))
     response = Response(status_code=204)
     response.delete_cookie(
         SESSION_COOKIE, path="/", httponly=True, samesite="strict", secure=services.secure_cookies

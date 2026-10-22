@@ -1,5 +1,6 @@
 """manage_bets (US5 + US6) on an in-memory database."""
 
+import logging
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
@@ -291,3 +292,13 @@ def test_not_settling_cannot_dodge_the_monthly_block(env) -> None:  # type: igno
     # the summary shows the same monthly figure the block uses
     assert use_case.summary().month_loss == D("100.00")
     assert use_case.summary().month_remaining == D("0.00")
+
+
+def test_limit_changes_are_security_events(env, caplog) -> None:  # type: ignore[no-untyped-def]
+    use_case, _ = env
+    with caplog.at_level(logging.INFO, logger="betting_ml.security"):
+        use_case.update_settings(BankrollSettings(monthly_loss_limit=D("150.00")), actor="cli")
+    (record,) = [r for r in caplog.records if r.name == "betting_ml.security"]
+    assert record.getMessage() == (
+        "SETTINGS_CHANGED actor=cli changes=['monthly_loss_limit:100.00->150.00@2026-11']"
+    )

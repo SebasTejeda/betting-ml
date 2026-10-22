@@ -299,7 +299,7 @@ Formato:
     - Si se copian modelos de otra máquina, hay que revisarlos y ejecutar `models-rehash`. Hasta entonces la API responde `503 MODEL_INTEGRITY_ERROR`.
 - Alcance (riesgo aceptado, hallazgo M3 del checkpoint): esto es **integridad, no autenticidad**. Quien puede reemplazar `model.joblib` también puede reescribir `metadata.json`.
   - El ancla es git: `metadata.json` está versionado, así que un hash nuevo o cambiado aparece en `git diff` y en la revisión.
-  - Para autenticidad haría falta un HMAC con una clave fuera de `models/` (ver "Pendiente de decisión").
+  - Para autenticidad haría falta un HMAC con una clave fuera de `models/` (ver "Decisión del dueño (M2 y M3)" más abajo).
 
 ### Checkpoint 🔍 (ml-reviewer, T013–T017)
 Veredicto inicial: **bloqueado** por dos hallazgos altos, ambos reproducidos. Lo confirmado como correcto:
@@ -342,12 +342,12 @@ No corregido (riesgo aceptado, con su alcance real):
 - **Columna `ts_utc` de `audit_log`.** No se compara con la firmada. La hora firmada va en el payload; la columna es una copia para consultas.
 - **Test de concurrencia.** El test de 2 hilos de `test_concurrency.py` no es determinista, pero lo cubre el test determinista con `RacingRepository`.
 
-**Pendiente de decisión del dueño (M2 y M3).** Encadenar la auditoría con **HMAC** y firmar los hashes de los modelos con una clave nueva que solo esté en `.env` (`AUDIT_KEY`). Así, forjar eventos o modelos exigiría robar también `.env`.
+**Decisión del dueño (M2 y M3), 2026-10-22: se acepta el riesgo y se sigue sin HMAC.** La propuesta descartada por ahora era encadenar la auditoría con **HMAC** y firmar los hashes de los modelos con una clave nueva que solo esté en `.env` (`AUDIT_KEY`). Así, forjar eventos o modelos exigiría robar también `.env`.
 - Costes:
   - un secreto más que custodiar y respaldar aparte (sin él no se puede verificar la cadena);
   - formato `v: 2`;
   - una migración que firme la cabeza actual.
-- Se propone al cerrar esta tarea; si se aprueba, va como tarea propia antes de T021.
+- Se puede retomar en T021 si la auditoría final lo pide.
 
 - Impacto: mutaciones comprobadas, todas detectadas.
   - **T017:**
@@ -365,3 +365,37 @@ No corregido (riesgo aceptado, con su alcance real):
     - Sesiones que reviven: falla 1.
     - Sin comprobar triggers: falla 1.
     - Rehash sin comparar lo mostrado: falla 1.
+
+## 2026-10-22 — T018: un único manejador de logs con redacción en el formateador
+- Contexto: logs en JSON en `prod` con `request_id`, método, ruta, estado y duración. Ninguna contraseña, cookie, `X-API-Key`, `apiKey` ni `ODDS_API_KEY`. Además, eventos de seguridad. La imagen Docker arranca `uvicorn` directamente, y uvicorn configura sus propios loggers antes de cargar la app. Su log de acceso escribe la URL **con la query string** y sin `request_id`.
+- Decisión:
+  - **`logging_config.configure_logging`** instala un único manejador en el logger raíz. Se llama en el arranque de la API (`lifespan`, después de la configuración de uvicorn, a la que sustituye) y en la CLI.
+    - El formato es JSON o texto según `LOG_FORMAT`: JSON por defecto en `prod`, texto en `dev`.
+    - Los loggers `uvicorn` y `uvicorn.error` pasan al manejador de la aplicación.
+    - `uvicorn.access` se desactiva. Lo sustituye `betting_ml.access`, con una línea por petición: método, ruta **sin query string**, estado, duración y cliente. Una excepción no capturada se registra como 500.
+  - **`request_id` en cada línea.** El middleware fija un `ContextVar` que copia un filtro del manejador. Llega también a las rutas síncronas (threadpool) y a los manejadores de errores. Fuera de una petición vale `-`.
+  - **La redacción va en el formateador, no en quien escribe el log**, así que cubre cualquier logger: los de la aplicación, uvicorn, httpx o un `logger.info(headers)` descuidado. En JSON se redacta cada valor **antes** de serializar; sobre el JSON ya escapado, los patrones no verían las comillas. Se redacta:
+    - el valor literal de cada `SecretStr` de la configuración (8 caracteres o más);
+    - los pares `nombre=valor`, `nombre: valor`, `"nombre": "valor"` y `('nombre', b'valor')`, cuando el nombre contiene password, secret, token, cookie, api-key/apikey, authorization o `bml_session` (con `Bearer`/`Basic` incluidos);
+    - los hashes Argon2 completos (sus parámetros llevan comas).
+  - **Eventos de seguridad** en `betting_ml.security`. En JSON van con el campo `event`; en texto, como `EVENTO clave=valor`:
+    - `LOGIN_OK`, `LOGOUT`, `LOGIN_FAILED` y `LOGIN_LOCKED`, este último con `retry_after`;
+    - `ACCESS_DENIED` en todo 401/403, con su `code` (`UNAUTHORIZED`, `CSRF_FAILED`…);
+    - `SETTINGS_CHANGED`, con cada cambio y el mes en que entra en vigor;
+    - `INTEGRITY_CHECK_FAILED`, con el número de problemas y los tres primeros;
+    - `MODEL_INTEGRITY_FAILED` al arrancar.
+    - Todos llevan el cliente y nunca la contraseña, el token ni la clave.
+  - **Tests.** Leen la **salida real del manejador**, que es lo que llega al log. `caplog` captura antes de los filtros y del formateador del manejador, así que no demostraría la redacción; solo se usa para los eventos de la capa de aplicación.
+    - Un test end to end envía contraseña, clave correcta e incorrecta, cookie de sesión, token CSRF y `?apiKey=` en la query, y escribe una línea descuidada con cabeceras, cuerpo, URL de The Odds API y el hash.
+    - Comprueba que ningún secreto aparece en la salida, que hay una línea de acceso por petición sin query string, que los eventos salen en orden y que cada uno lleva el `request_id` de su petición.
+- Impacto: mutaciones comprobadas, todas detectadas.
+  - Sin redactar los valores de los secretos: fallan 4 tests.
+  - Sin los pares entre comillas: fallan 5.
+  - Sin los pares sin comillas: fallan 8.
+  - Sin los hashes Argon2: falla 1.
+  - JSON sin redactar: fallan 2.
+  - Access log de uvicorn activo: falla 1.
+  - Ruta con query string: fallan 2.
+  - Sin `request_id`: fallan 2.
+  - Sin el evento 401/403: falla 1.
+  - Sin el evento de bloqueo: falla 1.

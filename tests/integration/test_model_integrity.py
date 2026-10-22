@@ -154,7 +154,7 @@ def test_api_answers_503_model_integrity_error_and_never_loads_it(
             assert error["details"] == {"version": champion}
             assert str(tmp_path) not in error["message"]  # no paths in the answer
         assert client.get("/api/v1/leagues").json()[0]["teams"] == 0
-    assert "integrity check failed" in caplog.text
+    assert f"MODEL_INTEGRITY_FAILED version={champion}" in caplog.text
     assert not (tmp_path / "ran").exists()
 
 

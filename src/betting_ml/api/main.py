@@ -12,6 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from betting_ml import __version__
 from betting_ml.api.dependencies import ServicesApi
 from betting_ml.api.errors import register_error_handlers
+from betting_ml.api.middleware.access_log import AccessLogMiddleware
 from betting_ml.api.middleware.body_limit import BodyLimitMiddleware
 from betting_ml.api.middleware.rate_limit import RateLimitMiddleware
 from betting_ml.api.middleware.request_id import RequestIdMiddleware
@@ -37,6 +38,7 @@ from betting_ml.api.routers import (
 )
 from betting_ml.application.predict_matches import ModelNotAvailableError, ModelNotVerifiedError
 from betting_ml.config import Settings, ensure_secure, get_settings
+from betting_ml.logging_config import configure_logging, security_event
 
 logger = logging.getLogger(__name__)
 # Order = order of the paths in OpenAPI. Each router declares its access policy (api/security.py).
@@ -82,12 +84,13 @@ def create_app(services: ServicesApi | None = None, config: Settings | None = No
         if app.state.container is None:
             from betting_ml.container import Container
 
+            configure_logging(get_settings())  # after uvicorn's own setup: takes it over
             ensure_secure(get_settings())  # before loading anything (spec 003, US3)
             app.state.container = Container().api_services()
         try:  # warm-up: load models and Elo state once
             app.state.container.predictor.state()
         except ModelNotVerifiedError as exc:
-            logger.error("Model not loaded, integrity check failed: %s", exc)
+            security_event("MODEL_INTEGRITY_FAILED", logging.ERROR, version=exc.version)
         except ModelNotAvailableError as exc:
             logger.warning("API started without a trained model: %s", exc)
         auth = getattr(app.state.container, "auth", None)
@@ -114,7 +117,8 @@ def create_app(services: ServicesApi | None = None, config: Settings | None = No
     )
     app.state.container = services
     # Added innermost first. From the outside: security headers (also on every error) →
-    # request id → trusted host → CORS → body limit → rate limit → routers (plan.md §3).
+    # request id → access log → trusted host → CORS → body limit → rate limit → routers
+    # (plan.md §3).
     app.add_middleware(RateLimitMiddleware)
     app.add_middleware(BodyLimitMiddleware)
     app.add_middleware(
@@ -126,6 +130,7 @@ def create_app(services: ServicesApi | None = None, config: Settings | None = No
         expose_headers=["Retry-After", "X-Request-ID"],
     )
     app.add_middleware(TrustedHostMiddleware)
+    app.add_middleware(AccessLogMiddleware)
     app.add_middleware(RequestIdMiddleware)
     app.add_middleware(
         SecurityHeadersMiddleware, hsts=not dev, csp_exempt=DOCS_PATHS if dev else ()

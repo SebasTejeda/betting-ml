@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import logging
 from pathlib import Path
 
 import typer
@@ -11,10 +10,11 @@ app = typer.Typer(help="betting-ml: datos, experimentos, evaluación y API.", no
 
 
 def _setup_logging(verbose: bool) -> None:
-    logging.basicConfig(
-        level=logging.DEBUG if verbose else logging.INFO,
-        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
-    )
+    """Same handler as the API: redacted, JSON in prod (LOG_FORMAT)."""
+    from betting_ml.config import get_settings
+    from betting_ml.logging_config import configure_logging
+
+    configure_logging(get_settings(), verbose=verbose)
 
 
 @app.command()

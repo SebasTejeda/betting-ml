@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import re
 from collections import defaultdict
 from collections.abc import Callable
@@ -37,6 +38,7 @@ from betting_ml.domain.limits import (
 )
 from betting_ml.domain.ports import BetRepository, OddsRepository, SettingsRepository
 from betting_ml.domain.value import reference_probabilities
+from betting_ml.logging_config import security_event
 
 MATCH_ID = re.compile(r"^(?P<league>[A-Z0-9]+)-(?P<date>\d{4}-\d{2}-\d{2})-[a-z0-9-]+$")
 ROI_NOTE = "Con menos de 300 apuestas el ROI es mayormente ruido; mira el CLV."
@@ -171,6 +173,15 @@ class ManageBets:
             changes.append(SettingsChange(now, name, str(before), str(after), effective))
         audit = AuditInfo(actor, "SETTINGS_CHANGED")
         saved: BankrollSettings = self.settings_repo.save(new, changes, audit)
+        if changes:  # limits included: when a raise takes effect is part of the event
+            security_event(
+                "SETTINGS_CHANGED",
+                logging.INFO,
+                actor=actor,
+                changes=[
+                    f"{c.field}:{c.old_value}->{c.new_value}@{c.effective_from}" for c in changes
+                ],
+            )
         return saved
 
     # ------------------------------------------------------------------ bets

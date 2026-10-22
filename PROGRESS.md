@@ -222,3 +222,10 @@ Spec activa: [`specs/003-security-hardening/`](specs/003-security-hardening/). T
     - `verify-integrity` comprueba los triggers.
   - Riesgo del encadenado sin clave documentado con su alcance real; HMAC con clave pendiente de decisión del dueño.
   - 874 tests backend (cobertura 99 %); 13 mutaciones detectadas.
+- 2026-10-22 · T018 · Logs estructurados y seguros (`logging_config.py`).
+  - JSON en prod (`LOG_FORMAT`); `request_id` en cada línea.
+  - Access log propio sin query string, que sustituye al de uvicorn.
+  - Redacción en el formateador para cualquier logger: secretos de la configuración, pares password/token/cookie/api-key/authorization y hashes Argon2.
+  - Eventos de seguridad: login correcto, fallido y bloqueado, logout, 401/403/CSRF, cambio de ajustes y límites, verify-integrity fallido e integridad del modelo.
+  - El dueño acepta el riesgo del encadenado sin clave (sin HMAC).
+  - 902 tests backend (cobertura 99 %); 10 mutaciones detectadas.

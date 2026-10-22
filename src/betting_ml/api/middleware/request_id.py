@@ -12,6 +12,8 @@ import uuid
 from starlette.datastructures import MutableHeaders
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
+from betting_ml.logging_config import REQUEST_ID
+
 REQUEST_ID_HEADER = "X-Request-ID"
 VALID_REQUEST_ID = re.compile(r"^[A-Za-z0-9._-]{8,64}$")
 
@@ -39,4 +41,8 @@ class RequestIdMiddleware:
                 MutableHeaders(scope=message)[REQUEST_ID_HEADER] = request_id
             await send(message)
 
-        await self.app(scope, receive, send_with_id)
+        token = REQUEST_ID.set(request_id)  # every log line of this request carries it
+        try:
+            await self.app(scope, receive, send_with_id)
+        finally:
+            REQUEST_ID.reset(token)

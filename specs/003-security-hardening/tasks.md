@@ -135,7 +135,7 @@ Reglas de ejecución:
 
 ## Fase 5 — Operación
 
-- [ ] **T018** Logs seguros y eventos de seguridad (US7)
+- [x] **T018** Logs seguros y eventos de seguridad (US7)
   - `logging_config.py`: JSON en `prod` (`LOG_FORMAT`), `request_id` en cada línea, filtro de redacción (password, cookie, `X-API-Key`, `X-CSRF-Token`, `apiKey`, valores de `SecretStr`).
   - Eventos: login correcto/fallido, bloqueo, 401/403/CSRF, cambio de límites, `verify-integrity` fallido.
   - Tests con `caplog`: ningún secreto en los logs de una petición que los contiene.
