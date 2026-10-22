@@ -23,7 +23,7 @@ Regla de procesos: si levantas servidores para probar o tomar capturas, hazlo en
   - Commit: `feat(data): over/under historical odds and market keys`
 - [x] **T005** `ml/models/goal_model.py` (misma liga) usando el mejor modelo de goles validado en la spec 001; matriz de marcadores walk-forward. Tests.
   - Commit: `feat(models): score matrix for any fixture`
-- [ ] **T006** `ml/models/cross_league.py`: desplazamiento de fuerza por liga con ClubElo, ventaja de local europea estimada, validación walk-forward en partidos europeos. Registrar en `decisions.md` cómo quedó. **Al terminar:** la calibración europea (1X2 y Más/Menos 2.5 en UCL/UEL) que quedó pendiente en T007.
+- [x] **T006** `ml/models/cross_league.py`: desplazamiento de fuerza por liga con ClubElo, ventaja de local europea estimada, validación walk-forward en partidos europeos. Registrar en `decisions.md` cómo quedó. **Al terminar:** la calibración europea (1X2 y Más/Menos 2.5 en UCL/UEL) que quedó pendiente en T007.
   - Commit: `feat(models): cross-league strength adjustment`
 - [x] **T007** `ml/calibration_markets.py` + `validate-markets` en F1–F3: calibración por mercado, backtest de valor de Más/Menos 2.5 con CLV, calibración en partidos europeos; figuras en `reports/figures/003_*`.
   - Commit: `feat(validation): market calibration on validation folds`

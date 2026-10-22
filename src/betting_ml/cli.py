@@ -56,6 +56,23 @@ def data_europe(verbose: bool = False) -> None:
     )
 
 
+@app.command("validate-cross-league")
+def validate_cross_league(verbose: bool = False) -> None:
+    """Ajuste entre ligas walk-forward y calibración europea (spec 003, T006)."""
+    from betting_ml.container import Container
+
+    _setup_logging(verbose)
+    result = Container().validate_cross_league().run()
+    for name, metrics in result.mean.items():
+        typer.echo(
+            f"{name}: ll_1x2={metrics['log_loss_1x2']:.4f} ll_ou25={metrics['log_loss_ou25']:.4f} "
+            f"brier={metrics['brier_1x2']:.4f}"
+        )
+    typer.echo(
+        f"elegido: {result.chosen} · niveles: {[(c.group, c.confidence) for c in result.calibration]}"
+    )
+
+
 @app.command("validate-markets")
 def validate_markets(
     final: bool = typer.Option(False, "--final", help="Test 2025-26, UNA sola vez (lock)"),
