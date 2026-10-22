@@ -27,3 +27,33 @@ Formato:
 - Decisión: fuera de alcance; córners y tarjetas quedan como P3 opcional.
 - Motivo: no hay datos ni cuotas gratuitas confiables para faltas, tiros o jugadores; córners y tarjetas sí tienen datos históricos en football-data.
 - Impacto: menos mercados, pero todos los mostrados son medibles.
+
+## 2026-10-22 — Fuentes europeas: cobertura real de openfootball (T003)
+- Contexto: el plan proponía `openfootball/champions-league` o su exportación JSON (`football.json`).
+- Decisión: usar los archivos Football.TXT de `openfootball/champions-league` (`{temporada}/cl.txt` y `el.txt`), con un parser propio. La exportación JSON tiene huecos (sin Champions 2020-24 y sin Europa League).
+- Motivo: verificado el 2026-10-22: Champions de 2014-15 a 2025-26 completa; Europa League solo de 2020-21 a 2024-25 (no hay `el.txt` de 2025-26). El parser lee el 100 % de los partidos que declara cada archivo (salvo 2 no jugados de la UEL 2021-22).
+- Impacto: el test 2025-26 de partidos europeos solo tiene Champions; la Europa League se valida solo en las temporadas de validación.
+
+## 2026-10-22 — Resultado a los 90 minutos en partidos europeos (T003)
+- Contexto: las eliminatorias pueden ir a prórroga y penaltis ("4-2 pen. 1-0 a.e.t. (1-0, 1-0)").
+- Decisión: guardar el resultado de los 90 minutos (primer par dentro del paréntesis) y marcar `extra_time`.
+- Motivo: los mercados de goles se liquidan a los 90 minutos.
+- Impacto: los partidos con prórroga cuentan como empate a los 90 minutos para el modelo y la calibración.
+
+## 2026-10-22 — ClubElo: instantánea semanal anterior al partido (T003)
+- Contexto: hace falta el rating de cada club antes de cada partido europeo sin pedir un día por partido.
+- Decisión: usar la instantánea del lunes anterior o igual al día previo al partido (`domain.ratings.snapshot_date`), cacheada en `data/raw/clubelo/`.
+- Motivo: no hay fuga (la instantánea es estrictamente anterior al partido); son unas 25 peticiones por temporada en vez de una por partido.
+- Impacto: el rating no incluye partidos jugados entre ese lunes y el partido europeo (por ejemplo, una jornada de liga entre semana); la información tiene como mucho una semana de antigüedad.
+
+## 2026-10-22 — Nombres de clubes europeos (T003)
+- Contexto: openfootball usa nombres largos ("Club Atlético de Madrid", "FC Internazionale Milano") y ClubElo nombres cortos; hay cientos de clubes extranjeros.
+- Decisión: los clubes de nuestras 5 ligas se resuelven con alias `openfootball` y `clubelo` en `team_aliases.yaml`, y faltar uno es un error. Los clubes extranjeros se emparejan con ClubElo por nombre normalizado dentro de su país, con correcciones manuales en `configs/europe_aliases.yaml`. Los que no se emparejan quedan sin rating, se listan en `reports/europe_data_quality.md` y se excluyen del ajuste entre ligas. Mónaco (MCO en openfootball) cuenta como Francia.
+- Motivo: mantener la regla de la spec 001 (nada se descarta en silencio) donde importa (nuestras ligas) sin mantener a mano cientos de alias que solo sirven para calibrar.
+- Impacto: algunos partidos europeos entre clubes extranjeros pueden quedar fuera del ajuste; el reporte dice cuáles.
+
+## 2026-10-22 — ClubElo caído durante T003 (pendiente)
+- Contexto: el 2026-10-22, `api.clubelo.com` respondió 502 en todos los reintentos (la web sí funciona).
+- Decisión: implementar el adaptador con el formato CSV documentado (`Rank,Club,Country,Level,Elo,From,To`), validarlo al descargar y no cachear respuestas inválidas. Seguir reintentando; cuando la API responda, correr `data-europe`, comparar con el formato real y completar los alias `clubelo`. Si el formato difiere, se corrige en un commit `fix(adapters)` aparte.
+- Motivo: no bloquear el resto de la spec por una caída temporal de un servicio gratuito.
+- Impacto: `europe_matches.parquet` y los alias `clubelo` quedan pendientes hasta que ClubElo vuelva. T006 (ajuste entre ligas) los necesita.

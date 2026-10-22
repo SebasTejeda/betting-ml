@@ -37,6 +37,19 @@ def data(verbose: bool = False) -> None:
     )
 
 
+@app.command("data-europe")
+def data_europe(verbose: bool = False) -> None:
+    """Descarga Champions/Europa League (openfootball) y ratings ClubElo (spec 003)."""
+    from betting_ml.container import Container
+
+    _setup_logging(verbose)
+    result = Container().build_europe().run()
+    typer.echo(
+        f"europe_matches={len(result.matches)} europe_holdout={len(result.holdout)} "
+        f"rating_coverage={result.rating_coverage:.2%} snapshots={result.snapshots}"
+    )
+
+
 @app.command()
 def exp(exp_id: str, verbose: bool = False, skip_existing: bool = False) -> None:
     """Corre un experimento de configs/experiments/{ID}_*.yaml en F1–F3."""

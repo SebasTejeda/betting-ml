@@ -6,19 +6,25 @@
 #         football_data: [alias, ...]   # nombres tal como aparecen en football-data.co.uk
 #         understat: [alias, ...]       # nombres tal como aparecen en Understat
 #         the_odds_api: [alias, ...]    # nombres de The Odds API (si no coinciden con otro alias)
+#         openfootball: [alias, ...]    # nombres en openfootball/champions-league (spec 003)
+#         clubelo: [alias, ...]         # nombres en ClubElo si no coinciden con el canónico (spec 003)
 # Si el nombre en una fuente es idéntico al canónico, basta con listar el equipo con `{}`.
 # Todo equipo que no resuelva a un canónico es un ERROR (spec §3).
 teams:
   E0:
-    Arsenal: {}
-    Aston Villa: {}
+    Arsenal:
+      openfootball: ['Arsenal FC']
+    Aston Villa:
+      openfootball: ['Aston Villa FC']
     Bournemouth: {}
     Brentford: {}
     Brighton:
       the_odds_api: ['Brighton and Hove Albion']
+      openfootball: ['Brighton & Hove Albion']
     Burnley: {}
     Cardiff: {}
-    Chelsea: {}
+    Chelsea:
+      openfootball: ['Chelsea FC']
     Coventry:
       the_odds_api: ['Coventry City']
     Crystal Palace: {}
@@ -31,16 +37,21 @@ teams:
       the_odds_api: ['Ipswich Town']
     Leeds:
       the_odds_api: ['Leeds United']
-    Leicester: {}
-    Liverpool: {}
+    Leicester:
+      openfootball: ['Leicester City']
+    Liverpool:
+      openfootball: ['Liverpool FC']
     Luton: {}
     Man City:
       understat: ['Manchester City']
+      openfootball: ['Manchester City', 'Manchester City FC']
     Man United:
       understat: ['Manchester United']
+      openfootball: ['Manchester United', 'Manchester United FC']
     Middlesbrough: {}
     Newcastle:
       understat: ['Newcastle United']
+      openfootball: ['Newcastle United FC']
     Norwich: {}
     "Nott'm Forest":
       understat: ['Nottingham Forest']
@@ -53,10 +64,12 @@ teams:
     Swansea: {}
     Tottenham:
       the_odds_api: ['Tottenham Hotspur']
+      openfootball: ['Tottenham Hotspur', 'Tottenham Hotspur FC']
     Watford: {}
     West Brom:
       understat: ['West Bromwich Albion']
-    West Ham: {}
+    West Ham:
+      openfootball: ['West Ham United']
     Wolves:
       understat: ['Wolverhampton Wanderers']
   SP1:
@@ -65,11 +78,15 @@ teams:
     Ath Bilbao:
       the_odds_api: ['Athletic Bilbao']
       understat: ['Athletic Club']
+      openfootball: ['Athletic Club']
     Ath Madrid:
       understat: ['Atletico Madrid']
-    Barcelona: {}
+      openfootball: ['Atlético Madrid', 'Club Atlético de Madrid']
+    Barcelona:
+      openfootball: ['FC Barcelona']
     Betis:
       understat: ['Real Betis']
+      openfootball: ['Real Betis']
     Cadiz: {}
     Celta:
       understat: ['Celta Vigo']
@@ -80,8 +97,10 @@ teams:
     Espanol:
       understat: ['Espanyol']
     Getafe: {}
-    Girona: {}
-    Granada: {}
+    Girona:
+      openfootball: ['Girona FC']
+    Granada:
+      openfootball: ['Granada CF']
     Huesca:
       understat: ['SD Huesca']
     La Coruna:
@@ -95,38 +114,47 @@ teams:
       the_odds_api: ['CA Osasuna']
     Oviedo:
       understat: ['Real Oviedo']
-    Real Madrid: {}
+    Real Madrid:
+      openfootball: ['Real Madrid CF']
     Santander:
       the_odds_api: ['Real Racing Club de Santander']
       understat: ['Racing Santander']
-    Sevilla: {}
+    Sevilla:
+      openfootball: ['Sevilla FC']
     Sociedad:
       understat: ['Real Sociedad']
+      openfootball: ['Real Sociedad', 'Real Sociedad de Fútbol']
     Sp Gijon:
       understat: ['Sporting Gijon']
-    Valencia: {}
+    Valencia:
+      openfootball: ['Valencia CF']
     Valladolid:
       understat: ['Real Valladolid']
     Vallecano:
       understat: ['Rayo Vallecano']
-    Villarreal: {}
+    Villarreal:
+      openfootball: ['Villarreal CF']
   D1:
     Augsburg: {}
-    Bayern Munich: {}
+    Bayern Munich:
+      openfootball: ['Bayern München', 'FC Bayern München']
     Bielefeld:
       understat: ['Arminia Bielefeld']
     Bochum: {}
     Darmstadt: {}
     Dortmund:
       understat: ['Borussia Dortmund']
+      openfootball: ['Borussia Dortmund']
     Ein Frankfurt:
       understat: ['Eintracht Frankfurt']
+      openfootball: ['Eintracht Frankfurt']
     Elversberg: {}
     FC Koln:
       understat: ['FC Cologne']
     Fortuna Dusseldorf:
       understat: ['Fortuna Duesseldorf']
-    Freiburg: {}
+    Freiburg:
+      openfootball: ['SC Freiburg']
     Greuther Furth:
       understat: ['Greuther Fuerth']
     Hamburg:
@@ -137,13 +165,16 @@ teams:
       understat: ['FC Heidenheim']
     Hertha:
       understat: ['Hertha Berlin']
-    Hoffenheim: {}
+    Hoffenheim:
+      openfootball: ['1899 Hoffenheim']
     Holstein Kiel: {}
     Ingolstadt: {}
     Leverkusen:
       understat: ['Bayer Leverkusen']
+      openfootball: ['Bayer 04 Leverkusen', 'Bayer Leverkusen']
     "M'gladbach":
       understat: ['Borussia M.Gladbach']
+      openfootball: ['Bor. Mönchengladbach']
     Mainz:
       understat: ['Mainz 05']
     Nurnberg:
@@ -151,18 +182,24 @@ teams:
     Paderborn: {}
     RB Leipzig:
       understat: ['RasenBallsport Leipzig']
-    Schalke 04: {}
+    Schalke 04:
+      openfootball: ['FC Schalke 04']
     St Pauli:
       understat: ['St. Pauli']
     Stuttgart:
       understat: ['VfB Stuttgart']
-    Union Berlin: {}
+      openfootball: ['VfB Stuttgart']
+    Union Berlin:
+      openfootball: ['1. FC Union Berlin']
     Werder Bremen: {}
-    Wolfsburg: {}
+    Wolfsburg:
+      openfootball: ['VfL Wolfsburg']
   I1:
-    Atalanta: {}
+    Atalanta:
+      openfootball: ['Atalanta BC']
     Benevento: {}
-    Bologna: {}
+    Bologna:
+      openfootball: ['Bologna FC 1909']
     Brescia: {}
     Cagliari: {}
     Carpi: {}
@@ -175,20 +212,26 @@ teams:
     Fiorentina: {}
     Frosinone: {}
     Genoa: {}
-    Inter: {}
-    Juventus: {}
-    Lazio: {}
+    Inter:
+      openfootball: ['FC Internazionale Milano']
+    Juventus:
+      openfootball: ['Juventus FC']
+    Lazio:
+      openfootball: ['Lazio Roma', 'SS Lazio']
     Lecce: {}
     Milan:
       understat: ['AC Milan']
+      openfootball: ['AC Milan']
     Monza: {}
-    Napoli: {}
+    Napoli:
+      openfootball: ['SSC Napoli']
     Palermo: {}
     Parma:
       understat: ['Parma', 'Parma Calcio 1913']
     Pescara: {}
     Pisa: {}
-    Roma: {}
+    Roma:
+      openfootball: ['AS Roma']
     Salernitana: {}
     Sampdoria: {}
     Sassuolo: {}
@@ -209,7 +252,8 @@ teams:
     Bastia:
       understat: ['SC Bastia']
     Bordeaux: {}
-    Brest: {}
+    Brest:
+      openfootball: ['Stade Brestois 29']
     Caen: {}
     Clermont:
       understat: ['Clermont Foot']
@@ -218,25 +262,35 @@ teams:
     Guingamp: {}
     Le Havre: {}
     Le Mans: {}
-    Lens: {}
-    Lille: {}
+    Lens:
+      openfootball: ['RC Lens', 'Racing Club de Lens']
+    Lille:
+      openfootball: ['Lille OSC']
     Lorient: {}
-    Lyon: {}
-    Marseille: {}
+    Lyon:
+      openfootball: ['Olympique Lyonnais']
+    Marseille:
+      openfootball: ['Olympique Marseille', 'Olympique de Marseille']
     Metz: {}
-    Monaco: {}
+    Monaco:
+      openfootball: ['AS Monaco', 'AS Monaco FC']
     Montpellier: {}
     Nancy: {}
-    Nantes: {}
-    Nice: {}
+    Nantes:
+      openfootball: ['FC Nantes']
+    Nice:
+      openfootball: ['OGC Nice']
     Nimes: {}
     Paris FC: {}
     Paris SG:
       understat: ['Paris Saint Germain']
+      openfootball: ['Paris Saint-Germain', 'Paris Saint-Germain FC']
     Reims: {}
-    Rennes: {}
+    Rennes:
+      openfootball: ['Stade Rennais']
     St Etienne:
       understat: ['Saint-Etienne']
     Strasbourg: {}
-    Toulouse: {}
+    Toulouse:
+      openfootball: ['Toulouse FC']
     Troyes: {}

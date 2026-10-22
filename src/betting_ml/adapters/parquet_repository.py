@@ -7,6 +7,8 @@ from pathlib import Path
 import pandas as pd
 
 HOLDOUT_NAME = "holdout"
+# Every dataset of the 2025-26 holdout (spec 001 leagues; spec 003 European competitions).
+HOLDOUT_NAMES = frozenset({HOLDOUT_NAME, "europe_holdout"})
 
 
 class HoldoutAccessError(PermissionError):
@@ -29,7 +31,7 @@ class ParquetMatchRepository:
         frame.to_parquet(self.path(name), index=False)
 
     def load(self, name: str) -> pd.DataFrame:
-        if name == HOLDOUT_NAME and not self.allow_holdout:
+        if name in HOLDOUT_NAMES and not self.allow_holdout:
             raise HoldoutAccessError(
                 "The holdout can only be read by the final evaluation (constitution §II)."
             )

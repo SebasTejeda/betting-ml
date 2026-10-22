@@ -154,7 +154,7 @@ class FeaturesFile(BaseModel):
     groups: dict[str, list[str]]
 
 
-SourceName = Literal["football_data", "understat", "the_odds_api"]
+SourceName = Literal["football_data", "understat", "the_odds_api", "clubelo", "openfootball"]
 
 
 class TeamAliases(BaseModel):
@@ -343,6 +343,14 @@ class BettingMarketsFile(BaseModel):
 
 def load_markets(path: Path | None = None) -> BettingMarketsFile:
     return BettingMarketsFile.model_validate(_read_yaml(path or CONFIGS_DIR / "markets.yaml"))
+
+
+def load_europe_aliases(path: Path | None = None) -> dict[str, dict[str, str]]:
+    """configs/europe_aliases.yaml: country → openfootball name → ClubElo name."""
+    content = _read_yaml(path or CONFIGS_DIR / "europe_aliases.yaml")
+    return {
+        str(c): {str(k): str(v) for k, v in (names or {}).items()} for c, names in content.items()
+    }
 
 
 def load_data_overrides(path: Path | None = None) -> DataOverrides:

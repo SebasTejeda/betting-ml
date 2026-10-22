@@ -12,12 +12,15 @@ from typing import Any
 import pandas as pd
 from sqlalchemy.orm import Session, sessionmaker
 
+from betting_ml.adapters.clubelo import ClubEloSource
+from betting_ml.adapters.europe_names import EuropeTeamResolver
 from betting_ml.adapters.experiment_store import FileExperimentStore
 from betting_ml.adapters.fixtures import FootballDataFixtures
 from betting_ml.adapters.football_data import FootballDataSource
 from betting_ml.adapters.git_info import current_commit
 from betting_ml.adapters.http import HttpClient
 from betting_ml.adapters.joblib_registry import JoblibModelRegistry
+from betting_ml.adapters.openfootball import OpenFootballSource
 from betting_ml.adapters.parquet_repository import ParquetMatchRepository
 from betting_ml.adapters.sql.db import prepare, session_factory
 from betting_ml.adapters.sql.repositories import (
@@ -31,6 +34,7 @@ from betting_ml.adapters.tracking_store import ParquetTrackingStore
 from betting_ml.adapters.understat import UnderstatSource
 from betting_ml.application.backtest_pinnacle import BacktestPinnacle
 from betting_ml.application.build_dataset import BuildDataset
+from betting_ml.application.build_europe import BuildEuropeDataset
 from betting_ml.application.catalog import RefreshData
 from betting_ml.application.compare_matches import CompareMatches, EvaluateManualOdds
 from betting_ml.application.evaluate_holdout import EvaluateHoldout
@@ -51,6 +55,7 @@ from betting_ml.config import (
     get_settings,
     load_bookmakers,
     load_data_overrides,
+    load_europe_aliases,
     load_features,
     load_leagues,
     load_team_aliases,
@@ -134,6 +139,36 @@ class Container:
             repository=self.repository,
             report_path=self.settings.reports_path / "data_quality.md",
             overrides=load_data_overrides(self.settings.configs_dir / "data_overrides.yaml"),
+        )
+
+    # --- spec 003
+
+    @cached_property
+    def openfootball(self) -> OpenFootballSource:
+        return OpenFootballSource(
+            self.settings.data_path / "raw",
+            http=HttpClient(delay_seconds=1.0),
+            refresh_seasons={self.leagues.seasons.current},
+        )
+
+    @cached_property
+    def clubelo(self) -> ClubEloSource:
+        return ClubEloSource(self.settings.data_path / "raw", http=HttpClient(delay_seconds=1.0))
+
+    @cached_property
+    def europe_names(self) -> EuropeTeamResolver:
+        return EuropeTeamResolver(
+            self.team_names, load_europe_aliases(self.settings.configs_dir / "europe_aliases.yaml")
+        )
+
+    def build_europe(self) -> BuildEuropeDataset:
+        return BuildEuropeDataset(
+            leagues=self.leagues,
+            results=self.openfootball,
+            ratings=self.clubelo,
+            names=self.europe_names,
+            repository=self.repository,
+            report_path=self.settings.reports_path / "europe_data_quality.md",
         )
 
     @cached_property

@@ -172,3 +172,33 @@ class Clock(Protocol):
     def now(self) -> datetime: ...
 
     def today(self) -> date: ...
+
+
+# --- spec 003
+
+
+@runtime_checkable
+class RatingsSource(Protocol):
+    """Club strength ratings by date that compare clubs across leagues (e.g. ClubElo)."""
+
+    def ratings_on(self, day: date) -> pd.DataFrame: ...
+
+    def ratings_before(self, match_date: date) -> pd.DataFrame: ...
+
+
+@runtime_checkable
+class InternationalResultsSource(Protocol):
+    """Historical results of European club competitions (e.g. openfootball)."""
+
+    def fetch_season(self, competition: str, season: str) -> pd.DataFrame: ...
+
+
+@runtime_checkable
+class EuropeTeamNames(Protocol):
+    """Resolves clubs of European competitions and their ClubElo names."""
+
+    def from_openfootball(self, name: str, country: str) -> Any: ...
+
+    def unknown_openfootball(self, frame: pd.DataFrame) -> Exception | None: ...
+
+    def clubelo_name(self, team: Any, ratings: pd.DataFrame) -> str | None: ...
