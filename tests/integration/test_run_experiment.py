@@ -179,3 +179,8 @@ def test_joblib_registry_roundtrip(tmp_path: Path) -> None:
 def test_git_commit_is_reported() -> None:
     assert current_commit() != ""
     assert current_commit(Path("/")) == "unknown"
+
+
+def test_current_commit_without_git_installed(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("betting_ml.adapters.git_info.shutil.which", lambda name: None)
+    assert current_commit() == "unknown"

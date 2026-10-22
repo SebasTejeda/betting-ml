@@ -42,7 +42,8 @@ def row_state(session: Session, entity: str, key: Any) -> dict[str, Any] | None:
     table, column = STATE_TABLES[entity]
     session.flush()
     row = (
-        session.execute(text(f"SELECT * FROM {table} WHERE {column} = :key"), {"key": key})
+        # table and column come from STATE_TABLES (constants); the key is a bound parameter
+        session.execute(text(f"SELECT * FROM {table} WHERE {column} = :key"), {"key": key})  # noqa: S608
         .mappings()
         .first()
     )
@@ -177,5 +178,5 @@ class SqlIntegrity(SqlAuditLog):
     def current_states(self, entity: str) -> dict[str, dict[str, Any]]:
         table, column = STATE_TABLES[entity]
         with self.sessions() as session:
-            rows = session.execute(text(f"SELECT * FROM {table}")).mappings()
+            rows = session.execute(text(f"SELECT * FROM {table}")).mappings()  # noqa: S608
             return {str(row[column]): dict(row) for row in rows}

@@ -1,0 +1,29 @@
+# Weekly update proposals (spec 003, T019). Minor and patch updates of each ecosystem come in
+# one grouped PR; majors one by one. Security updates are opened as soon as an advisory exists.
+version: 2
+updates:
+  - package-ecosystem: "uv" # pyproject.toml + uv.lock (the "pip" ecosystem would not update the lock)
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    groups:
+      python-minor-patch:
+        update-types: ["minor", "patch"]
+
+  - package-ecosystem: "npm"
+    directory: "/frontend"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    groups:
+      npm-minor-patch:
+        update-types: ["minor", "patch"]
+
+  - package-ecosystem: "github-actions" # keeps the pinned SHAs current
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      actions:
+        patterns: ["*"]

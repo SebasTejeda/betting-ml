@@ -141,7 +141,7 @@ Reglas de ejecución:
   - Tests con `caplog`: ningún secreto en los logs de una petición que los contiene.
   - Commit: `feat(logging): structured logs with redaction and security events`
 
-- [ ] **T019** Cadena de suministro y CI (US7)
+- [x] **T019** Cadena de suministro y CI (US7)
   - Workflow con `permissions: contents: read` y acciones fijadas por SHA; job `security` (ruff `S`, `pip-audit`, `npm audit --audit-level=high`, `gitleaks`) que ahora **sí** falla.
   - `.github/dependabot.yml` (pip, npm, github-actions); `gitleaks` y `detect-private-key` en pre-commit.
   - Resolver o justificar en `decisions.md` cada hallazgo restante de la línea base.

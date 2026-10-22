@@ -106,12 +106,12 @@ web-api:
 dev:
 	$(CLI) serve --host 127.0.0.1 --port 8000 & cd frontend && npm run dev
 
-# ---- Seguridad (spec 003). Modo informe hasta T019: cada paso muestra sus hallazgos y sigue (-).
+# ---- Seguridad (spec 003, T019): falla ante cualquier hallazgo (lo mismo que el job `security` de CI).
 AUDIT_REQS = .audit-requirements.txt
 
 security:
-	-$(RUN) ruff check --select S src
-	$(UV) export --frozen --no-emit-project --no-dev --format requirements-txt -o $(AUDIT_REQS)
-	-$(RUN) pip-audit --disable-pip --require-hashes -r $(AUDIT_REQS)
-	-cd frontend && npm audit --omit=dev --audit-level=high
-	-gitleaks git --redact --no-banner .
+	$(RUN) ruff check --select S src tests migrations
+	$(UV) export --frozen --no-emit-project --extra dev --format requirements-txt -o $(AUDIT_REQS)
+	$(RUN) pip-audit --disable-pip --require-hashes -r $(AUDIT_REQS)
+	cd frontend && npm audit --audit-level=high
+	gitleaks git --redact --no-banner .

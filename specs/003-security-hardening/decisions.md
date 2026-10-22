@@ -399,3 +399,33 @@ No corregido (riesgo aceptado, con su alcance real):
   - Sin `request_id`: fallan 2.
   - Sin el evento 401/403: falla 1.
   - Sin el evento de bloqueo: falla 1.
+
+## 2026-10-22 — T019: CI de seguridad que falla, acciones fijadas por SHA y CLI de shadcn fuera
+- Contexto: la CI no limitaba los permisos, usaba acciones por etiqueta y no escaneaba dependencias ni secretos (H-19). `make security` estaba en modo informe. Quedaban H-17 (npm de desarrollo) y H-18 (ruff `S`).
+- Decisión:
+  - **Workflow.**
+    - `permissions: contents: read` global; ningún job lo amplía.
+    - Toda acción está fijada por el SHA de su commit, con un comentario de la versión. Se fija la última versión de la **mayor que ya se usaba** (checkout v4.4.0, setup-uv v5.4.2, setup-node v4.4.0), no la mayor nueva (v7/v10): la CI no se puede ejecutar desde aquí, y los saltos de mayor los propone Dependabot como PR revisable.
+    - `persist-credentials: false` en todos los checkout.
+    - `uv sync --locked`: falla si `uv.lock` no corresponde a `pyproject.toml`.
+    - El job `test` añade mypy y las migraciones al lint.
+  - **Job `security`.** Falla ante cualquier hallazgo, sin `continue-on-error` ni `|| true`:
+    - ruff `S` sobre `src`, `tests` y `migrations`;
+    - `pip-audit` sobre las dependencias de producción **y** de desarrollo, exportadas con hashes desde el lockfile;
+    - `npm audit --audit-level=high` sobre **todas** las dependencias (solo lee `package-lock.json`, no instala nada);
+    - `gitleaks git` sobre el historial completo (`fetch-depth: 0`), con el binario 8.30.1 descargado de la release y **verificado por SHA-256** antes de ejecutarlo. No se usa `gitleaks-action`, que exige licencia en organizaciones.
+    - `make security` ejecuta lo mismo y ahora también falla.
+  - **Dependabot.** Usa los ecosistemas `uv` (no `pip`: el de pip no actualiza `uv.lock`), `npm` (`/frontend`) y `github-actions`. Revisión semanal, con los menores y parches agrupados.
+  - **pre-commit.** Añade `gitleaks` y `detect-private-key`.
+  - **Tests.** Comprueban la configuración de forma estática (`tests/unit/test_ci_config.py`): permisos, SHA, `persist-credentials`, escaneos sin `continue-on-error`, verificación del binario, lockfiles, `make security` sin `-`, Dependabot, pre-commit y shadcn. Cuatro mutaciones (acción por etiqueta, token con escritura, escaneo que no falla, binario sin verificar) hacen fallar un test cada una.
+- Hallazgos restantes de la línea base:
+  - **H-17 (resuelto).** Las 7 altas de npm venían todas de la CLI `shadcn` (devDependency) a través de `fast-glob` → `micromatch` → `braces`. `braces` no tiene versión corregida (3.0.3 es la última y es vulnerable).
+    - La app solo usaba de ese paquete el CSS `shadcn/tailwind.css`. Se copia a `frontend/src/styles/shadcn-tailwind.css` con su licencia MIT y se desinstala la CLI. Para añadir componentes se usa `npx shadcn@latest add …` puntualmente.
+    - El CSS generado por el build es **idéntico byte a byte** antes y después (mismo SHA-256).
+    - `npm audit fix` corrigió además `ip-address` (moderada). Resultado: `npm audit` da 0 vulnerabilidades, incluidas las de desarrollo.
+  - **H-18 (resuelto).** Los cuatro `assert` usados como comprobación en tiempo de ejecución pasan a `RuntimeError` explícitos (con tests que funcionan también con `python -O`). `git` se busca con `shutil.which` y se invoca por ruta absoluta.
+    - Los dos `S608` de `adapters/sql/audit.py` se marcan `noqa` justificado: el nombre de tabla y columna sale de la constante `STATE_TABLES` y el valor va siempre como parámetro.
+    - En los tests se ignoran las reglas normales de un test (`assert`, secretos falsos, aleatoriedad con semilla) y en las migraciones `S608` (SQL con sus propias constantes).
+  - **H-19 (resuelto)** con lo anterior.
+  - H-01 a H-16 y H-21 se resolvieron en T003–T018 (ver cada entrada). **H-20** (imagen Docker y TLS) es T020.
+- Verificación local: ruff `S` limpio; `pip-audit` sin vulnerabilidades conocidas (producción y desarrollo); `npm audit` con 0; `gitleaks git` sin fugas en 126 commits. `gitleaks dir` excluye ahora `__pycache__/`, donde el bytecode de los secretos falsos de los tests daba un falso positivo.

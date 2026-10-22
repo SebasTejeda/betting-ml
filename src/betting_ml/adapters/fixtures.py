@@ -125,7 +125,8 @@ class FootballDataFixtures:
                 logger.exception("fixtures.csv download failed; using the cached copy")
                 path, stamp = cached
         else:
-            assert cached is not None
+            if cached is None:  # pragma: no cover - not downloading means a cached copy exists
+                raise RuntimeError("fixtures.csv: no cached copy")
             path, stamp = cached
         self.last_update = stamp
         fixtures, self.unknown_teams = parse_fixtures(

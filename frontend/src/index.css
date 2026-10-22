@@ -1,6 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
-@import "shadcn/tailwind.css";
+@import "./styles/shadcn-tailwind.css";
 @import "@fontsource-variable/inter";
 
 /* Dark theme is the default (html.dark); the light theme is html without .dark. */

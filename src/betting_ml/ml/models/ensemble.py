@@ -61,7 +61,8 @@ class BlendModel(BaseProbabilisticModel):
         return self
 
     def predict_proba(self, matches: pd.DataFrame) -> np.ndarray:
-        assert self.weights is not None
+        if self.weights is None:
+            raise RuntimeError("model not fitted")
         preds = [m.predict_proba(matches) for m in self.models]
         return normalize_rows(sum(w * p for w, p in zip(self.weights, preds, strict=True)))
 

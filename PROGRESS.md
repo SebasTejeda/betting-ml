@@ -229,3 +229,10 @@ Spec activa: [`specs/003-security-hardening/`](specs/003-security-hardening/). T
   - Eventos de seguridad: login correcto, fallido y bloqueado, logout, 401/403/CSRF, cambio de ajustes y límites, verify-integrity fallido e integridad del modelo.
   - El dueño acepta el riesgo del encadenado sin clave (sin HMAC).
   - 902 tests backend (cobertura 99 %); 10 mutaciones detectadas.
+- 2026-10-22 · T019 · CI de seguridad.
+  - Token de solo lectura, acciones fijadas por SHA y `uv sync --locked`.
+  - Job `security` que falla: ruff S, pip-audit de producción y desarrollo, `npm audit --audit-level=high` y gitleaks verificado por SHA-256.
+  - Dependabot (uv, npm, actions) y pre-commit con gitleaks y detect-private-key.
+  - CLI de shadcn sustituida por su CSS copiado (MIT): 0 vulnerabilidades npm y CSS idéntico.
+  - Asserts y `git` corregidos.
+  - 912 tests backend (cobertura 99 %), 59 frontend.

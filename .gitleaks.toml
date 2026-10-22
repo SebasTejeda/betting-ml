@@ -8,4 +8,5 @@ paths = [
   '''(^|/)\.venv/''',
   '''(^|/)node_modules/''',
   '''(^|/)frontend/dist/''',
+  '''(^|/)__pycache__/''',  # bytecode of the tests' fake secrets (never committed)
 ]
