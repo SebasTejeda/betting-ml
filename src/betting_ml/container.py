@@ -164,7 +164,11 @@ class Container:
     @cached_property
     def europe_names(self) -> EuropeTeamResolver:
         return EuropeTeamResolver(
-            self.team_names, load_europe_aliases(self.settings.configs_dir / "europe_aliases.yaml")
+            self.team_names,
+            load_europe_aliases(self.settings.configs_dir / "europe_aliases.yaml"),
+            foreign_aliases=load_europe_aliases(
+                self.settings.configs_dir / "europe_league_aliases.yaml"
+            ),
         )
 
     def build_club_elo(self) -> BuildClubElo:

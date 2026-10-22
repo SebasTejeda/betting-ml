@@ -34,7 +34,9 @@ from betting_ml.ml.plots import market_calibration_plot
 logger = logging.getLogger(__name__)
 
 EVAL_SEASONS = ("2018-19", "2019-20", "2020-21", "2021-22", "2022-23", "2023-24", "2024-25")
-RIDGE_GRID = (1.0, 5.0, 20.0, 100.0)
+RIDGE_GRID = (0.3, 1.0, 3.0, 10.0, 30.0, 100.0, 300.0)
+INNER_SEASONS = 2
+DEFAULT_RIDGE = 10.0
 GROUPS = [Group(Market.H2H), Group(Market.TOTALS, 2.5)]
 REPORT_FILE = "market_validation_003_europe.json"
 EPS = 1e-12
@@ -63,16 +65,23 @@ def _ll_1x2(model: CrossLeagueModel, frame: pd.DataFrame) -> float:
 
 
 def choose_ridge(train: pd.DataFrame, mode: str = "decomposed") -> float:
-    """Ridge picked on the last training season (inner validation)."""
+    """Ridge with the lowest mean 1X2 log loss over the last ``INNER_SEASONS`` training seasons,
+    each predicted by a model fitted on the seasons before it (inner validation; checkpoint:
+    one season alone was too noisy)."""
     seasons = sorted(train["season"].unique())
-    if len(seasons) < 2:
-        return RIDGE_GRID[1]
-    inner_train = train[train["season"] < seasons[-1]]
-    inner_valid = train[train["season"] == seasons[-1]]
-    scores = {
-        r: _ll_1x2(CrossLeagueModel(mode=mode, ridge=r).fit(inner_train), inner_valid)  # type: ignore[arg-type]
-        for r in RIDGE_GRID
-    }
+    inner = seasons[-INNER_SEASONS:] if len(seasons) > INNER_SEASONS else seasons[1:]
+    if not inner:
+        return DEFAULT_RIDGE
+    scores: dict[float, float] = {}
+    for ridge in RIDGE_GRID:
+        losses = [
+            _ll_1x2(
+                CrossLeagueModel(mode=mode, ridge=ridge).fit(train[train["season"] < s]),  # type: ignore[arg-type]
+                train[train["season"] == s],
+            )
+            for s in inner
+        ]
+        scores[ridge] = float(np.mean(losses))
     return min(scores, key=lambda r: (scores[r], r))
 
 

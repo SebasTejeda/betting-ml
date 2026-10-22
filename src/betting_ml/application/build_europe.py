@@ -50,6 +50,10 @@ COLUMNS = [
     "away_elo",
     "home_league_elo",
     "away_league_elo",
+    "home_recent",
+    "away_recent",
+    "home_days_since_league",
+    "away_days_since_league",
 ]
 
 
@@ -143,16 +147,27 @@ class BuildEuropeDataset:
                     getattr(match, f"{side}_team"), getattr(match, f"{side}_country")
                 )
                 club = self.names.clubelo_name(team, ratings)
+                recent: float | None = None
+                days_since: float | None = None
                 if club is None:
                     unmatched.setdefault(team.country, set()).add(team.name)
                     elo = None
                 else:
-                    elo = float(ratings.loc[ratings["club"] == club, "elo"].iloc[0])
+                    same = (ratings["club"] == club) & (ratings["country"] == team.country)
+                    rated = ratings.loc[same].iloc[0]
+                    elo = float(rated["elo"])
+                    if "recent" in ratings.columns:  # own Elo: eligibility inputs (T006)
+                        recent = float(rated["recent"])
+                        last_league = rated["last_league_match"]
+                        if pd.notna(last_league):
+                            days_since = float((pd.Timestamp(day) - pd.Timestamp(last_league)).days)
                 row[f"{side}_team"] = team.name
                 row[f"{side}_league"] = team.league
                 row[f"{side}_domestic"] = team.domestic
                 row[f"{side}_elo"] = elo
                 row[f"{side}_league_elo"] = strength.get(team.country)
+                row[f"{side}_recent"] = recent
+                row[f"{side}_days_since_league"] = days_since
             row["match_id"] = european_match_id(
                 str(match.competition), day, str(row["home_team"]), str(row["away_team"])
             )
@@ -190,6 +205,9 @@ class BuildEuropeDataset:
             f"holdout 2025-26 {len(result.holdout)}).",
             f"- Con rating de ambos equipos (Elo propio entre ligas): **{result.rating_coverage:.2%}**.",
             f"- Instantáneas semanales del rating usadas: {result.snapshots}.",
+            "- Rating: Elo propio entre ligas (openfootball; ClubElo caído, ver decisions.md). "
+            "Los nombres de clubes que openfootball cambia entre temporadas se unifican con "
+            "`configs/europe_league_aliases.yaml`.",
             "- Resultado a los 90 minutos (las prórrogas no cuentan para los mercados): "
             f"{int(both['extra_time'].sum())} partidos con prórroga.",
             "",

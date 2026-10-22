@@ -53,16 +53,24 @@ class ClubEloNameError(ValueError):
 
 class EuropeTeamResolver:
     def __init__(
-        self, resolver: TeamNameResolver, overrides: dict[str, dict[str, str]] | None = None
+        self,
+        resolver: TeamNameResolver,
+        overrides: dict[str, dict[str, str]] | None = None,
+        foreign_aliases: dict[str, dict[str, str]] | None = None,
     ) -> None:
         self.resolver = resolver
         self.overrides = overrides or {}
+        self.foreign_aliases = foreign_aliases or {}
+
+    def canonical_foreign(self, name: str, country: str) -> str:
+        """One name per foreign club across seasons (configs/europe_league_aliases.yaml)."""
+        return self.foreign_aliases.get(country, {}).get(name, name)
 
     def from_openfootball(self, name: str, country: str) -> EuropeanTeam:
         country = OPENFOOTBALL_COUNTRY_FIX.get(country, country)
         league = COUNTRY_LEAGUE.get(country)
         if league is None:
-            return EuropeanTeam(name, country, domestic=False)
+            return EuropeanTeam(self.canonical_foreign(name, country), country, domestic=False)
         return EuropeanTeam(
             self.resolver.resolve(league, "openfootball", name), league, domestic=True
         )

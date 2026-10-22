@@ -16,9 +16,9 @@ HISTORY_NAME = "club_elo_history"
 class EloSnapshotSource:
     """Snapshots of ``data/processed/club_elo_history.parquet`` with ClubElo's schema."""
 
-    def __init__(self, repository: MatchRepository, active_days: int = 400) -> None:
+    def __init__(self, repository: MatchRepository, recent_days: int = 365) -> None:
         self.repository = repository
-        self.active_days = active_days
+        self.recent_days = recent_days
         self._history: pd.DataFrame | None = None
 
     @property
@@ -28,7 +28,7 @@ class EloSnapshotSource:
         return self._history
 
     def ratings_on(self, day: date) -> pd.DataFrame:
-        return snapshot(self.history, pd.Timestamp(day), self.active_days)
+        return snapshot(self.history, pd.Timestamp(day), self.recent_days)
 
     def ratings_before(self, match_date: date) -> pd.DataFrame:
         return self.ratings_on(snapshot_date(match_date))

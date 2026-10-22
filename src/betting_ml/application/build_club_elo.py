@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
+from itertools import pairwise
 from typing import Any
 
 import pandas as pd
@@ -24,6 +25,39 @@ logger = logging.getLogger(__name__)
 HISTORY_NAME = "club_elo_history"
 LEAGUE_DATASETS = ("matches", "holdout", "current")
 COMPETITIONS = ("UCL", "UEL")
+MAX_NEW_CLUBS = 5  # promoted clubs between two consecutive seasons of one league (+ margin)
+MAX_NEW_CLUBS_PER_EXTRA_SEASON = 3  # after a gap without data, more promotions are possible
+
+
+class ClubRenameError(ValueError):
+    pass
+
+
+def turnover_errors(league_matches: pd.DataFrame, max_new: int = MAX_NEW_CLUBS) -> list[str]:
+    """Leagues where too many clubs are "new" from one season to the next: almost always a club
+    renamed in the source (checkpoint T006), which would restart its Elo as a promoted club."""
+    rows = pd.concat(
+        [
+            league_matches[["home_country", "season", "home_key"]].set_axis(
+                ["country", "season", "key"], axis=1
+            ),
+            league_matches[["away_country", "season", "away_key"]].set_axis(
+                ["country", "season", "key"], axis=1
+            ),
+        ]
+    ).drop_duplicates()
+    errors = []
+    for country, group in rows.groupby("country"):
+        seasons = sorted(group["season"].unique())
+        for before, after in pairwise(seasons):
+            gap = int(after[:4]) - int(before[:4]) - 1
+            allowed = max_new + MAX_NEW_CLUBS_PER_EXTRA_SEASON * gap
+            new = set(group.loc[group["season"] == after, "key"]) - set(
+                group.loc[group["season"] == before, "key"]
+            )
+            if len(new) > allowed:
+                errors.append(f"{country} {after}: {len(new)} new clubs {sorted(new)}")
+    return errors
 
 
 @dataclass
@@ -91,6 +125,11 @@ class BuildClubElo:
         if not frames:
             return pd.DataFrame()
         data = pd.concat(frames, ignore_index=True)
+        for side in ("home", "away"):
+            data[f"{side}_team"] = [
+                self.names.canonical_foreign(name, country)
+                for name, country in zip(data[f"{side}_team"], data[f"{side}_country"], strict=True)
+            ]
         return pd.DataFrame(
             {
                 "date": pd.to_datetime(data["date"]),
@@ -155,6 +194,12 @@ class BuildClubElo:
     def run(self) -> ClubEloResult:
         ours = self._our_leagues()
         others = self._other_leagues()
+        errors = turnover_errors(pd.concat([f for f in (ours, others) if not f.empty]))
+        if errors:
+            raise ClubRenameError(
+                "clubs renamed between seasons (add them to europe_league_aliases.yaml): "
+                + "; ".join(errors)
+            )
         league_names: dict[str, set[str]] = {}
         for frame in (ours, others):
             for side in ("home", "away"):

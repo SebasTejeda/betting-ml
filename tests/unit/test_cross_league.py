@@ -7,6 +7,8 @@ import pytest
 
 from betting_ml.adapters.parquet_repository import HoldoutAccessError, ParquetMatchRepository
 from betting_ml.application.validate_cross_league import (
+    DEFAULT_RIDGE,
+    RIDGE_GRID,
     ValidateCrossLeague,
     choose_ridge,
     match_metrics,
@@ -106,9 +108,19 @@ def test_frequency_model_and_metrics() -> None:
 
 
 def test_choose_ridge_uses_only_training_seasons() -> None:
-    data = _european(1200, seasons=("2019-20", "2020-21"))
-    assert choose_ridge(data) in (1.0, 5.0, 20.0, 100.0)
-    assert choose_ridge(data[data["season"] == "2019-20"]) == 5.0  # one season: default
+    data = _european(1500, seasons=("2018-19", "2019-20", "2020-21"))
+    assert choose_ridge(data) in RIDGE_GRID
+    assert choose_ridge(data[data["season"] == "2019-20"]) == DEFAULT_RIDGE  # one season
+
+
+def test_eligibility_rules() -> None:
+    data = _european(6).assign(
+        home_recent=12, away_recent=12, home_days_since_league=5, away_days_since_league=5
+    )
+    data.loc[0, "home_recent"] = 9  # fewer than 10 rated matches in the previous year
+    data.loc[1, "away_days_since_league"] = 75  # league file stopped: frozen league part
+    data.loc[2, "away_league_elo"] = np.nan  # club from a country outside the catalog
+    assert eligible(data)["match_id"].tolist() == ["m3", "m4", "m5"]
 
 
 def test_validate_cross_league_use_case(tmp_path: Path) -> None:

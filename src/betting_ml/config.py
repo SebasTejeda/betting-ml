@@ -346,7 +346,8 @@ def load_markets(path: Path | None = None) -> BettingMarketsFile:
 
 
 def load_europe_aliases(path: Path | None = None) -> dict[str, dict[str, str]]:
-    """configs/europe_aliases.yaml: country → openfootball name → ClubElo name."""
+    """Country → openfootball name → another name (europe_aliases.yaml: ClubElo names;
+    europe_league_aliases.yaml: canonical name of a foreign club across seasons)."""
     content = _read_yaml(path or CONFIGS_DIR / "europe_aliases.yaml")
     return {
         str(c): {str(k): str(v) for k, v in (names or {}).items()} for c, names in content.items()

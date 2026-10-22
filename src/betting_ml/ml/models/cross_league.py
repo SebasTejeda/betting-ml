@@ -159,7 +159,19 @@ class FrequencyModel:
         return np.repeat(mat[None, :, :], len(frame), axis=0)
 
 
+MIN_RECENT_MATCHES = 10
+MAX_DAYS_SINCE_LEAGUE = 60
+
+
 def eligible(frame: pd.DataFrame) -> pd.DataFrame:
-    """Matches where both clubs have a rating and a league mean (catalog countries)."""
+    """Matches whose two clubs have a rating and a league mean (catalog countries) and, when the
+    columns exist, at least ``MIN_RECENT_MATCHES`` rated matches in the previous year and a
+    LEAGUE match in the previous ``MAX_DAYS_SINCE_LEAGUE`` days (no frozen league component from
+    an incomplete league file, even after further European matches)."""
     mask = frame[REQUIRED[:4]].notna().all(axis=1)
+    for side in ("home", "away"):
+        if f"{side}_recent" in frame.columns:
+            mask &= frame[f"{side}_recent"].fillna(0) >= MIN_RECENT_MATCHES
+        if f"{side}_days_since_league" in frame.columns:
+            mask &= frame[f"{side}_days_since_league"].fillna(np.inf) <= MAX_DAYS_SINCE_LEAGUE
     return frame[mask]
