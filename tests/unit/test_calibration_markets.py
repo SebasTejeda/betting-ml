@@ -7,7 +7,12 @@ import pytest
 from scipy.stats import poisson
 
 from betting_ml.adapters.parquet_repository import HoldoutAccessError, ParquetMatchRepository
-from betting_ml.application.validate_markets import ValidateMarkets
+from betting_ml.application.validate_markets import (
+    Holdout003AlreadyUsedError,
+    ValidateMarkets,
+    ValidateMarketsFinal,
+    spec_level,
+)
 from betting_ml.config import load_markets
 from betting_ml.domain.markets import Market, MarketSpec, selection_mask
 from betting_ml.ml.calibration_markets import (
@@ -330,3 +335,91 @@ def test_validate_markets_use_case(tmp_path: Path) -> None:
 
 def test_validate_markets_never_uses_unknown_specs() -> None:
     assert groups_for([MarketSpec(Market.BTTS)]) == [Group(Market.BTTS)]
+
+
+def _final_setup(tmp_path: Path) -> tuple[ParquetMatchRepository, Path, Path]:
+    data = _league_matches()
+    train = data[data["season"] == "2021-22"]
+    test = data[data["season"] == "2022-23"].assign(season="2025-26")
+    repository = ParquetMatchRepository(tmp_path / "processed", allow_holdout=True)
+    repository.save("matches", train)
+    repository.save("holdout", test)
+    experiment = tmp_path / "E09.json"
+    experiment.write_text(
+        json.dumps(
+            {
+                "folds": {"F1": {"train": ["2021-22"], "valid": "2021-22"}},
+                "models": {"F1": {"best_xi": 0.003}},
+            }
+        ),
+        encoding="utf-8",
+    )
+    return repository, experiment, tmp_path / "reports"
+
+
+def _fake_validation(reports: Path, level: str = "alta") -> None:
+    groups = [g.key for g in groups_for(load_markets().specs)]
+    reports.mkdir(parents=True, exist_ok=True)
+    scenario = {
+        "chosen_threshold": 0.0,
+        "by_threshold": {"0": {"clv_mean": -0.05, "n_bets": 400}},
+        "placebo_same_side_mix": -0.05,
+    }
+    payload = {
+        "levels": {g: level for g in groups},
+        "groups": [{"group": g, "confidence": level} for g in groups],
+        "ou25_backtest": {"scenarios": {s: dict(scenario) for s in ("b365", "avg", "max")}},
+    }
+    (reports / "market_validation_003.json").write_text(json.dumps(payload), encoding="utf-8")
+
+
+def test_final_evaluation_runs_once_and_publishes_the_worst_level(tmp_path: Path) -> None:
+    repository, experiment, reports = _final_setup(tmp_path)
+    final = ValidateMarketsFinal(
+        repository, load_markets(), experiment, reports, git_commit=lambda: "abc1234"
+    )
+    with pytest.raises(FileNotFoundError):  # validation must exist first
+        final.run_final()
+    assert not final.lock_path.exists()
+    _fake_validation(reports, level="media")
+    evaluation = final.run_final()
+    assert evaluation.n_matches == len(_league_matches().query("season == '2022-23'"))
+    # Published level = worst of validation (all media) and test.
+    assert set(evaluation.levels.values()) <= {"media", "baja"}
+    for cal in evaluation.calibration:
+        expected = "baja" if cal.confidence == "baja" else "media"
+        assert evaluation.levels[cal.group] == expected
+    lock = json.loads(final.lock_path.read_text(encoding="utf-8"))
+    assert lock["status"] == "completed" and lock["git_commit"] == "abc1234"
+    assert len(lock["validation_json_sha256"]) == 64 and len(lock["test_matrices_sha256"]) == 64
+    published = json.loads((reports / "market_calibration.json").read_text(encoding="utf-8"))
+    assert published["levels"] == evaluation.levels
+    assert published["spec_level"] == evaluation.spec_level
+    report = (reports / "REPORT_003_markets.md").read_text(encoding="utf-8")
+    assert "Nivel alcanzado" in report and "HOLDOUT_003_USED.lock" in report
+    with pytest.raises(Holdout003AlreadyUsedError):
+        final.run_final()
+
+
+def test_final_uses_the_validation_thresholds(tmp_path: Path) -> None:
+    repository, experiment, reports = _final_setup(tmp_path)
+    _fake_validation(reports)
+    evaluation = ValidateMarketsFinal(repository, load_markets(), experiment, reports).run_final()
+    for data in evaluation.ou_backtest["scenarios"].values():
+        assert data["threshold"] == 0.0
+
+
+@pytest.mark.parametrize(
+    ("n_high", "main", "level"),
+    [
+        (4, {"clv_mean": 0.001, "n_bets": 100, "roi_ci_low": -0.1, "roi_ci_high": 0.1}, "Bueno"),
+        (3, {"clv_mean": 0.01, "n_bets": 500, "roi_ci_low": 0.01, "roi_ci_high": 0.1}, "Mínimo"),
+        (5, {"clv_mean": -0.01, "n_bets": 500, "roi_ci_low": -0.1, "roi_ci_high": 0.1}, "Mínimo"),
+        (5, {"clv_mean": 0.02, "n_bets": 300, "roi_ci_low": 0.01, "roi_ci_high": 0.2}, "Excelente"),
+        (5, {"clv_mean": 0.02, "n_bets": 299, "roi_ci_low": 0.01, "roi_ci_high": 0.2}, "Bueno"),
+        (5, {}, "Mínimo"),
+    ],
+)
+def test_spec_level_rule(n_high: int, main: dict, level: str) -> None:
+    levels = {f"g{i}": "alta" for i in range(n_high)} | {"x": "media"}
+    assert spec_level(levels, main) == level

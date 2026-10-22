@@ -51,11 +51,22 @@ def data_europe(verbose: bool = False) -> None:
 
 
 @app.command("validate-markets")
-def validate_markets(verbose: bool = False) -> None:
+def validate_markets(
+    final: bool = typer.Option(False, "--final", help="Test 2025-26, UNA sola vez (lock)"),
+    verbose: bool = False,
+) -> None:
     """Calibración de los mercados derivados y backtest Más/Menos 2.5 en F1–F3 (spec 003)."""
     from betting_ml.container import Container
 
     _setup_logging(verbose)
+    if final:
+        evaluation = Container().validate_markets_final().run_final()
+        counts = {
+            lvl: list(evaluation.levels.values()).count(lvl) for lvl in ("alta", "media", "baja")
+        }
+        typer.echo(f"nivel spec 003: {evaluation.spec_level} · publicados: {counts}")
+        typer.echo(f"informe: {evaluation.report_path}")
+        return
     result = Container().validate_markets().run()
     for cal in result.calibration:
         worst_ece = max(s["ece"] for s in cal.by_selection.values())

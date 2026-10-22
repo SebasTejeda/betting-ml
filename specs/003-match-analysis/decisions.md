@@ -114,3 +114,15 @@ Formato:
   - El JSON publica `positives`, `rel_bias_se` y `rel_bias_z` por selección.
 - Motivo: no premiar ni castigar selecciones por ruido; no se exige que todo el IC quede dentro de ±5 % porque con el test de T009 casi nada llegaría a `alta`.
 - Impacto: en F1–F3 los niveles no cambian (6 `alta` / 8 `media` / 4 `baja`); los 4 `baja` son significativos (|z| 2.7–3.9) y estables en las tres temporadas; totals:0.5 sigue `media`, ahora por muestra (z +1.1). La comparación con la línea base es por grupo (agrupada), no por selección: se dirá en el informe de T009.
+
+## 2026-10-22 — Reglas pre-registradas de la evaluación final de mercados (T009, antes de abrir el holdout)
+- Contexto: el dueño pidió correr T009 con las ligas locales aunque ClubElo siga caído.
+- Decisión:
+  - **Alcance:** test 2025-26 de las 5 ligas, una sola vez, con lock `reports/HOLDOUT_003_USED.lock` (guarda el hash de `market_validation_003.json` y de las matrices del test). Los partidos europeos de 2025-26 (`europe_holdout`) se evalúan **aparte**, una sola vez, con su propio lock `reports/HOLDOUT_003_EUROPE_USED.lock`, cuando T006 esté hecha.
+  - **Modelo:** el mismo de T005: Dixon-Coles sobre xG, ξ = 0.003 (el que E09 eligió en validación interna en F2 y F3), entrenado con 2014-15…2024-25 y walk-forward sobre 2025-26 con re-ajuste cada 7 días (los partidos del test entran a la historia solo cuando ya se jugaron).
+  - **Línea base:** frecuencias por liga de todas las temporadas de entrenamiento (2014-15…2024-25).
+  - **Niveles:** misma regla final de T008 calculada en el test. El nivel publicado en `reports/market_calibration.json` (el que lee la API) es el **peor entre validación y test** de cada grupo.
+  - **Backtest Más/Menos 2.5:** umbrales fijados en validación (b365 10 %, avg 8 %, max 10 %), sin re-elegir; CLV contra el cierre de Pinnacle; placebo con la misma mezcla de lados.
+  - **Nivel de la spec (§5):** `Bueno` si ≥ 4 grupos `alta` en el test **y** CLV medio de Bet365 (escenario principal) ≥ 0; `Excelente` si además CLV > 0 y el IC 95 % del ROI excluye el 0 con ≥ 300 apuestas; si no, `Mínimo` siempre que todos los mercados P1 tengan nivel, con la salvedad de que el análisis de partido (T013) y la parte europea aún no existen.
+- Motivo: fijar todo antes de mirar el test, como en las specs 001 y 002.
+- Impacto: T010 (puerta) se decide con los niveles publicados.

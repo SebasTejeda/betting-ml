@@ -47,7 +47,7 @@ from betting_ml.application.select_champion import SelectChampion
 from betting_ml.application.settle_bets import SettleBets
 from betting_ml.application.track_predictions import TrackPredictions
 from betting_ml.application.train_production import TrainProduction
-from betting_ml.application.validate_markets import ValidateMarkets
+from betting_ml.application.validate_markets import ValidateMarkets, ValidateMarketsFinal
 from betting_ml.config import (
     BookmakersFile,
     FeaturesFile,
@@ -179,6 +179,16 @@ class Container:
             catalog=load_markets(self.settings.configs_dir / "markets.yaml"),
             experiment_path=self.settings.reports_path / "experiments" / "E09.json",
             reports_dir=self.settings.reports_path,
+        )
+
+    def validate_markets_final(self) -> ValidateMarketsFinal:
+        """Spec 003 T009: the only place where the holdout is opened for the markets."""
+        return ValidateMarketsFinal(
+            repository=ParquetMatchRepository(self.settings.processed_path, allow_holdout=True),
+            catalog=load_markets(self.settings.configs_dir / "markets.yaml"),
+            experiment_path=self.settings.reports_path / "experiments" / "E09.json",
+            reports_dir=self.settings.reports_path,
+            git_commit=current_commit,
         )
 
     @cached_property
