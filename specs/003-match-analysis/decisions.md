@@ -253,3 +253,8 @@ Formato:
 - Registrado sin cambio: el aviso de cuotas por evento viejas (> 6 h) se arma en el router; es texto de presentación y queda ahí por simplicidad (mover a `application` si crece).
 - Registrado sin cambio: si no se conoce el saldo de créditos (sin snapshot ni caché con saldo), el primer refresco por evento no comprueba la reserva mínima. El daño máximo es una llamada (~12 créditos) y el saldo queda conocido desde esa respuesta.
 - Registrado: `container.py` con 68 % de cobertura (cableado, ejercitado por los tests de integración); 2 avisos de lint en componentes shadcn (`react-refresh/only-export-components`); cuotas por evento pendientes de verificar con una respuesta real.
+
+## 2026-10-22 — Verificación final T025
+- Sin `ODDS_API_KEY` ni `APP_API_KEY`: no se gastaron créditos (0 de 3) y el registro en papel devolvió `503 WRITES_DISABLED`. Ambas comprobaciones quedan para cuando el dueño configure las claves.
+- El archivo de fixtures de football-data solo traía un partido de las 5 ligas (Levante–Ath Bilbao, 21/10); se usó ese y un Champions hipotético SL Benfica–Real Madrid (04/11) para el análisis entre ligas.
+- Los clubes europeos se buscan por su nombre de openfootball ("SL Benfica"); el autocompletado lo sugiere, pero "Benfica" a secas da 404. Mejora futura: alias cortos en `configs/europe_aliases.yaml`.
