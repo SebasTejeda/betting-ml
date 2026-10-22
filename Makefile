@@ -1,5 +1,5 @@
 # Comandos del proyecto (ver plan.md §8). Todos delegan en `uv run` y en la CLI `betting-ml`.
-.PHONY: verify-integrity security web web-test web-api dev backtest-002 backtest-002-final setup lint test data baselines exp select holdout report train-prod serve track docker all
+.PHONY: verify-integrity backup restore security web web-test web-api dev backtest-002 backtest-002-final setup lint test data baselines exp select holdout report train-prod serve track docker all
 
 UV ?= uv
 RUN = $(UV) run
@@ -79,6 +79,13 @@ settle:
 # Base, cadena de auditoría y apuestas = último evento (spec 003). Código 1 si algo falla.
 verify-integrity:
 	$(CLI) verify-integrity
+
+# Copia en caliente con su .sha256 (data/backups/) y restauración verificada (pide confirmación).
+backup:
+	$(CLI) backup
+
+restore:
+	$(CLI) restore $(FILE)
 
 # ---- Frontend (spec 002)
 web:

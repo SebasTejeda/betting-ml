@@ -10,6 +10,8 @@ from datetime import date, datetime, timedelta
 from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     import numpy as np
     import pandas as pd
 
@@ -242,3 +244,22 @@ class IntegritySource(Protocol):
     def records(self) -> list[Any]: ...
 
     def current_states(self, entity: str) -> dict[str, dict[str, Any]]: ...
+
+
+@runtime_checkable
+class DatabaseFiles(Protocol):
+    """Copies of the live database (spec 003, US6): hot backup, verification, restore."""
+
+    def exists(self) -> bool: ...
+
+    def copy_to(self, target: Path) -> None: ...
+
+    def restore_from(self, candidate: Path) -> None: ...
+
+    def sha256(self, path: Path) -> str: ...
+
+    def check(self, path: Path) -> list[str]: ...
+
+    def has_audit(self, path: Path) -> bool: ...
+
+    def integrity_source(self, path: Path) -> IntegritySource: ...

@@ -26,6 +26,7 @@ from betting_ml.adapters.memory_rate_limiter import MemoryRateLimiter
 from betting_ml.adapters.parquet_repository import ParquetMatchRepository
 from betting_ml.adapters.report_store import JsonReportStore
 from betting_ml.adapters.sql.audit import SqlAuditLog, SqlIntegrity
+from betting_ml.adapters.sql.backup import SqliteBackups, database_path
 from betting_ml.adapters.sql.db import prepare, session_factory
 from betting_ml.adapters.sql.repositories import (
     SqlBetRepository,
@@ -44,7 +45,7 @@ from betting_ml.application.catalog import RefreshData
 from betting_ml.application.compare_matches import CompareMatches, EvaluateManualOdds
 from betting_ml.application.evaluate_holdout import EvaluateHoldout
 from betting_ml.application.generate_report import GenerateReport
-from betting_ml.application.maintenance import VerifyIntegrity
+from betting_ml.application.maintenance import BackupDatabase, RestoreDatabase, VerifyIntegrity
 from betting_ml.application.manage_bets import ManageBets
 from betting_ml.application.predict_matches import PredictMatches
 from betting_ml.application.read_backtest import ReadBacktestReport
@@ -349,6 +350,19 @@ class Container:
 
     def verify_integrity(self) -> VerifyIntegrity:
         return VerifyIntegrity(SqlIntegrity(self.db_sessions))
+
+    # Backups never open the database through ``db_sessions``: no migration runs before a
+    # copy or a restore (the API migrates a restored copy when it starts).
+    def backup_database(self) -> BackupDatabase:
+        return BackupDatabase(
+            SqliteBackups(database_path(self.settings.database_url)),
+            self.settings.data_path / "backups",
+            self.settings.backup_keep,
+        )
+
+    def restore_database(self) -> RestoreDatabase:
+        backups = self.backup_database()
+        return RestoreDatabase(backups.files, backups)
 
     @cached_property
     def rate_limiter(self) -> MemoryRateLimiter:

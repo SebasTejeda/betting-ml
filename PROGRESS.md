@@ -204,3 +204,10 @@ Spec activa: [`specs/003-security-hardening/`](specs/003-security-hardening/). T
   - Detecta registros alterados (indica el seq), borrados y filas cambiadas, insertadas o borradas fuera de la API.
   - Tests de propiedad del encadenado (40 semillas) y de concurrencia (4 hilos).
   - 820 tests backend (cobertura 98.8 %; auditoría 98–100 %)
+- 2026-10-22 · T016 · Copias de seguridad y restauración verificadas (`betting-ml backup` / `restore` + make).
+  - Copia en caliente con la API de backup de SQLite en `data/backups/`: un solo archivo con su `.sha256` (formato sha256sum).
+  - Retención `BACKUP_KEEP` por fecha y sufijo; las copias previas a restaurar rotan aparte.
+  - `restore` rechaza copias sin hash, con hash distinto, corruptas, ajenas o con filas alteradas aunque el hash se haya recalculado (verifica la auditoría).
+  - Antes de restaurar guarda una copia del estado actual y pide confirmación (`--yes` para scripts).
+  - 21 tests nuevos (copia durante escrituras concurrentes, 9 formas de copia mala); 8 mutaciones detectadas.
+  - 841 tests backend (cobertura 99 %)

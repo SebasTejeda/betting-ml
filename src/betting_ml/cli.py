@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 
 import typer
 
@@ -261,6 +262,55 @@ def verify_integrity() -> None:
             typer.echo(f"FALLO: {problem}", err=True)
         raise typer.Exit(code=1)
     typer.echo("Integridad verificada: sin problemas")
+
+
+@app.command()
+def backup() -> None:
+    """Copia en caliente de la base (API de backup de SQLite) en data/backups/ con su .sha256;
+    conserva las BACKUP_KEEP más recientes."""
+    from betting_ml.application.maintenance import BackupError
+    from betting_ml.container import Container
+
+    try:
+        result = Container().backup_database().run()
+    except BackupError as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(code=1) from exc
+    typer.echo(f"Copia: {result.path}")
+    typer.echo(f"SHA-256: {result.sha256}")
+    if result.removed:
+        typer.echo(f"Retención: {len(result.removed)} copia(s) antigua(s) borrada(s)")
+
+
+@app.command()
+def restore(
+    file: Path = typer.Argument(..., help="Copia .db con su .sha256 al lado"),
+    yes: bool = typer.Option(False, "--yes", help="No pedir confirmación"),
+) -> None:
+    """Restaura una copia verificada (hash, integridad y auditoría). Antes guarda una copia del
+    estado actual. Detén la API antes; al arrancar, migra la copia si es antigua."""
+    from betting_ml.application.maintenance import RestoreError
+    from betting_ml.container import Container
+
+    use_case = Container().restore_database()
+    problems = use_case.verify(file)
+    if problems:
+        for problem in problems:
+            typer.echo(f"RECHAZADA: {problem}", err=True)
+        raise typer.Exit(code=1)
+    if not yes:
+        typer.confirm(
+            f"{file.name} es válida. ¿Reemplazar la base actual? (antes se guarda una copia)",
+            abort=True,
+        )
+    try:
+        result = use_case.run(file)
+    except RestoreError as exc:  # changed between the check and the restore
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(code=1) from exc
+    typer.echo(f"Restaurada: {result.restored.name}")
+    if result.previous is not None:
+        typer.echo(f"Estado anterior guardado en {result.previous}")
 
 
 @app.command("db-upgrade")

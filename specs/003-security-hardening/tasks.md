@@ -122,7 +122,7 @@ Reglas de ejecución:
   - Tests: cadena válida; registro alterado → falla e indica el `seq`; `UPDATE`/`DELETE` → error; apuesta cambiada fuera de la API → detectada.
   - Commit: `feat(audit): append-only hash-chained audit log and verify-integrity`
 
-- [ ] **T016** Copias de seguridad y restauración (US6)
+- [x] **T016** Copias de seguridad y restauración (US6)
   - `betting-ml backup` / `restore` (+ `make backup`/`restore`): API de backup de SQLite, `.sha256`, retención `BACKUP_KEEP`, copia previa al restaurar.
   - Tests: backup en caliente consistente; restore rechaza un archivo con hash distinto o corrupto.
   - Commit: `feat(ops): verified sqlite backup and restore`

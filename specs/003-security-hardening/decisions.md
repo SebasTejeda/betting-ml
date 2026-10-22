@@ -236,3 +236,44 @@ Formato:
   - Sin comprobar el hash: fallan 41.
   - Sin comparar estados: fallan 5.
   - Sin el bloqueo previo: falla el test de concurrencia.
+
+## 2026-10-22 — T016: copias con la API de backup de SQLite y restauración verificada dentro de SQLite
+- Contexto: `betting-ml backup` / `restore` con `.sha256`, retención `BACKUP_KEEP` y copia previa al restaurar. La base está en WAL, así que copiar el archivo `.db` a mano puede dejar fuera lo que aún está en el `-wal` o capturar una página a medio escribir.
+- Decisión:
+  - **Copia en caliente con la API de backup de SQLite** (`sqlite3.Connection.backup`), en un solo paso y bajo el bloqueo de lectura de SQLite. Es coherente aunque la API esté escribiendo. Un test toma 6 copias mientras otro hilo crea y edita apuestas; todas pasan las comprobaciones de SQLite y la auditoría.
+  - **Cada copia es un único archivo.** Se pasa a `journal_mode=DELETE` (sin `-wal` ni `-shm`), así el SHA-256 del `.db` identifica la copia completa.
+    - El `.sha256` va al lado, en formato `sha256sum` (`<hash>  <nombre>`), y se puede comprobar con `sha256sum -c` en otra máquina.
+    - La copia se verifica (`integrity_check`, `foreign_key_check`, tablas de la aplicación) antes de escribir el hash. Si falla, se borra y el comando termina con código 1.
+  - **Nombres y retención.** Los nombres son `app-AAAAMMDD-HHMMSS.db`, con sufijo `-2`, `-3`… si coinciden en el mismo segundo.
+    - La rotación ordena por (fecha, sufijo) leídos del nombre, no por orden alfabético. Por orden alfabético, `…-2.db` va antes que `….db` y se habría borrado la copia más nueva. Un test lo cubre.
+    - Los archivos que no siguen el formato nunca se borran.
+    - Las copias previas a una restauración (`pre-restore-…`) rotan aparte, también con `BACKUP_KEEP`, y no desplazan a las copias normales.
+  - **La restauración verifica antes de tocar nada.** Lo que se comprueba, en orden:
+    1. Existe la copia.
+    2. Existe su `.sha256`, que contiene un SHA-256 válido que coincide con el archivo.
+    3. Las comprobaciones de SQLite y las tablas de betting-ml pasan.
+    4. Si la copia tiene `audit_log`, pasa la verificación completa de T015: cadena, y apuestas y ajustes iguales a su último evento.
+    - El paso 4 importa. Quien edita una apuesta en la copia y recalcula el `.sha256` supera los pasos 1–3, pero no la auditoría. Un test lo demuestra.
+    - Los candidatos se abren en **solo lectura e inmutables** (`mode=ro&immutable=1`): verificarlos nunca escribe un byte, así que su hash sigue valiendo.
+    - No se acepta como copia la propia base activa.
+  - **Restaurar es copiar dentro de SQLite, no cambiar archivos.** Primero se guarda una copia verificada del estado actual (`pre-restore-…`). Después la API de backup escribe la copia sobre la base activa, bajo el bloqueo de SQLite, y la base vuelve a WAL.
+    - Mover o renombrar archivos con conexiones abiertas (y en Windows, con archivos bloqueados) puede dejar un `-wal` viejo aplicado sobre la base nueva.
+    - La rotación nunca borra la copia que se está restaurando. Así, deshacer una restauración desde su `pre-restore` funciona aunque `BACKUP_KEEP=1`.
+  - **Confirmación.** `restore` verifica, muestra los problemas (código 1) o pide confirmación. `--yes` la omite, para scripts.
+    - Se recomienda detener la API antes de restaurar. Si sigue en marcha, la restauración espera a su bloqueo de escritura y es coherente, pero las sesiones en curso verán el cambio de golpe.
+    - Restaurar una copia de un esquema anterior funciona: la API la migra al arrancar (las migraciones validan antes de cambiar nada, T013).
+  - **Arquitectura.**
+    - El puerto `DatabaseFiles` está en el dominio.
+    - El adaptador es `adapters/sql/backup.py`.
+    - Los casos de uso `BackupDatabase` y `RestoreDatabase` están en `application/maintenance.py`, junto a `VerifyIntegrity`, que reutilizan.
+    - El contenedor los construye desde la configuración sin abrir la base por `db_sessions`, así que no se migra nada antes de copiar o restaurar.
+- Alcance: las copias se quedan en `data/backups/`, en la misma máquina. Sacarlas fuera del equipo (con su `.sha256`) es parte del despliegue (T020, `docs/deploy.md`). Es lo que cubre el riesgo, aceptado en T015, de que alguien con el archivo reescriba toda la cadena.
+- Impacto: mutaciones comprobadas, todas detectadas.
+  - Sin comparar el hash: fallan 2 tests.
+  - Sin la verificación de auditoría: fallan 2.
+  - Sin la copia previa: fallan 3.
+  - Sin proteger el candidato de la rotación: falla 1.
+  - Copia en WAL: falla 1.
+  - Aceptar la base activa: falla 1.
+  - Rotar por orden alfabético: falla 1.
+  - Conservar una copia que no pasó la verificación: falla 1.
