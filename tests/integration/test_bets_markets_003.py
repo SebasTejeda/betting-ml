@@ -229,3 +229,32 @@ def test_limits_apply_to_every_market(sessions) -> None:  # type: ignore[no-unty
     with pytest.raises(LimitWarningError):  # 409: stake above the maximum, needs confirm
         manage.create(big)
     assert manage.create(big, confirm=True).market == "btts"
+
+
+def test_summary_by_market_splits_clv_sources(sessions) -> None:  # type: ignore[no-untyped-def]
+    from betting_ml.application.manage_bets import by_market
+
+    settled = _bet("totals", "over", 2.5).settle(BetStatus.WON, NOW)
+    bets = [
+        replace(settled, clv=0.04, clv_source="football_data_psc"),
+        replace(settled, clv=-0.02, clv_source="football_data_avgc"),
+        replace(settled, clv=0.01, clv_source="football_data_avgc", kind=BetKind.REAL),
+        _bet("btts", "yes", None),
+        replace(
+            _bet("h2h", None, None, Outcome.HOME).settle(BetStatus.LOST, NOW),
+            clv=0.03,
+            clv_source="odds_api_pinnacle",
+        ),
+    ]
+    rows = {r["market"]: r for r in by_market(bets)}
+    totals = rows["totals"]
+    assert totals["bets"] == 3 and totals["settled"] == 3
+    assert totals["clv_mean_pinnacle"] == pytest.approx(0.04) and totals["clv_n_pinnacle"] == 1
+    assert (
+        totals["clv_mean_market_average"] == pytest.approx(-0.005)
+        and totals["clv_n_market_average"] == 2
+    )
+    assert totals["paper_with_clv"] == 2 and totals["paper_clv_mean"] == pytest.approx(0.01)
+    assert totals["evidence_target"] == 100 and totals["evidence_met"] is False
+    assert rows["btts"]["clv_n_pinnacle"] == 0 and rows["btts"]["roi"] is None
+    assert rows["h2h"]["clv_mean_pinnacle"] == pytest.approx(0.03)

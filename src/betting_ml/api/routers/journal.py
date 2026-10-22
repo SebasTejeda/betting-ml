@@ -368,6 +368,7 @@ def summary(
         },  # type: ignore[arg-type]
         by_league=s.by_league,
         by_bookmaker=s.by_bookmaker,
+        by_market=s.by_market,  # type: ignore[arg-type]
         month={
             "loss_limit": s.month_limit,
             "current_loss": s.month_loss,

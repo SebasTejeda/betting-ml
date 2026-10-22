@@ -235,6 +235,25 @@ class SignalProgressOut(BaseModel):
     evidence_met: bool
 
 
+class MarketSummaryOut(BaseModel):
+    """Spec 003 US6: one market of the journal."""
+
+    market: str
+    bets: int
+    settled: int
+    roi: float | None
+    clv_mean_pinnacle: float | None
+    clv_n_pinnacle: int
+    clv_mean_market_average: float | None
+    clv_n_market_average: int
+    clv_mean_other: float | None
+    clv_n_other: int
+    paper_with_clv: int
+    paper_clv_mean: float | None
+    evidence_target: int
+    evidence_met: bool
+
+
 class SummaryOut(BaseModel):
     bets: int
     settled: int
@@ -246,6 +265,7 @@ class SummaryOut(BaseModel):
     bankroll: BankrollOut
     by_league: list[dict[str, Any]]
     by_bookmaker: list[dict[str, Any]]
+    by_market: list[MarketSummaryOut] = []
     month: MonthOut
     experimental_signal: SignalProgressOut
     best_odds_uplift_mean: float | None

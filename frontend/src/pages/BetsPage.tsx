@@ -40,7 +40,13 @@ import {
   type BetsParams,
   type SummaryKind,
 } from "../api/hooks";
-import { OUTCOME_LABEL, type Bet, type Summary } from "../api/types";
+import {
+  MARKET_LABEL,
+  OUTCOME_LABEL,
+  type Bet,
+  type MarketSummary,
+  type Summary,
+} from "../api/types";
 import {
   Empty,
   ErrorBox,
@@ -90,7 +96,7 @@ const TOOLTIP_STYLE = {
 /** Bets on the spec-003 markets: "totals · over 2.5". */
 function selectionLabel(bet: Bet): string {
   const line = bet.line === null || bet.line === undefined ? "" : ` ${bet.line}`;
-  return `${bet.market} · ${bet.selection ?? ""}${line}`;
+  return `${MARKET_LABEL[bet.market] ?? bet.market} · ${bet.selection ?? ""}${line}`;
 }
 
 export function BetsPage() {
@@ -335,7 +341,82 @@ function SummaryPanel({ summary, currency }: { summary: Summary; currency: strin
           )}
         </Panel>
       </div>
+      <MarketsEvidence markets={summary.by_market} />
     </div>
+  );
+}
+
+/** Spec 003 US6: CLV and bets per market. A market only leaves EXPERIMENTAL with ≥ 100 paper
+ *  bets with mean CLV > 0 (manual change in configs/markets.yaml). */
+function MarketsEvidence({ markets }: { markets: MarketSummary[] }) {
+  return (
+    <Panel title="Evidencia por mercado" icon={FlaskConical} action={<ExperimentalBadge />}>
+      {markets.length === 0 ? (
+        <Empty>Aún no hay apuestas.</Empty>
+      ) : (
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Mercado</TableHead>
+              <TableHead className="text-right">Apuestas (liquidadas)</TableHead>
+              <TableHead className="text-right">ROI</TableHead>
+              <TableHead className="text-right">CLV vs Pinnacle</TableHead>
+              <TableHead className="text-right">CLV vs cierre promedio</TableHead>
+              <TableHead className="min-w-40">Papel con CLV</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {markets.map((m) => (
+              <TableRow key={m.market}>
+                <TableCell className="font-medium">{MARKET_LABEL[m.market] ?? m.market}</TableCell>
+                <TableCell className="text-right tabular-nums">
+                  {m.bets} ({m.settled})
+                </TableCell>
+                <TableCell className={cn("text-right tabular-nums", evTone(m.roi))}>
+                  {pct(m.roi, 1, true)}
+                </TableCell>
+                <TableCell className={cn("text-right tabular-nums", evTone(m.clv_mean_pinnacle))}>
+                  {pct(m.clv_mean_pinnacle, 2, true)}{" "}
+                  <span className="text-xs text-muted-foreground">n={m.clv_n_pinnacle}</span>
+                </TableCell>
+                <TableCell
+                  className={cn("text-right tabular-nums", evTone(m.clv_mean_market_average))}
+                >
+                  {pct(m.clv_mean_market_average, 2, true)}{" "}
+                  <span className="text-xs text-muted-foreground">n={m.clv_n_market_average}</span>
+                </TableCell>
+                <TableCell>
+                  <Meter
+                    label={`Apuestas en papel con CLV en ${MARKET_LABEL[m.market] ?? m.market}`}
+                    value={Math.min(m.paper_with_clv, m.evidence_target)}
+                    max={m.evidence_target}
+                    tone="experimental"
+                  />
+                  <span className="text-xs text-muted-foreground">
+                    {m.paper_with_clv}/{m.evidence_target}
+                    {m.evidence_met ? " · condición cumplida" : ""}
+                  </span>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      )}
+      <ul className="mt-3 flex list-disc flex-col gap-1 pl-5 text-xs text-muted-foreground">
+        <li>
+          El cierre promedio del mercado es una referencia más débil que Pinnacle: su CLV no
+          equivale al de Pinnacle.
+        </li>
+        <li>
+          Por ahora solo 1X2 y Más/Menos 2.5 de partidos de liga tienen CLV; el resto de mercados no
+          tiene cierre de referencia.
+        </li>
+        <li>
+          Las apuestas de Champions/Europa League no se liquidan solas: márcalas a mano. Mientras
+          estén sin confirmar con un resultado oficial cuentan como pérdida para el límite mensual.
+        </li>
+      </ul>
+    </Panel>
   );
 }
 

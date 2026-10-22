@@ -112,6 +112,7 @@ class Summary:
     bankroll_series: list[tuple[str, Decimal]]
     by_league: list[dict[str, Any]]
     by_bookmaker: list[dict[str, Any]]
+    by_market: list[dict[str, Any]]
     month_limit: Decimal
     month_loss: Decimal
     month_remaining: Decimal
@@ -370,6 +371,7 @@ class ManageBets:
             bankroll_series=series,
             by_league=_group(settled, lambda b: b.league, "league"),
             by_bookmaker=_group(settled, lambda b: b.bookmaker, "bookmaker"),
+            by_market=by_market(bets),
             month_limit=limit,
             month_loss=loss,
             month_remaining=max(Decimal("0.00"), limit - loss),
@@ -409,6 +411,61 @@ def _group(bets: list[Bet], key: Callable[[Bet], str], name: str) -> list[dict[s
                 "bets": len(items),
                 "roi": float(profit / staked) if staked > 0 else None,
                 "clv_mean": sum(clvs) / len(clvs) if clvs else None,
+            }
+        )
+    return out
+
+
+# CLV sources: Pinnacle's closing price (sharp) vs the closing market average (weaker).
+PINNACLE_CLV_SOURCES = ("football_data_psc", "odds_api_pinnacle")
+MARKET_AVERAGE_CLV_SOURCES = ("football_data_avgc",)
+EVIDENCE_PAPER_BETS = 100  # spec 003 US6: ≥ 100 paper bets with mean CLV > 0 per market
+
+
+def _mean(values: list[float]) -> float | None:
+    return sum(values) / len(values) if values else None
+
+
+def by_market(bets: list[Bet]) -> list[dict[str, Any]]:
+    """Spec 003 US6: bets, ROI and CLV per market, with the CLV against Pinnacle apart from the
+    CLV against the closing market average, and the progress of paper bets with CLV towards
+    the evidence condition (≥ 100 with mean CLV > 0)."""
+    groups: dict[str, list[Bet]] = defaultdict(list)
+    for bet in bets:
+        groups[bet.market].append(bet)
+    out = []
+    for market, items in sorted(groups.items()):
+        settled = [b for b in items if b.status is not BetStatus.PENDING and b.profit is not None]
+        staked = sum((b.stake for b in settled), Decimal("0"))
+        profit = sum((b.profit or Decimal("0") for b in settled), Decimal("0"))
+        with_clv = [b for b in items if b.clv is not None]
+        sharp = [b.clv for b in with_clv if b.clv_source in PINNACLE_CLV_SOURCES]
+        average = [b.clv for b in with_clv if b.clv_source in MARKET_AVERAGE_CLV_SOURCES]
+        other = [
+            b.clv
+            for b in with_clv
+            if b.clv_source not in (*PINNACLE_CLV_SOURCES, *MARKET_AVERAGE_CLV_SOURCES)
+        ]
+        paper_clv = [b.clv for b in with_clv if b.kind is BetKind.PAPER and b.clv is not None]
+        mean_paper = _mean(paper_clv)
+        out.append(
+            {
+                "market": market,
+                "bets": len(items),
+                "settled": len(settled),
+                "roi": float(profit / staked) if staked > 0 else None,
+                "clv_mean_pinnacle": _mean([v for v in sharp if v is not None]),
+                "clv_n_pinnacle": len(sharp),
+                "clv_mean_market_average": _mean([v for v in average if v is not None]),
+                "clv_n_market_average": len(average),
+                "clv_mean_other": _mean([v for v in other if v is not None]),
+                "clv_n_other": len(other),
+                "paper_with_clv": len(paper_clv),
+                "paper_clv_mean": mean_paper,
+                "evidence_target": EVIDENCE_PAPER_BETS,
+                "evidence_met": len(paper_clv) >= EVIDENCE_PAPER_BETS
+                and mean_paper is not None
+                and mean_paper > 0,
             }
         )
     return out
