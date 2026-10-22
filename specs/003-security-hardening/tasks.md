@@ -13,7 +13,7 @@ Reglas de ejecución:
 - [x] **T000** Redactar la spec 003: `spec.md`, `plan.md`, `contracts/api.md`, `tasks.md` y `decisions.md`.
   - Commit: `docs: spec 003 security hardening`
 
-- [ ] **T001** Integrar la spec 003 al repo
+- [x] **T001** Integrar la spec 003 al repo
   - Agregar el principio **XII. Seguridad e integridad** (spec §8) a `specs/constitution.md`.
   - `CLAUDE.md`: spec activa `specs/003-security-hardening/`, orden de lectura y reglas nuevas (rutas autenticadas, sin secretos en el navegador, auditoría de solo inserción, CI de seguridad).
   - `PROGRESS.md`: sección "Spec 003".

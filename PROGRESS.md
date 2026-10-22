@@ -134,3 +134,14 @@ Spec activa: [`specs/002-odds-comparator/`](specs/002-odds-comparator/). Una lí
   - El navegador usado para la prueba guardó una clave temporal: pulsa "Clave configurada" y pega tu `APP_API_KEY`.
 - 2026-09-28 · Cambio del dueño · Apuestas reales sin cuota de referencia: ya no se rechazan (422); se registran con sin_referencia=true (migración 0003), cuentan para todos los límites de US6 (vencidas desde el final del día del partido + 3 h), quedan fuera de la señal y su CLV sale del cierre de Pinnacle de football-data. Calculadora con '¿El partido no aparece?' y aviso; Mis apuestas las marca. CLAUDE.md empieza con 'Responde siempre al usuario en español.'
 - 2026-09-28 · Rediseño del frontend (solo presentación) · shadcn/ui + lucide + Inter, colores como tokens CSS con tema oscuro por defecto y claro (recordado en localStorage), contraste AA verificado con tests; barra superior y menú inferior en el celular; Hoy con tarjetas y chips de cuotas, Partido con marcador y barras 1X2, Calculadora con veredicto grande, Mis apuestas con KPIs, curva de bankroll con área y badges de estado, Backtest y Ajustes con tarjetas; skeletons de carga. Página nueva Top del día (/top), solo frontend (only_value=true). 49 tests del frontend en verde.
+
+---
+
+# Spec 003 — Seguridad, integridad de datos y arquitectura
+
+Spec activa: [`specs/003-security-hardening/`](specs/003-security-hardening/). Trabajo en la rama `Daniel`; tras cada tarea se pide confirmación al dueño. Una línea por tarea: `AAAA-MM-DD · TXXX · qué se hizo · resultado clave`.
+
+## Bitácora (spec 003)
+
+- 2026-10-22 · T000 · Spec 003 redactada a partir de una revisión del código: spec (hallazgos por categoría OWASP, 8 historias), plan (7 fases), contrato (login, errores, cabeceras), 23 tareas y decisiones. El dueño la aprueba con el modelo de un solo dueño (contraseña Argon2id y sesión de servidor)
+- 2026-10-22 · T001 · Spec 003 integrada: constitución XII (seguridad e integridad), CLAUDE.md con spec activa, reglas de seguridad, excepción de confirmación por tarea y nota sin make; ml-reviewer con bloque de la spec 003; /status con el estado de seguridad. Solo documentación; lint y tests no se corrieron (esta copia no tiene uv ni .venv)

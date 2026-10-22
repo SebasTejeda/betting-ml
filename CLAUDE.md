@@ -4,19 +4,19 @@ Responde siempre al usuario en español.
 
 Proyecto: modelo de ML para predecir partidos de fútbol (1X2), detectar value bets y servirlo con una API REST; comparador de cuotas con referencia Pinnacle, diario de apuestas y frontend. Se construye con **Spec-Driven Development (SDD)**.
 
-**Spec activa: `specs/002-odds-comparator/`** (la spec 001, `specs/001-prediction-model/`, está terminada; su código y resultados se mantienen).
+**Spec activa: `specs/003-security-hardening/`** (las specs 001, `specs/001-prediction-model/`, y 002, `specs/002-odds-comparator/`, están terminadas; su código y resultados se mantienen).
 
 ## Lee en este orden antes de hacer nada
 
-1. `specs/constitution.md` — reglas no negociables (I–XI).
-2. `specs/002-odds-comparator/spec.md` — qué se construye y criterio de éxito (spec activa).
-3. `specs/002-odds-comparator/plan.md` — cómo se construye.
-4. `specs/002-odds-comparator/contracts/api.md` — extensión del contrato de la API (se suma a `specs/001-prediction-model/contracts/api.md`).
-5. `specs/002-odds-comparator/tasks.md` — lista de tareas a ejecutar.
-6. `specs/002-odds-comparator/decisions.md` — decisiones de la spec activa.
-7. `PROGRESS.md` — dónde se quedó el trabajo (sección "Spec 002").
+1. `specs/constitution.md` — reglas no negociables (I–XII).
+2. `specs/003-security-hardening/spec.md` — qué se construye y criterio de éxito (spec activa).
+3. `specs/003-security-hardening/plan.md` — cómo se construye.
+4. `specs/003-security-hardening/contracts/api.md` — extensión del contrato de la API (se suma a los de las specs 001 y 002).
+5. `specs/003-security-hardening/tasks.md` — lista de tareas a ejecutar.
+6. `specs/003-security-hardening/decisions.md` — decisiones de la spec activa.
+7. `PROGRESS.md` — dónde se quedó el trabajo (sección "Spec 003").
 
-Referencia de la spec 001 (terminada): `specs/001-prediction-model/{spec,plan,experiments,decisions}.md` y `reports/REPORT.md`.
+Referencia de las specs terminadas: `specs/001-prediction-model/{spec,plan,experiments,decisions}.md` con `reports/REPORT.md`, y `specs/002-odds-comparator/{spec,plan,decisions}.md` con su `contracts/api.md` y `reports/REPORT_002_backtest.md`.
 
 ## Forma de trabajar
 
@@ -27,6 +27,7 @@ Referencia de la spec 001 (terminada): `specs/001-prediction-model/{spec,plan,ex
 - Si un resultado es sospechosamente bueno, asume fuga de información y revísalo antes de celebrarlo.
 - En los checkpoints 🔍 usa el subagente `ml-reviewer`.
 - No preguntes al usuario salvo que estés bloqueado de verdad (credenciales, decisión irreversible). Para todo lo demás, decide con criterio y documenta.
+- **Excepción en la spec 003:** el dueño pidió confirmar cada paso. Al terminar cada tarea (con su commit), presenta el resultado y pide confirmación antes de empezar la siguiente. El trabajo va en la rama `Daniel`.
 
 ## Reglas duras (resumen de la constitución)
 
@@ -41,13 +42,17 @@ Referencia de la spec 001 (terminada): `specs/001-prediction-model/{spec,plan,ex
 - **Evidencia antes de construir:** ninguna estrategia llega al frontend sin backtest que la respalde (puerta T008 de la spec 002).
 - **Dinero con `Decimal`**, nunca `float` (montos, stakes, bankroll, beneficios).
 - **Las API keys** (`ODDS_API_KEY`, `APP_API_KEY`) viven solo en `.env`: nunca en el frontend del repo, en fixtures grabados ni en logs.
+- **Seguridad (spec 003):** toda ruta de la API exige autenticación salvo `/health` y el login; nada de secretos en el navegador (`localStorage` incluido); contraseñas solo como hash Argon2id; escrituras con sesión exigen CSRF; la auditoría es de solo inserción; cada control de seguridad lleva tests negativos; las migraciones nunca borran ni corrigen datos en silencio.
 
 ## Comandos
 
 ```
 make setup | lint | test | data | baselines | exp ID=E05 | select | holdout | report | train-prod | serve | track | all
 make backtest-002 | backtest-002-final | db-upgrade | odds | settle | web | web-test | dev     (spec 002)
+make security | backup | restore FILE=... | verify-integrity                                   (spec 003, a medida que se implementan)
 ```
+
+En esta máquina no hay `make`: usa los equivalentes `uv run ...` / `npm run ...` del `Makefile`.
 
 Comandos del agente en `.claude/commands/`: `/next` (siguiente tarea), `/exp E07` (correr un experimento según protocolo), `/review` (checkpoint), `/status` (resumen del avance).
 
