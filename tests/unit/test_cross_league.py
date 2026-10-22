@@ -9,7 +9,9 @@ from betting_ml.adapters.parquet_repository import HoldoutAccessError, ParquetMa
 from betting_ml.application.validate_cross_league import (
     DEFAULT_RIDGE,
     RIDGE_GRID,
+    HoldoutEuropeAlreadyUsedError,
     ValidateCrossLeague,
+    ValidateCrossLeagueFinal,
     choose_ridge,
     match_metrics,
 )
@@ -141,3 +143,34 @@ def test_validate_cross_league_use_case(tmp_path: Path) -> None:
     assert (tmp_path / "reports" / "figures" / "003_calibration_europe.png").exists()
     with pytest.raises(HoldoutAccessError):
         repository.load("europe_holdout")
+
+
+def test_european_final_test_runs_once(tmp_path: Path) -> None:
+    seasons = ("2016-17", "2017-18", "2018-19", "2019-20", "2020-21")
+    data = _european(2500, seasons=seasons).sort_values("season")
+    data["date"] = pd.to_datetime([f"{s[:4]}-10-01" for s in data["season"]])
+    test = _european(300, seed=7, seasons=("2025-26",)).assign(date=pd.Timestamp("2025-10-01"))
+    repository = ParquetMatchRepository(tmp_path / "processed", allow_holdout=True)
+    repository.save("europe_matches", data)
+    repository.save("europe_holdout", test)
+    reports = tmp_path / "reports"
+    final = ValidateCrossLeagueFinal(repository, reports, git_commit=lambda: "abc1234")
+    with pytest.raises(FileNotFoundError):  # validation first
+        final.run_final()
+    assert not final.lock_path.exists()
+    ValidateCrossLeague(repository, reports).run()
+    evaluation = final.run_final()
+    assert evaluation.n_test == 300
+    assert set(evaluation.metrics) == {"M0", "M1", "M2"}
+    validation = json.loads(
+        (reports / "market_validation_003_europe.json").read_text(encoding="utf-8")
+    )
+    order = {"baja": 0, "media": 1, "alta": 2}
+    for group, level in evaluation.levels.items():
+        assert order[level] <= order[validation["levels"][group]]  # never above validation
+    lock = json.loads(final.lock_path.read_text(encoding="utf-8"))
+    assert lock["status"] == "completed" and lock["git_commit"] == "abc1234"
+    assert (reports / "market_calibration_europe.json").exists()
+    assert "Champions 2025-26" in (reports / "REPORT_003_europe.md").read_text(encoding="utf-8")
+    with pytest.raises(HoldoutEuropeAlreadyUsedError):
+        final.run_final()

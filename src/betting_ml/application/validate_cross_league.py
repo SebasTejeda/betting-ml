@@ -8,8 +8,10 @@ validation). Never reads the European holdout (2025-26, its own lock).
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
+from collections.abc import Callable
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -26,6 +28,7 @@ from betting_ml.ml.calibration_markets import (
     baseline_rates,
     calibrate,
     selection_records,
+    worst,
 )
 from betting_ml.ml.models.cross_league import CrossLeagueModel, FrequencyModel, eligible
 from betting_ml.ml.models.poisson import outcome_probabilities, over_under_probabilities
@@ -205,3 +208,165 @@ def _json_default(value: object) -> object:
     if isinstance(value, np.generic):
         return value.item()
     raise TypeError(f"not serializable: {type(value)}")
+
+
+# ---------------------------------------------------------------- one-time European test
+
+EUROPE_LOCK_FILE = "HOLDOUT_003_EUROPE_USED.lock"
+EUROPE_CALIBRATION_FILE = "market_calibration_europe.json"
+EUROPE_REPORT_FILE = "REPORT_003_europe.md"
+
+
+class HoldoutEuropeAlreadyUsedError(RuntimeError):
+    pass
+
+
+@dataclass
+class EuropeFinalEvaluation:
+    metrics: dict[str, dict[str, float]]
+    calibration: list[GroupCalibration]
+    levels: dict[str, str]  # published: worst of validation and test
+    n_test: int
+    report_path: Path
+
+
+class ValidateCrossLeagueFinal(ValidateCrossLeague):
+    """ONE-TIME evaluation on the European 2025-26 holdout (rules in decisions.md)."""
+
+    def __init__(
+        self,
+        repository: MatchRepository,
+        reports_dir: Path,
+        git_commit: Callable[[], str] = lambda: "unknown",
+    ) -> None:
+        super().__init__(repository, reports_dir)
+        self.git_commit = git_commit
+
+    @property
+    def lock_path(self) -> Path:
+        return self.reports_dir / EUROPE_LOCK_FILE
+
+    def _lock(self, status: str, **extra: Any) -> None:
+        body = {
+            "status": status,
+            "timestamp": datetime.now(UTC).isoformat(timespec="seconds"),
+            "git_commit": self.git_commit(),
+            **extra,
+        }
+        self.lock_path.write_text(json.dumps(body, indent=2) + "\n", encoding="utf-8", newline="\n")
+
+    def run_final(self) -> EuropeFinalEvaluation:
+        if self.lock_path.exists():
+            raise HoldoutEuropeAlreadyUsedError(f"{self.lock_path} exists: already evaluated.")
+        validation_path = self.reports_dir / REPORT_FILE
+        if not validation_path.exists():
+            raise FileNotFoundError("run `validate-cross-league` before the European test")
+        validation_bytes = validation_path.read_bytes()
+        validation_sha = hashlib.sha256(validation_bytes).hexdigest()
+        validation = json.loads(validation_bytes.decode("utf-8"))
+        self._lock("started", validation_json_sha256=validation_sha)
+
+        train = eligible(self.repository.load("europe_matches")).sort_values(["date", "match_id"])
+        raw_test = self.repository.load("europe_holdout")
+        test = eligible(raw_test).sort_values(["date", "match_id"])
+        if test.empty:
+            raise ValueError("no eligible European test matches")
+        if train["date"].max() >= test["date"].min():
+            raise ValueError("training data overlaps the European test")
+        season = str(test["season"].iloc[0])
+        models: dict[str, CrossLeagueModel | FrequencyModel] = {
+            "M0": FrequencyModel().fit(train),
+            "M1": CrossLeagueModel(mode="raw").fit(train),
+            "M2": CrossLeagueModel(mode="decomposed", ridge=choose_ridge(train)).fit(train),
+        }
+        metrics: dict[str, dict[str, float]] = {}
+        scored = test
+        for name, model in models.items():
+            mats = model.score_matrices(test)
+            metrics[name] = match_metrics(mats, test)
+            if name == validation["chosen"]:
+                scored = test.assign(fold=season, matrix=list(mats))
+        calibration = self._calibrate(scored, train)
+        test_levels = {c.group: c.confidence for c in calibration}
+        published: dict[str, str] = {
+            group: worst([validation["levels"][group], level])
+            for group, level in test_levels.items()
+        }
+        payload = {
+            "generated_at": datetime.now(UTC).isoformat(timespec="seconds"),
+            "scope": f"Champions {season}, clubes de países del catálogo (evaluado una sola vez)",
+            "n_test_matches": len(test),
+            "n_test_raw": len(raw_test),
+            "model": validation["chosen"],
+            "metrics": metrics,
+            "validation_levels": validation["levels"],
+            "test_levels": test_levels,
+            "levels": published,
+            "test_groups": [asdict(c) for c in calibration],
+        }
+        (self.reports_dir / EUROPE_CALIBRATION_FILE).write_text(
+            json.dumps(payload, indent=2, ensure_ascii=False, default=_json_default),
+            encoding="utf-8",
+            newline="\n",
+        )
+        report = self.reports_dir / EUROPE_REPORT_FILE
+        report.write_text(render_europe_report(payload, validation), encoding="utf-8", newline="\n")
+        self._lock(
+            "completed",
+            validation_json_sha256=validation_sha,
+            n_test_matches=len(test),
+            levels=published,
+        )
+        return EuropeFinalEvaluation(metrics, calibration, published, len(test), report)
+
+
+def render_europe_report(payload: dict[str, Any], validation: dict[str, Any]) -> str:
+    names = {"M0": "Frecuencias", "M1": "Elo crudo", "M2": "Elo + desplazamiento por liga"}
+    lines = [
+        "# Spec 003 — Partidos entre ligas (Champions/Europa League)",
+        "",
+        f"- Test: {payload['scope']}: {payload['n_test_matches']} partidos elegibles de "
+        f"{payload['n_test_raw']} (lock `{EUROPE_LOCK_FILE}`).",
+        "- Rating: Elo propio entre ligas sobre openfootball (ClubElo caído); fuerza = nivel del "
+        "club en su liga + desplazamiento de la liga estimado con partidos europeos.",
+        "- Elegibles: clubes de países del catálogo con ≥ 10 partidos con rating en el último "
+        "año y un partido de liga en los 60 días previos.",
+        "",
+        "## Modelos",
+        "",
+        "| Modelo | Log loss 1X2 validación (media 2018-25) | Log loss 1X2 test "
+        "| Log loss Más/Menos 2.5 test | Goles esperados / reales (test) |",
+        "|---|---|---|---|---|",
+    ]
+    for key, label in names.items():
+        val = validation["mean"][key]["log_loss_1x2"]
+        test = payload["metrics"][key]
+        lines.append(
+            f"| {label} | {val:.4f} | {test['log_loss_1x2']:.4f} | {test['log_loss_ou25']:.4f} "
+            f"| {test['expected_goals']:.2f} / {test['actual_goals']:.2f} |"
+        )
+    lines += [
+        "",
+        "## Niveles de confianza",
+        "",
+        "| Mercado | Validación | Test | Publicado |",
+        "|---|---|---|---|",
+    ]
+    for group, level in payload["levels"].items():
+        lines.append(
+            f"| `{group}` | {payload['validation_levels'][group]} "
+            f"| {payload['test_levels'][group]} | **{level}** |"
+        )
+    lines += [
+        "",
+        "## Cómo leerlo",
+        "",
+        "- Los niveles valen para partidos entre clubes de países del catálogo; para el resto la "
+        "API no da análisis (`503 RATINGS_UNAVAILABLE`).",
+        "- `alta` exige ≥ 400 casos positivos: con el test europeo no se puede alcanzar.",
+        "- Más/Menos 2.5 está bien calibrado pero distingue poco entre partidos; 1X2 queda `baja` "
+        "en validación por una ECE apenas por encima del umbral con sesgo ≈ 0 (decisions.md).",
+        "- Los partidos entre ligas siempre llevan el aviso de más incertidumbre.",
+        "",
+    ]
+    return "\n".join(lines)
