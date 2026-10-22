@@ -10,7 +10,13 @@ import yaml
 from pydantic import BaseModel, Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from betting_ml.domain.advice import AdviceSettings, Rule
+from betting_ml.domain.advice import (
+    FIXED_VENUE_WORDS,
+    AdviceSettings,
+    Rule,
+    known_fields,
+    template_fields,
+)
 from betting_ml.domain.markets import (
     LINE_MARKETS,
     SELECTIONS,
@@ -401,10 +407,21 @@ class AdviceFile(BaseModel):
         missing = required - set(self.messages)
         if missing:
             raise ValueError(f"advice.yaml messages missing {sorted(missing)}")
+        known = known_fields()
         for group, rules in self.rules.items():
             for rule in rules:
                 if any(w.lower() in rule.text.lower() for w in self.forbidden_words):
                     raise ValueError(f"forbidden word in rule text of {group}: {rule.text}")
+                unknown = ({rule.metric} | set(template_fields(rule.text))) - known
+                if unknown:
+                    raise ValueError(
+                        f"unknown metric/field {sorted(unknown)} in {group}: {rule.text}"
+                    )
+                if any(w in rule.text for w in FIXED_VENUE_WORDS):
+                    raise ValueError(
+                        f"{group}: write the venue with *_venue_text (it is empty when the form "
+                        f"falls back to every match), not fixed: {rule.text}"
+                    )
         return self
 
     def to_settings(self) -> AdviceSettings:

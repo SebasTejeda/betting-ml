@@ -197,3 +197,35 @@ def test_migration_0004_adds_market_columns(tmp_path: Path) -> None:
     assert columns["outcome"]["nullable"]
     repo = SqlBetRepository(session_factory(engine))
     assert repo.add(_bet("btts", "yes", None)).id == 1
+
+
+def test_over_under_clv_falls_back_to_the_closing_average(sessions) -> None:  # type: ignore[no-untyped-def]
+    """2026-27 has no Pinnacle in football-data (checkpoint T017): the closing market average
+    is used, labelled with its own source."""
+    repo = SqlBetRepository(sessions)
+    bet = repo.add(_bet("totals", "under", 2.5))
+    frame = _results(None).assign(avgc_over25=1.80, avgc_under25=2.00)
+    _settle(sessions, frame).run()
+    settled = repo.get(bet.id or 0)
+    assert settled is not None and settled.status is BetStatus.LOST
+    p_under = float(normalize_shin([1.80, 2.00])[1])
+    assert settled.clv == pytest.approx(1.90 * p_under - 1)
+    assert settled.clv_source == "football_data_avgc"
+
+
+def test_limits_apply_to_every_market(sessions) -> None:  # type: ignore[no-untyped-def]
+    from betting_ml.application.manage_bets import LimitWarningError
+
+    manage = ManageBets(
+        SqlBetRepository(sessions),
+        SqlSettingsRepository(sessions),
+        SqlOddsRepository(sessions),
+        clock=lambda: NOW,
+    )
+    big = NewBet(
+        match_id="E0-2026-10-25-arsenal-chelsea", outcome=None, bookmaker="betsson", odds=Decimal("1.95"),
+        stake=Decimal("900"), kind=BetKind.REAL, market="btts", selection="yes",
+    )  # fmt: skip
+    with pytest.raises(LimitWarningError):  # 409: stake above the maximum, needs confirm
+        manage.create(big)
+    assert manage.create(big, confirm=True).market == "btts"

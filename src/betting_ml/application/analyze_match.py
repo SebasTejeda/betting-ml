@@ -211,6 +211,7 @@ class AnalyzeMatch:
         top = snap[snap["level"] == 1]
         strength = top.groupby("country")["elo"].mean()
         frame: dict[str, Any] = {}
+        outside: list[str] = []
         for side, team in (("home", home), ("away", away)):
             row = snap[(snap["club"] == team.name) & (snap["country"] == team.country)]
             if row.empty or team.country not in strength.index:
@@ -218,6 +219,7 @@ class AnalyzeMatch:
             frame[f"{side}_elo"] = float(row.iloc[0]["elo"])
             frame[f"{side}_league_elo"] = float(strength[team.country])
             frame[f"{side}_league"] = team.league
+            outside += _outside_validated_domain(team.name, row.iloc[0], day)
         model = self.cross_model()
         mat = model.score_matrices(pd.DataFrame([frame]))[0]
         ratings = {
@@ -225,6 +227,7 @@ class AnalyzeMatch:
             "away": frame["away_elo"],
             "source": "elo_propio",
             "date": snap_day.isoformat(),
+            "outside_validated_domain": outside,
         }
         return normalize_matrix(mat), True, ratings
 
@@ -323,6 +326,9 @@ class AnalyzeMatch:
         )
         advice = build_advice(views, ctx, self.advice)
         warnings = self._warnings(cross, competition, home_form, away_form, advice, prices)
+        warnings += self._ratings_warnings(ratings or {})
+        if ratings:
+            ratings = {k: v for k, v in ratings.items() if k != "outside_validated_domain"}
         match = {
             "match_id": match_id,
             "competition": competition,
@@ -386,6 +392,33 @@ class AnalyzeMatch:
             )
         out += list(home_form.warnings) + list(away_form.warnings)
         return out
+
+    def _ratings_warnings(self, ratings: Mapping[str, Any]) -> list[str]:
+        return list(ratings.get("outside_validated_domain", []))
+
+
+MIN_RECENT_MATCHES = 10  # same rules the cross-league model was validated with (T006)
+MAX_DAYS_SINCE_LEAGUE = 60
+
+
+def _outside_validated_domain(team: str, rated: pd.Series, day: pd.Timestamp) -> list[str]:
+    """Warnings when a club is outside the domain the cross-league model was validated on."""
+    out = []
+    recent = rated.get("recent")
+    if recent is not None and pd.notna(recent) and int(recent) < MIN_RECENT_MATCHES:
+        out.append(
+            f"{team}: solo {int(recent)} partidos con rating en el último año; el ajuste entre "
+            "ligas se validó con 10 o más."
+        )
+    last = rated.get("last_league_match")
+    if last is not None and pd.notna(last):
+        days = (day - pd.Timestamp(last).normalize()).days
+        if days > MAX_DAYS_SINCE_LEAGUE:
+            out.append(
+                f"{team}: su último partido de liga con datos es de hace {days} días; su rating "
+                "puede estar desactualizado."
+            )
+    return out
 
 
 def _item(item: Any) -> dict[str, Any]:

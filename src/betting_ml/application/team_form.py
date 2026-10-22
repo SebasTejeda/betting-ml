@@ -17,6 +17,7 @@ import pandas as pd
 LAST_N = 6
 MIN_VENUE_MATCHES = 4
 H2H_YEARS = 5
+STALE_FORM_DAYS = 30
 COLUMNS = [
     "date",
     "competition",
@@ -191,6 +192,13 @@ class TeamFormService:
                 f"{team}: menos de {MIN_VENUE_MATCHES} partidos de "
                 f"{'local' if venue == 'home' else 'visita'}; se usan todos sus partidos."
             )
+        if len(last):
+            days = (day - pd.Timestamp(last.iloc[0]["date"])).days
+            if days > STALE_FORM_DAYS:
+                warnings.append(
+                    f"{team}: su último partido con datos es de hace {days} días; "
+                    "la forma puede estar desactualizada."
+                )
         if len(last) and last["xg_for"].isna().any():
             warnings.append(f"{team}: sin dato de xG en algunos partidos (p. ej. europeos).")
         return TeamForm(

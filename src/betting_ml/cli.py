@@ -64,10 +64,14 @@ def analyze(
     competition: str = typer.Option(None, help="Liga (E0, SP1…) o UCL/UEL"),
 ) -> None:
     """Análisis de un partido por consola (spec 003): mercados, lo más probable y forma."""
+    import sys
     from datetime import date as _date
 
     from betting_ml.container import Container
 
+    reconfigure = getattr(sys.stdout, "reconfigure", None)
+    if reconfigure is not None:  # Windows consoles/pipes default to cp1252
+        reconfigure(encoding="utf-8")
     analysis = Container().analyze_match.analyze(
         home, away, _date.fromisoformat(day) if day else None, competition
     )

@@ -155,15 +155,33 @@ def test_estimate_and_budget(tmp_path: Path) -> None:
     assert (estimate.markets, estimate.regions, estimate.estimated_credits) == (6, 1, 6)
     assert estimate.credits_remaining == 55
     with pytest.raises(OddsBudgetLowError):  # 55 − 6 < 50 reserve
-        service.refresh("m", "UCL", "Real Madrid", "RB Leipzig", date(2026, 10, 28))
+        service.refresh(
+            "UCL-2026-10-28-real-madrid-rb-leipzig",
+            "UCL",
+            "Real Madrid",
+            "RB Leipzig",
+            date(2026, 10, 28),
+        )
 
 
 def test_event_not_found(tmp_path: Path) -> None:
     service = _service(tmp_path, _Client())
     with pytest.raises(EventNotFoundError):
-        service.refresh("m", "UCL", "Real Madrid", "Getafe", date(2026, 10, 28))
+        service.refresh(
+            "UCL-2026-10-28-real-madrid-rb-leipzig",
+            "UCL",
+            "Real Madrid",
+            "Getafe",
+            date(2026, 10, 28),
+        )
     with pytest.raises(EventNotFoundError):
-        service.refresh("m", "XYZ", "Real Madrid", "RB Leipzig", date(2026, 10, 28))
+        service.refresh(
+            "XYZ-2026-10-28-real-madrid-rb-leipzig",
+            "XYZ",
+            "Real Madrid",
+            "RB Leipzig",
+            date(2026, 10, 28),
+        )
 
 
 def test_client_event_endpoints_never_leak_the_key() -> None:
@@ -186,3 +204,37 @@ def test_client_event_endpoints_never_leak_the_key() -> None:
     assert seen[1].path == "/v4/sports/soccer_uefa_champs_league/events/evt-001/odds"
     assert seen[1].params["markets"] == "h2h,totals"
     assert "secret-key" not in repr(client)
+
+
+@pytest.mark.parametrize(
+    "bad", ["UCL-2026-10-28/../../secret", r"..\..\x", "ucl-2026-10-28-a-b", ""]
+)
+def test_invalid_match_ids_never_touch_the_disk(tmp_path: Path, bad: str) -> None:
+    from betting_ml.application.event_odds import InvalidMatchIdError
+
+    service = _service(tmp_path, _Client())
+    assert service.prices(bad) == ({}, None)
+    with pytest.raises(InvalidMatchIdError):
+        service.refresh(bad, "UCL", "Real Madrid", "RB Leipzig", date(2026, 10, 28))
+
+
+def test_remaining_credits_use_the_latest_value_not_the_lowest(tmp_path: Path) -> None:
+    cache = tmp_path / "event_odds"
+    cache.mkdir()
+    old = {
+        "fetched_at": "2026-09-30T10:00:00+00:00",
+        "credits_remaining": 40,
+        "markets": [],
+        "event": {},
+    }
+    new = {
+        "fetched_at": "2026-10-20T10:00:00+00:00",
+        "credits_remaining": 380,
+        "markets": [],
+        "event": {},
+    }
+    (cache / "E0-2026-09-30-a-b.json").write_text(json.dumps(old), encoding="utf-8")
+    (cache / "E0-2026-10-20-a-b.json").write_text(json.dumps(new), encoding="utf-8")
+    assert _service(tmp_path, _Client(), remaining=None).estimate().credits_remaining == 380
+    # A newer snapshot of spec 002 in the same month wins when it is lower.
+    assert _service(tmp_path, _Client(), remaining=300).estimate().credits_remaining == 300

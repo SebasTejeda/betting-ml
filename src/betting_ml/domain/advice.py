@@ -37,6 +37,19 @@ FORM_FIELDS = (
 )
 
 
+FIXED_VENUE_WORDS = (" de local", " de visita")
+
+
+def known_fields() -> frozenset[str]:
+    """Every name a rule may use as ``metric`` or in its template (see `selection_metrics`)."""
+    names = {"home", "away", "team", "opp"}
+    names |= {f"lambda_{k}" for k in ("home", "away", "total", "team", "opp", "diff", "gap", "min")}
+    for prefix in ("home", "away", "team", "opp"):
+        names |= {f"{prefix}_{field}" for field in FORM_FIELDS}
+        names.add(f"{prefix}_venue_text")
+    return frozenset(names)
+
+
 class ForbiddenLanguageError(ValueError):
     pass
 
@@ -156,7 +169,10 @@ def rule_group(market: str, selection: str) -> tuple[str, str | None]:
         return ("totals_over" if selection == "over" else "totals_under"), None
     if mk is Market.BTTS:
         return ("btts_yes" if selection == "yes" else "btts_no"), None
-    if mk in (Market.H2H, Market.DRAW_NO_BET, Market.EUROPEAN_HANDICAP):
+    if mk is Market.EUROPEAN_HANDICAP:
+        # Its "draw" is a one-goal home win (line −1), not a draw: no specific rules for it.
+        return ("team_win", selection) if selection in ("home", "away") else ("", None)
+    if mk in (Market.H2H, Market.DRAW_NO_BET):
         if selection == "draw":
             return "draw", None
         return "team_win", selection

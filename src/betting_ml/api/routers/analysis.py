@@ -25,10 +25,12 @@ from betting_ml.application.analyze_match import (
     SameTeamError,
     TeamNotFoundError,
 )
-from betting_ml.application.event_odds import EventNotFoundError
+from betting_ml.application.event_odds import EventNotFoundError, InvalidMatchIdError
+from betting_ml.domain.entities import slugify
 from betting_ml.ml.models.goal_model import MissingHistoryError
 
 router = APIRouter(prefix="/api/v1", tags=["spec-003"])
+STALE_ODDS_HOURS = 6
 
 
 def _services(container: Any) -> Any:
@@ -56,6 +58,8 @@ def _call(fn: Any, *args: Any, **kwargs: Any) -> Any:
         raise ApiError(422, "NO_HISTORY", str(exc)) from exc
     except EventNotFoundError as exc:
         raise ApiError(404, "EVENT_NOT_FOUND", str(exc)) from exc
+    except InvalidMatchIdError as exc:
+        raise ApiError(422, "VALIDATION_ERROR", str(exc)) from exc
 
 
 @router.get("/teams/search", response_model=list[TeamOut])
@@ -105,8 +109,23 @@ def analyze(
         min_edge=min_edge,
     )
     payload = analysis.to_dict()
+    teams = f"-{slugify(payload['match']['home_team'])}-{slugify(payload['match']['away_team'])}"
+    if match_id and not match_id.endswith(teams):
+        raise ApiError(
+            422,
+            "MATCH_TEAMS_MISMATCH",
+            "home y away no corresponden al match_id",
+            {"match_id": match_id},
+        )
     _, fetched = services.event_odds_prices(payload["match"]["match_id"])
     payload["match"]["odds_snapshot_at"] = fetched.isoformat() if fetched else None
+    if fetched is not None:
+        age = dt.datetime.now(dt.UTC) - fetched
+        if age > dt.timedelta(hours=STALE_ODDS_HOURS):
+            payload["match"]["warnings"].append(
+                f"Las cuotas por evento son de hace {age.total_seconds() / 3600:.0f} h: "
+                "actualízalas antes de decidir."
+            )
     return AnalysisOut(**{k: v for k, v in payload.items() if k != "warnings"})
 
 
@@ -136,6 +155,13 @@ def refresh_event_odds(
     analyzer = services.analyze()
     home_ref = _call(analyzer.find_team, home)
     away_ref = _call(analyzer.find_team, away)
+    if not match_id.endswith(f"-{slugify(home_ref.name)}-{slugify(away_ref.name)}"):
+        raise ApiError(
+            422,
+            "MATCH_TEAMS_MISMATCH",
+            "home y away no corresponden al match_id",
+            {"match_id": match_id, "home": home_ref.name, "away": away_ref.name},
+        )
     try:
         event_odds = services.event_odds()
     except ValueError as exc:  # ODDS_API_KEY not configured

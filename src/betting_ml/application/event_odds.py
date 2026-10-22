@@ -21,6 +21,11 @@ from betting_ml.application.refresh_odds import OddsBudgetLowError
 
 CACHE_MINUTES = 30
 PriceKey = tuple[str, str, float | None]
+MATCH_ID = re.compile(r"^[A-Z0-9]+-\d{4}-\d{2}-\d{2}-[a-z0-9-]+$")
+
+
+class InvalidMatchIdError(ValueError):
+    pass
 
 
 class EventOddsClient(Protocol):
@@ -115,7 +120,13 @@ class EventOddsService:
         self.clock = clock
 
     def _path(self, match_id: str) -> Path:
-        return self.cache_dir / f"{match_id}.json"
+        """Cache file of a match; the id is validated so it can never leave ``cache_dir``."""
+        if not MATCH_ID.match(match_id):
+            raise InvalidMatchIdError(f"match_id inválido: {match_id!r}")
+        path = (self.cache_dir / f"{match_id}.json").resolve()
+        if path.parent != self.cache_dir.resolve():
+            raise InvalidMatchIdError(f"match_id inválido: {match_id!r}")
+        return path
 
     def _cached(self, match_id: str) -> dict[str, Any] | None:
         path = self._path(match_id)
@@ -129,12 +140,26 @@ class EventOddsService:
         return CostEstimate(markets, regions, markets * regions, self._remaining())
 
     def _remaining(self) -> int | None:
-        known = [self.credits_remaining()]
+        """Credits left: the most recent known value (snapshots of spec 002 or event odds).
+
+        The latest one counts, never the lowest ever seen: after the monthly reset an old cache
+        file must not keep blocking refreshes."""
+        latest: tuple[str, int] | None = None
         for path in self.cache_dir.glob("*.json") if self.cache_dir.exists() else []:
             data = json.loads(path.read_text(encoding="utf-8"))
-            known.append(data.get("credits_remaining"))
-        values = [v for v in known if v is not None]
-        return min(values) if values else None
+            value, at = data.get("credits_remaining"), str(data.get("fetched_at", ""))
+            if value is not None and (latest is None or at > latest[0]):
+                latest = (at, int(value))
+        from_snapshots = self.credits_remaining()
+        if latest is None:
+            return from_snapshots
+        if from_snapshots is None:
+            return latest[1]
+        # Both known: the snapshot repository has no timestamp here, the event cache does; the
+        # event cache is newer only if it was written in the current month.
+        if latest[0][:7] == self.clock().isoformat()[:7]:
+            return min(latest[1], from_snapshots)
+        return from_snapshots
 
     def refresh(
         self, match_id: str, competition: str, home: str, away: str, day: date
@@ -175,8 +200,12 @@ class EventOddsService:
         return EventRefresh(match_id, self.markets, used, credits.remaining, now, False)
 
     def prices(self, match_id: str) -> tuple[dict[PriceKey, tuple[float, str]], datetime | None]:
-        """Latest cached prices of the event (any age; the analysis shows when they are from)."""
-        cached = self._cached(match_id)
+        """Latest cached prices of the event (any age; the analysis shows when they are from).
+        An invalid id has no prices."""
+        try:
+            cached = self._cached(match_id)
+        except InvalidMatchIdError:
+            return {}, None
         if cached is None:
             return {}, None
         return self.parse(cached["event"]), datetime.fromisoformat(cached["fetched_at"])

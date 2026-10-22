@@ -28,6 +28,9 @@ from betting_ml.domain.ports import (
 
 logger = logging.getLogger(__name__)
 FOOTBALL_DATA_PSC = "football_data_psc"
+FOOTBALL_DATA_AVGC = "football_data_avgc"
+# Closing Over/Under 2.5 references, best first: Pinnacle, then the market average (weaker).
+OU25_CLOSING_SOURCES = (("psc", FOOTBALL_DATA_PSC), ("avgc", FOOTBALL_DATA_AVGC))
 
 
 @dataclass
@@ -113,24 +116,26 @@ class SettleBets:
         return self._api_closing(bet)
 
     def _bet_clv(self, bet: Bet, row: pd.Series | None) -> tuple[float | None, str | None]:
-        """CLV against Pinnacle's closing price: 1X2 (spec 002) and, for spec 003 markets, only
-        Over/Under 2.5 of league matches (football-data closing ``psc_*25``)."""
+        """CLV against a closing price: 1X2 as in spec 002; for spec 003 markets only Over/Under
+        2.5 of league matches, with Pinnacle's closing price when football-data has it and the
+        closing market average otherwise (2026-27 has no Pinnacle: decisions.md)."""
         if bet.market == "h2h" and bet.outcome is not None:
             closing, source = self._closing(bet, row)
             if closing is None:
                 return None, None
             return bet_clv(float(bet.odds), bet.outcome, closing), source
         if bet.market == "totals" and bet.line == 2.5 and row is not None:
-            over, under = row.get("psc_over25"), row.get("psc_under25")
-            if (
-                over is None
-                or under is None
-                or not (np.isfinite(float(over)) and np.isfinite(float(under)))
-            ):
-                return None, None
-            p_over, p_under = normalize_shin([float(over), float(under)])
-            p = float(p_over if bet.selection == "over" else p_under)
-            return float(bet.odds) * p - 1.0, FOOTBALL_DATA_PSC
+            for prefix, source in OU25_CLOSING_SOURCES:
+                over, under = row.get(f"{prefix}_over25"), row.get(f"{prefix}_under25")
+                if over is None or under is None:
+                    continue
+                if not (np.isfinite(float(over)) and np.isfinite(float(under))):
+                    continue
+                if float(over) <= 1 or float(under) <= 1:
+                    continue
+                p_over, p_under = normalize_shin([float(over), float(under)])
+                p = float(p_over if bet.selection == "over" else p_under)
+                return float(bet.odds) * p - 1.0, source
         return None, None
 
     def run(self) -> SettleResult:

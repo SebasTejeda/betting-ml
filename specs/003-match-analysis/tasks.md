@@ -41,13 +41,13 @@ Regla de procesos: si levantas servidores para probar o tomar capturas, hazlo en
 - [x] **T015** Routers según `contracts/api.md` + cambio en `POST /bets` para `market/selection/line` + liquidación por mercado (incluida la regla de "empate no apuesta" y hándicap europeo). Migración de base de datos.
 - [x] **T016** Tests de API (incluidos 404/422/429/503 y partido entre ligas) y carpeta "Spec 003" en Postman.
   - Commits: uno por tarea.
-- [ ] 🔍 **T017** Checkpoint `ml-reviewer` del backend (consejos honestos, evidencia, liquidación por mercado, límites de US6 de la spec 002 intactos).
+- [x] 🔍 **T017** Checkpoint `ml-reviewer` del backend (consejos honestos, evidencia, liquidación por mercado, límites de US6 de la spec 002 intactos).
 
 ## Fase 3 — Frontend
 
 - [ ] **T018** Página **Análisis** (plan §9) con el estilo del rediseño: buscador, encabezado tipo marcador, Mejores opciones, Lo más probable, Forma reciente, Tabla de mercados, botón de refresco con costo.
 - [ ] **T019** Botón "Analizar" en Hoy y Partido; registro desde la tabla y desde los consejos (papel por defecto, flujo de confirmación y límites).
-- [ ] **T020** Panel de Mis apuestas: CLV y n.º de apuestas por mercado (US6).
+- [ ] **T020** Panel de Mis apuestas: CLV y n.º de apuestas por mercado (US6). Separar el CLV contra Pinnacle del CLV contra el cierre promedio (`football_data_avgc`), que es una referencia más débil (checkpoint T017).
 - [ ] **T021** Tests de frontend con MSW (análisis completo, sin valor, entre ligas, sin cuotas, error de equipo).
   - Commits: uno por tarea.
 

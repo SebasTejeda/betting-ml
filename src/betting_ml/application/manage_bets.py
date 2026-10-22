@@ -39,8 +39,9 @@ from betting_ml.domain.value import reference_probabilities
 MATCH_ID = re.compile(r"^(?P<league>[A-Z0-9]+)-(?P<date>\d{4}-\d{2}-\d{2})-[a-z0-9-]+$")
 ROI_NOTE = "Con menos de 300 apuestas el ROI es mayormente ruido; mira el CLV."
 NO_MARKET_REFERENCE_WARNING = (
-    "Mercado sin cuota de referencia sharp: no hay EV de referencia y el CLV solo se calcula si "
-    "existe cierre de Pinnacle (Más/Menos 2.5 de ligas). Cuenta para los límites."
+    "Mercado sin cuota de referencia sharp: no hay EV de referencia. El CLV solo se calcula en "
+    "Más/Menos 2.5 de partidos de liga (cierre de Pinnacle o, si falta, cierre promedio del "
+    "mercado); en el resto de mercados no hay CLV. Cuenta para los límites."
 )
 NO_REFERENCE_WARNING = (
     "Sin cuota de referencia: el partido no tiene cuotas de la API. Cuenta para los límites, "

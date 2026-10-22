@@ -290,6 +290,8 @@ def _create(container: Any, body: BetIn) -> Bet:
     if body.market == "h2h":
         if body.outcome is None:
             raise ValueError("una apuesta 1X2 necesita `outcome` (home, draw o away)")
+        if body.selection is not None or body.line is not None:
+            raise ValueError("en 1X2 se usa `outcome`; `selection` y `line` deben ir vacíos")
         outcome: Outcome | None = OUTCOME_BY_NAME[body.outcome]
     else:
         if body.outcome is not None:

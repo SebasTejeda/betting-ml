@@ -229,3 +229,29 @@ def test_cross_league_with_every_market_low_has_no_most_likely() -> None:
     result = service.analyze("Real Madrid", "RB Leipzig", date(2026, 10, 28))
     assert result.most_likely == []
     assert any("confianza suficiente" in w for w in result.match["warnings"])
+
+
+def test_warnings_outside_the_validated_domain_and_stale_form() -> None:
+    service, _, _ = _service()
+    snap = SNAPSHOT.assign(
+        recent=[30, 30, 6, 30, 30, 30, 1],
+        last_league_match=pd.to_datetime(
+            [
+                "2026-10-20",
+                "2026-10-20",
+                "2026-08-01",
+                "2026-10-20",
+                "2026-10-20",
+                "2026-10-20",
+                pd.NaT,
+            ]
+        ),
+    )
+    service.ratings = _Ratings(snap)
+    result = service.analyze("Real Madrid", "RB Leipzig", date(2026, 10, 28))
+    warnings = " ".join(result.match["warnings"])
+    assert "RB Leipzig: solo 6 partidos con rating" in warnings
+    assert "RB Leipzig: su último partido de liga con datos es de hace 88 días" in warnings
+    assert "outside_validated_domain" not in result.match["ratings"]
+    # Real Madrid's last match in RESULTS is 2026-09-22: more than 30 days before 2026-10-28.
+    assert "la forma puede estar desactualizada" in warnings

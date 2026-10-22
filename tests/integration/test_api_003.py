@@ -221,3 +221,49 @@ def test_without_analysis_services() -> None:
     client = TestClient(create_app(services))
     r = client.get("/api/v1/teams/search", params={"q": "madr"})
     assert r.status_code == 503 and r.json()["error"]["code"] == "SERVICE_NOT_AVAILABLE"
+
+
+def test_refresh_checks_teams_and_ids(tmp_path: Path) -> None:
+    client, odds = _client(tmp_path)
+    r = client.post(
+        "/api/v1/analysis/UCL-2026-10-28-barcelona-psg/odds/refresh",
+        params={"home": "Real Madrid", "away": "RB Leipzig"},
+        headers=AUTH,
+    )
+    assert r.status_code == 422 and r.json()["error"]["code"] == "MATCH_TEAMS_MISMATCH"
+    assert odds.calls == 0
+    leak = client.get(
+        "/api/v1/analysis",
+        params={
+            "home": "Real Madrid",
+            "away": "RB Leipzig",
+            "match_id": "UCL-2026-10-28/../../secret",
+        },
+    )
+    assert leak.status_code == 422  # never reads outside the cache
+    other = client.get(
+        "/api/v1/analysis",
+        params={
+            "home": "Real Madrid",
+            "away": "RB Leipzig",
+            "match_id": "UCL-2026-10-28-barcelona-psg",
+        },
+    )
+    assert other.status_code == 422 and other.json()["error"]["code"] == "MATCH_TEAMS_MISMATCH"
+
+
+def test_stale_event_odds_are_flagged(tmp_path: Path) -> None:
+    client, _ = _client(tmp_path)
+    match_id = "UCL-2026-10-28-real-madrid-rb-leipzig"
+    cache = tmp_path / "event_odds"
+    cache.mkdir(parents=True, exist_ok=True)
+    old = {
+        "fetched_at": "2026-01-01T10:00:00+00:00",
+        "markets": [],
+        "credits_remaining": 400,
+        "event": EVENT,
+    }
+    (cache / f"{match_id}.json").write_text(json.dumps(old), encoding="utf-8")
+    params = {"home": "Real Madrid", "away": "RB Leipzig", "match_id": match_id}
+    warnings = client.get("/api/v1/analysis", params=params).json()["match"]["warnings"]
+    assert any("actualízalas" in w for w in warnings)

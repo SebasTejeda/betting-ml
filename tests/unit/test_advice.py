@@ -196,3 +196,74 @@ def test_advice_yaml_rejects_forbidden_rule_text(tmp_path: Path) -> None:
     path.write_text(bad, encoding="utf-8")
     with pytest.raises(ValidationError):
         load_advice(path)
+
+
+def test_no_rule_states_a_venue_when_the_form_falls_back_to_every_match() -> None:
+    """Checkpoint T017: with fewer than 4 matches at a venue the numbers come from every match,
+    so no text may say "de local"/"de visita" (and the venue text is in the evidence)."""
+    fallback_home = {
+        **STRONG_HOME,
+        "fallback_to_all": True,
+        "over25_pct": 0.83,
+        "btts_pct": 0.83,
+        "clean_sheets": 4,
+    }
+    fallback_away = {
+        **LEAKY_AWAY,
+        "fallback_to_all": True,
+        "over25_pct": 0.83,
+        "btts_pct": 0.83,
+        "clean_sheets": 4,
+    }
+    ctx = replace(CTX, home_form=fallback_home, away_form=fallback_away)
+    views = [
+        _view(market=m, selection=s, line=line)
+        for m, s, line in [
+            ("totals", "over", 2.5), ("totals", "under", 2.5), ("btts", "yes", None), ("btts", "no", None),
+            ("team_totals", "home_over", 1.5), ("team_totals", "away_under", 0.5), ("h2h", "home", None),
+            ("h2h", "away", None), ("h2h", "draw", None),
+        ]
+    ]  # fmt: skip
+    fired = 0
+    for view in views:
+        for reason in reasons_for(view, ctx, SETTINGS):
+            fired += 1
+            assert " de local" not in reason.text and " de visita" not in reason.text, reason.text
+    assert fired >= 6
+    normal = reasons_for(
+        _view(market="totals", selection="over", line=2.5),
+        replace(CTX, home_form={**STRONG_HOME, "over25_pct": 0.83}),
+        SETTINGS,
+    )
+    venue_reason = next(r for r in normal if "home_over25_pct" in r.evidence)
+    assert (
+        venue_reason.evidence["home_venue_text"] == " de local" and "de local" in venue_reason.text
+    )
+
+
+def test_european_handicap_draw_has_no_draw_rules() -> None:
+    assert rule_group("european_handicap", "draw") == ("", None)
+    assert rule_group("european_handicap", "home") == ("team_win", "home")
+
+
+@pytest.mark.parametrize(
+    ("old", "new"),
+    [
+        ("{team} marcó 2 o más en {team_scored_2plus} de sus últimos {team_n} partidos{team_venue_text}.",
+         "{team} marcó 2 o más en {team_scored_2plus} de sus últimos {team_n} partidos de local."),
+        ("{metric: lambda_team, op: \">=\", value: 1.8", "{metric: lambda_tem, op: \">=\", value: 1.8"),
+        ("El modelo espera {lambda_team:.1f} goles de {team} en este partido.",
+         "El modelo espera {lambda_teem:.1f} goles de {team} en este partido."),
+    ],
+)  # fmt: skip
+def test_advice_yaml_rejects_fixed_venue_and_unknown_metrics(
+    tmp_path: Path, old: str, new: str
+) -> None:
+    body = (Path(__file__).resolve().parents[2] / "configs" / "advice.yaml").read_text(
+        encoding="utf-8"
+    )
+    assert old in body
+    path = tmp_path / "advice.yaml"
+    path.write_text(body.replace(old, new, 1), encoding="utf-8")
+    with pytest.raises(ValidationError):
+        load_advice(path)
