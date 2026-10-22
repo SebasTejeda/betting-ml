@@ -569,3 +569,24 @@ def test_0009_downgrade_keeps_bets_of_other_markets(tmp_path: Path) -> None:
     sessions = session_factory(make_engine(url))
     assert SqlBetRepository(sessions).get(1).selection == "over"  # type: ignore[union-attr]
     assert _verify(sessions) == []
+
+
+@pytest.mark.parametrize(
+    "statement",
+    [
+        "UPDATE bets SET line = 3.5 WHERE id = 1",
+        "UPDATE bets SET selection = 'under' WHERE id = 1",
+        "UPDATE bets SET market = 'btts', selection = 'yes', line = NULL WHERE id = 1",
+    ],
+)
+def test_a_market_changed_outside_the_api_is_detected(
+    sessions: sessionmaker[Session], statement: str
+) -> None:
+    """Spec 004 (I02): market, selection and line are part of the audited state of a bet; the
+    CHECKs allow these edits (the bet stays possible), the audit still reports them."""
+    bets = SqlBetRepository(sessions)
+    bets.add(replace(_bet(), outcome=None, market="totals", selection="over", line=2.5))
+    assert _verify(sessions) == []
+    _sql(sessions, statement)
+    problems = _verify(sessions)
+    assert any(p.startswith("bet 1: no coincide con su último evento") for p in problems), problems

@@ -337,4 +337,7 @@ Plan: [`specs/004-match-analysis/integration.md`](specs/004-match-analysis/integ
   - 8 assert de su código pasan a errores explícitos; `market` es una lista cerrada en el contrato; Postman con X-API-Key.
   - Spec renumerada a 004 y enmienda XIII; launch.json personal fuera.
   - 1198 tests backend (cobertura 97,9 %) y 72 frontend en verde.
+- 2026-10-22 · I02 · Migración 0010 con cuatro CHECK sobre bets: mercado del catálogo, outcome si y solo si es 1X2, selecciones por mercado y líneas válidas (medias en goles, enteras en hándicap).
+  - Valida antes de alterar: aborta listando rowids, sin valores y sin cambiar nada.
+  - Tests nuevos: filas imposibles rechazadas, concordancia con el dominio y manipulación directa detectada por verify-integrity. Mutaciones comprobadas.
 

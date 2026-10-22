@@ -69,7 +69,7 @@ Una a la vez: implementar, tests (incluidos los negativos), `lint` y `test` en v
   - Se renombran la spec y la enmienda, y la migración pasa a `0009`.
   - Sus rutas se protegen con la autenticación que ya existe, así que `test_route_access` cubre todas.
   - Commit de fusión: `merge: match analysis from Sebastian into Daniel`
-- [ ] **I02** Integridad de los datos de los mercados nuevos.
+- [x] **I02** Integridad de los datos de los mercados nuevos.
   - `CHECK` en la `0009`:
     - `market` dentro de `configs/markets.yaml`;
     - `selection` con un patrón cerrado;

@@ -130,6 +130,37 @@ class BetRow(Base):
         CheckConstraint("ev IS NULL OR ev BETWEEN -1 AND 1000", name="ck_bets_ev"),
         CheckConstraint("clv IS NULL OR clv BETWEEN -1 AND 1000", name="ck_bets_clv"),
         CheckConstraint("version >= 1", name="ck_bets_version"),
+        # Spec 004 (I02): the markets of domain/markets.py, as BetIn accepts them
+        CheckConstraint(
+            "market IN ('h2h', 'double_chance', 'draw_no_bet', 'totals', 'btts', "
+            "'team_totals', 'european_handicap', 'correct_score')",
+            name="ck_bets_market",
+        ),
+        # 1X2 bets use outcome, the others selection (and line)
+        CheckConstraint("(market = 'h2h') = (outcome IS NOT NULL)", name="ck_bets_outcome_market"),
+        # coalesce / IS NOT NULL: a NULL condition would pass the CHECK
+        CheckConstraint(
+            "CASE market WHEN 'h2h' THEN selection IS NULL "
+            "WHEN 'double_chance' THEN coalesce(selection, '') IN ('1X', 'X2', '12') "
+            "WHEN 'draw_no_bet' THEN coalesce(selection, '') IN ('home', 'away') "
+            "WHEN 'totals' THEN coalesce(selection, '') IN ('over', 'under') "
+            "WHEN 'btts' THEN coalesce(selection, '') IN ('yes', 'no') "
+            "WHEN 'team_totals' THEN coalesce(selection, '') "
+            "IN ('home_over', 'home_under', 'away_over', 'away_under') "
+            "WHEN 'european_handicap' THEN coalesce(selection, '') IN ('home', 'draw', 'away') "
+            "WHEN 'correct_score' THEN selection IS NOT NULL AND (selection GLOB '[0-9]-[0-9]' "
+            "OR selection GLOB '[0-9][0-9]-[0-9]' OR selection GLOB '[0-9]-[0-9][0-9]' "
+            "OR selection GLOB '[0-9][0-9]-[0-9][0-9]') ELSE 0 END",
+            name="ck_bets_selection",
+        ),
+        # half goal lines (0.5 … 9.5), whole handicap lines (−10 … 10), no line elsewhere
+        CheckConstraint(
+            "CASE WHEN market IN ('totals', 'team_totals') THEN line IS NOT NULL "
+            "AND line > 0 AND line < 10 AND line - 0.5 = CAST(line - 0.5 AS INTEGER) "
+            "WHEN market = 'european_handicap' THEN line IS NOT NULL "
+            "AND line BETWEEN -10 AND 10 AND line = CAST(line AS INTEGER) ELSE line IS NULL END",
+            name="ck_bets_line",
+        ),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)

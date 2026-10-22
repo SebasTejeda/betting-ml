@@ -314,3 +314,21 @@ Formato:
   - Sus pruebas únicas **no** se volvieron a ejecutar.
 - Resultado: 1198 tests de backend (cobertura 97,9 %) y 72 de frontend, con lint, mypy, typecheck y build en verde.
 
+## 2026-10-22 — I02: integridad de los mercados nuevos en la base
+- **Migración nueva `0010` en lugar de editar la `0009`.** La `0009` ya está commiteada en la fusión y puede estar aplicada en una base. Editarla dejaría esas bases sin las restricciones y sin forma de saberlo.
+- **Cuatro `CHECK` sobre `bets`**, copia congelada en la migración y en `adapters/sql/models.py`. Un test compara los dos esquemas: ahora son 36 restricciones.
+  - `ck_bets_market`: el mercado está en el catálogo de `domain/markets.py`, el mismo de `MarketName` en la API.
+  - `ck_bets_outcome_market`: hay `outcome` si y solo si es una apuesta 1X2.
+  - `ck_bets_selection`: las selecciones de cada mercado. 1X2 no lleva selección. Un marcador exacto lleva uno o dos dígitos por equipo, el mismo patrón que `BetIn`.
+  - `ck_bets_line`: medias líneas de goles (0,5 … 9,5) en `totals` y `team_totals`, líneas enteras (−10 … 10) en el hándicap europeo y ninguna línea en el resto.
+- **Cambio respecto al plan.** El plan decía "pasos de 0,25". El dominio solo acepta medias líneas en goles (`validate_selection`) y líneas enteras en el hándicap europeo, sin líneas asiáticas. El `CHECK` sigue al dominio, que es más estricto: una línea de 2,25 sería una apuesta que el sistema no sabe liquidar.
+- **Trampa de `NULL` en SQLite.** Un `CHECK` cuya condición da `NULL` se cumple. Por eso cada rama usa `coalesce` o `IS NOT NULL`. Los tests de mutación lo confirman: quitar cualquiera de esas guardas hace fallar un test de comportamiento, no solo la comparación de esquemas.
+- **La migración valida antes de alterar**, con el mismo patrón que la `0005`:
+  - Si alguna apuesta incumple, aborta y lista solo `rowid` y restricción, nunca valores. No cambia nada.
+  - No borra ni corrige datos. Los valores de las filas no cambian, así que no hace falta sellar nada en la auditoría.
+  - Su downgrade solo quita sus cuatro restricciones.
+  - Mutación comprobada: sin la validación previa, la reconstrucción falla con un `IntegrityError` en lugar del mensaje que lista los `rowid`.
+- **Auditoría.** `market`, `selection` y `line` ya formaban parte del estado auditado, porque es la fila entera. Hay un test nuevo de manipulación directa: cambios por SQL que los `CHECK` permiten (otra línea, otra selección, otro mercado válido) los sigue detectando `verify-integrity`.
+- **Test de concordancia.** Toda selección que acepta el dominio (`SELECTIONS`, `LINE_MARKETS`) se inserta sin error. Así la base y el dominio no pueden separarse sin que falle un test.
+- **Nota.** `_parse_score` del dominio es más permisivo que la API (acepta `"100-0"`). No se toca: la API y la base cierran ese camino.
+

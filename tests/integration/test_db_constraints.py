@@ -1,6 +1,7 @@
 """Spec 003, T013: the database rejects impossible data even when the API is bypassed, the
 migration that adds the CHECK constraints never deletes nor fixes rows, and SQLite runs with
-WAL, a busy timeout and foreign keys."""
+WAL, a busy timeout and foreign keys. Spec 004 (I02): the same for the market of a bet
+(migration 0010)."""
 
 from __future__ import annotations
 
@@ -23,6 +24,7 @@ from betting_ml.adapters.sql.db import (
     upgrade,
 )
 from betting_ml.adapters.sql.models import Base
+from betting_ml.domain.markets import LINE_MARKETS, SELECTIONS, Market
 
 CREATED = "2026-10-03 10:00:00.000000"
 LATER = "2026-10-03 22:00:00.000000"
@@ -224,7 +226,7 @@ def test_migrated_schema_has_the_same_checks_as_the_models(tmp_path: Path) -> No
     Base.metadata.create_all(memory)
     migrated = _checks(make_engine(url))
     assert migrated == _checks(memory)
-    assert sum(len(c) for c in migrated.values()) == 32
+    assert sum(len(c) for c in migrated.values()) == 36  # 32 of spec 003 + 4 of 0010
 
 
 def test_migration_keeps_valid_data(tmp_path: Path) -> None:
@@ -357,3 +359,159 @@ def test_foreign_keys_are_enforced(engine: sa.Engine) -> None:
     }
     with pytest.raises(IntegrityError, match="FOREIGN KEY"), engine.begin() as connection:
         _insert(connection, "odds_quotes", quote)
+
+
+# ------------------------------------------------------------------ markets (spec 004, I02)
+def _market_bet(market: str, selection: str | None, line: float | None) -> dict[str, Any]:
+    return {**BET, "outcome": None, "market": market, "selection": selection, "line": line}
+
+
+def _valid_market_bets() -> list[dict[str, Any]]:
+    """Every selection the domain accepts, with a line when its market needs one."""
+    lines = {Market.TOTALS: 2.5, Market.TEAM_TOTALS: 0.5, Market.EUROPEAN_HANDICAP: -1.0}
+    rows = [
+        _market_bet(market.value, selection, lines.get(market))
+        for market, selections in SELECTIONS.items()
+        if market is not Market.H2H and selections is not None
+        for selection in selections
+    ]
+    rows += [_market_bet("correct_score", s, None) for s in ("0-0", "2-1", "10-3", "1-10")]
+    rows += [_market_bet("totals", "under", 9.5), _market_bet("european_handicap", "home", 0)]
+    return [*rows, _market_bet("european_handicap", "draw", 10)]
+
+
+def test_every_market_the_domain_accepts_is_accepted(engine: sa.Engine) -> None:
+    rows = _valid_market_bets()
+    assert {r["market"] for r in rows} == {m.value for m in Market} - {"h2h"}
+    assert set(LINE_MARKETS) == {Market.TOTALS, Market.TEAM_TOTALS, Market.EUROPEAN_HANDICAP}
+    with engine.begin() as connection:
+        for row in rows:
+            _insert(connection, "bets", row)
+        _insert(connection, "bets", BET)  # 1X2: outcome, no selection, no line
+
+
+@pytest.mark.parametrize(
+    ("changes", "constraint"),
+    [
+        ({"market": "poker", "outcome": None}, "ck_bets_market"),
+        ({"market": "H2H"}, "ck_bets_market"),
+        ({"outcome": None}, "ck_bets_outcome_market"),  # 1X2 without its outcome
+        ({**_market_bet("btts", "yes", None), "outcome": "H"}, "ck_bets_outcome_market"),
+        ({"selection": "home"}, "ck_bets_selection"),  # 1X2 uses outcome
+        (_market_bet("btts", None, None), "ck_bets_selection"),
+        (_market_bet("btts", "over", None), "ck_bets_selection"),
+        (_market_bet("double_chance", "1x", None), "ck_bets_selection"),
+        (_market_bet("draw_no_bet", "draw", None), "ck_bets_selection"),
+        (_market_bet("totals", "home_over", 2.5), "ck_bets_selection"),
+        (_market_bet("team_totals", "over", 1.5), "ck_bets_selection"),
+        (_market_bet("european_handicap", "1X", 1), "ck_bets_selection"),
+        (_market_bet("correct_score", None, None), "ck_bets_selection"),
+        (_market_bet("correct_score", "", None), "ck_bets_selection"),
+        (_market_bet("correct_score", "2-1-0", None), "ck_bets_selection"),
+        (_market_bet("correct_score", "100-1", None), "ck_bets_selection"),
+        (_market_bet("correct_score", "a-b", None), "ck_bets_selection"),
+        (_market_bet("correct_score", " 2-1", None), "ck_bets_selection"),
+        ({"line": 2.5}, "ck_bets_line"),  # 1X2 has no line
+        (_market_bet("btts", "yes", 2.5), "ck_bets_line"),
+        (_market_bet("correct_score", "2-1", 0.5), "ck_bets_line"),
+        (_market_bet("totals", "over", None), "ck_bets_line"),
+        (_market_bet("totals", "over", 2.0), "ck_bets_line"),
+        (_market_bet("totals", "over", 2.25), "ck_bets_line"),  # no Asian lines
+        (_market_bet("totals", "over", -0.5), "ck_bets_line"),
+        (_market_bet("totals", "over", 10.5), "ck_bets_line"),
+        (_market_bet("team_totals", "home_over", 0), "ck_bets_line"),
+        (_market_bet("european_handicap", "home", None), "ck_bets_line"),
+        (_market_bet("european_handicap", "home", 0.5), "ck_bets_line"),
+        (_market_bet("european_handicap", "home", 11), "ck_bets_line"),
+        (_market_bet("european_handicap", "home", -11), "ck_bets_line"),
+    ],
+)
+def test_impossible_markets_are_rejected(
+    engine: sa.Engine, changes: dict[str, Any], constraint: str
+) -> None:
+    with pytest.raises(IntegrityError, match=constraint), engine.begin() as connection:
+        _insert(connection, "bets", {**BET, **changes})
+
+
+def test_an_existing_bet_cannot_be_changed_into_an_impossible_one(engine: sa.Engine) -> None:
+    with engine.begin() as connection:
+        _insert(connection, "bets", _market_bet("totals", "over", 2.5))
+    for statement in (
+        "UPDATE bets SET line = 2.25",
+        "UPDATE bets SET selection = NULL",
+        "UPDATE bets SET market = 'h2h'",
+    ):
+        with pytest.raises(IntegrityError, match="ck_bets_"), engine.begin() as connection:
+            connection.execute(sa.text(statement))
+
+
+def test_migration_0010_aborts_listing_invalid_bets_and_changes_nothing(tmp_path: Path) -> None:
+    url = _url(tmp_path)
+    upgrade(url, "0009")
+    engine = make_engine(url)
+    with engine.begin() as connection:
+        _insert(connection, "bets", _market_bet("totals", "over", 2.5))  # rowid 1, valid
+        _insert(connection, "bets", {**_market_bet("poker", "SECRET-PICK", None)})  # rowid 2
+        _insert(connection, "bets", _market_bet("totals", "over", 2.25))  # rowid 3
+        _insert(connection, "bets", {**BET, "outcome": None})  # rowid 4
+    with engine.connect() as connection:
+        before = connection.execute(sa.text("SELECT * FROM bets ORDER BY id")).all()
+    engine.dispose()
+
+    with pytest.raises(RuntimeError, match="0010 abortada") as error:
+        upgrade(url)
+    message = str(error.value)
+    assert "bets.ck_bets_market: rowid 2" in message
+    assert "bets.ck_bets_selection: rowid 2" in message
+    assert "bets.ck_bets_line: rowid 3" in message
+    assert "bets.ck_bets_outcome_market: rowid 4" in message
+    assert "rowid 1" not in message
+    assert "SECRET" not in message and "poker" not in message and "2.25" not in message
+
+    engine = make_engine(url)
+    assert _revision(engine) == "0009"
+    with engine.connect() as connection:
+        assert connection.execute(sa.text("SELECT * FROM bets ORDER BY id")).all() == before
+    assert not {name for name, _ in _checks(engine)["bets"]} & {
+        "ck_bets_market",
+        "ck_bets_outcome_market",
+        "ck_bets_selection",
+        "ck_bets_line",
+    }
+
+    with engine.begin() as connection:  # the owner fixes the bets by hand…
+        connection.execute(
+            sa.text("UPDATE bets SET market = 'btts', selection = 'yes' WHERE id = 2")
+        )
+        connection.execute(sa.text("UPDATE bets SET line = 2.5 WHERE id = 3"))
+        connection.execute(sa.text("UPDATE bets SET outcome = 'A' WHERE id = 4"))
+    engine.dispose()
+    upgrade(url)  # …and migrates again
+    engine = make_engine(url)
+    assert _revision(engine) == "0010"
+    with engine.connect() as connection:
+        assert connection.execute(sa.text("SELECT count(*) FROM bets")).scalar() == 4
+
+
+def test_migration_0010_keeps_the_rows_and_its_downgrade_only_drops_its_checks(
+    tmp_path: Path,
+) -> None:
+    url = _url(tmp_path)
+    upgrade(url, "0009")
+    engine = make_engine(url)
+    with engine.begin() as connection:
+        for row in (BET, *_valid_market_bets()):
+            _insert(connection, "bets", row)
+        before = connection.execute(sa.text("SELECT * FROM bets ORDER BY id")).all()
+    checks_0009 = _checks(engine)
+    engine.dispose()
+    upgrade(url)
+    engine = make_engine(url)
+    with engine.connect() as connection:
+        assert connection.execute(sa.text("SELECT * FROM bets ORDER BY id")).all() == before
+    engine.dispose()
+    command.downgrade(_alembic_config(url), "0009")
+    engine = make_engine(url)
+    assert _checks(engine) == checks_0009
+    with engine.connect() as connection:
+        assert connection.execute(sa.text("SELECT * FROM bets ORDER BY id")).all() == before
