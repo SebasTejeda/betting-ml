@@ -13,8 +13,8 @@ import { Link, NavLink, Outlet } from "react-router-dom";
 
 import { cn } from "@/lib/utils";
 
-import { ApiKeyButton } from "./ApiKeyButton";
 import { Loading } from "./common";
+import { LogoutButton } from "./LogoutButton";
 import { ThemeToggle } from "./ThemeToggle";
 
 const LINKS = [
@@ -59,8 +59,8 @@ export function Layout() {
             ))}
           </nav>
           <div className="ml-auto flex items-center gap-1">
-            <ApiKeyButton />
             <ThemeToggle />
+            <LogoutButton />
           </div>
         </div>
       </header>

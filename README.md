@@ -151,7 +151,7 @@ Especificación en [`specs/002-odds-comparator/`](specs/002-odds-comparator/) y 
 
 La app usa tema oscuro por defecto; el botón de sol/luna de la barra superior cambia al tema claro y lo recuerda en el navegador. En el celular la navegación está en una barra inferior.
 
-La primera vez, pulsa **Configurar clave** (arriba a la derecha) y pega tu `APP_API_KEY`: sin ella no se puede escribir (refrescar, registrar, liquidar ni guardar ajustes). La clave se guarda solo en el `localStorage` de tu navegador, porque es una herramienta personal que corre en tu máquina. No uses la app en un equipo compartido.
+La app pide **iniciar sesión** con la contraseña del dueño (su hash Argon2id va en `APP_PASSWORD_HASH`; se genera con `betting-ml hash-password`). La sesión vive en una cookie `HttpOnly` que el navegador no puede leer y caduca tras 30 minutos sin uso o 12 horas en total; el botón **Salir** la cierra. El navegador no guarda ninguna clave ni contraseña: `APP_API_KEY` queda solo para Postman y la línea de comandos.
 
 > **Juego responsable.** Apuesta solo lo que puedas perder. Esta app no encontró una ventaja que permita ganar apostando: su valor es ahorrar margen eligiendo la mejor cuota y **medir** con honestidad. Los límites mensuales existen para que no persigas pérdidas. Si sientes que pierdes el control, pide ayuda.
 

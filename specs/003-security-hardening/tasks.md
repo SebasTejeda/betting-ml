@@ -66,7 +66,7 @@ Reglas de ejecución:
   - Tras este commit el frontend no puede leer hasta T009, que va justo después.
   - Commit: `feat(auth): require authentication on every private route`
 
-- [ ] **T009** Frontend con login (US1) — se ejecuta antes que T008 (decisión del dueño)
+- [x] **T009** Frontend con login (US1) — se ejecuta antes que T008 (decisión del dueño)
   - Página `/login`, `AuthProvider` (`/auth/me`), rutas protegidas, logout en la barra.
   - Se elimina la clave de `localStorage` (`lib/apiKey.ts` y `ApiKeyButton`); `credentials: "same-origin"` y `X-CSRF-Token` en memoria para las escrituras.
   - Regenerar los tipos (`make web-api`).

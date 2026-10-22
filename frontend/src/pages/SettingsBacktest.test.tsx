@@ -113,12 +113,18 @@ test("settings are saved as fractions and a raised limit applies next month", as
   ).toBeInTheDocument();
 });
 
-test("settings validation and 401 without key", async () => {
+test("settings validation, and a 401 (expired session) leads to the login page", async () => {
   server.use(
     http.get(`${API}/settings`, () => HttpResponse.json(settings)),
     http.put(`${API}/settings`, () =>
       HttpResponse.json(
-        { error: { code: "UNAUTHORIZED", message: "Falta la clave X-API-Key", details: {} } },
+        {
+          error: {
+            code: "UNAUTHORIZED",
+            message: "Credenciales inválidas o ausentes",
+            details: {},
+          },
+        },
         { status: 401 },
       ),
     ),
@@ -132,5 +138,6 @@ test("settings validation and 401 without key", async () => {
   await userEvent.clear(stake);
   await userEvent.type(stake, "2");
   await userEvent.click(screen.getByRole("button", { name: "Guardar" }));
-  expect(await screen.findByRole("alert")).toHaveTextContent("Configura la clave de escritura");
+  expect(await screen.findByRole("form", { name: "Iniciar sesión" })).toBeInTheDocument();
+  expect(screen.getByRole("status")).toHaveTextContent("Tu sesión expiró");
 });

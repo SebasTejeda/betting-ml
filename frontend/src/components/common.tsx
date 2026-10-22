@@ -110,7 +110,7 @@ export function Loading({
   );
 }
 
-/** Shows an API error with its message (and a hint for the write key). */
+/** Shows an API error with its message. */
 export function ErrorBox({ error }: { error: unknown }) {
   const message =
     error instanceof ApiError
@@ -118,20 +118,13 @@ export function ErrorBox({ error }: { error: unknown }) {
       : error instanceof Error
         ? error.message
         : "Error inesperado";
-  const hint =
-    error instanceof ApiError && error.code === "UNAUTHORIZED"
-      ? " Configura la clave de escritura (botón arriba a la derecha)."
-      : "";
   return (
     <div
       role="alert"
       className="flex items-start gap-2 rounded-lg border border-negative/40 bg-negative-soft p-3 text-sm text-foreground"
     >
       <CircleAlert aria-hidden className="mt-0.5 size-4 shrink-0 text-negative" />
-      <span>
-        {message}
-        {hint}
-      </span>
+      <span>{message}</span>
     </div>
   );
 }

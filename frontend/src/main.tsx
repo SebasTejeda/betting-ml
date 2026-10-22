@@ -4,6 +4,7 @@ import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 
 import { App } from "./App";
+import { AuthProvider } from "./auth/AuthProvider";
 import "./index.css";
 import { makeQueryClient } from "./lib/queryClient";
 
@@ -11,7 +12,9 @@ createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <QueryClientProvider client={makeQueryClient()}>
       <BrowserRouter>
-        <App />
+        <AuthProvider>
+          <App />
+        </AuthProvider>
       </BrowserRouter>
     </QueryClientProvider>
   </StrictMode>,
