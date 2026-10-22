@@ -239,11 +239,12 @@ def test_unknown_route_and_cors(client: TestClient) -> None:
     _assert_error(client.get("/api/v1/nothing"), 404, "NOT_FOUND")
     preflight = client.options(
         "/api/v1/leagues",
-        headers={"Origin": "http://localhost:3000", "Access-Control-Request-Method": "GET"},
+        headers={"Origin": "http://localhost:5173", "Access-Control-Request-Method": "GET"},
     )
-    assert preflight.headers["access-control-allow-origin"] == "http://localhost:3000"
-    foreign = client.get("/api/v1/leagues", headers={"Origin": "https://evil.example"})
-    assert "access-control-allow-origin" not in foreign.headers
+    assert preflight.headers["access-control-allow-origin"] == "http://localhost:5173"
+    for origin in ("https://evil.example", "http://localhost:3000"):  # only CORS_ORIGINS
+        foreign = client.get("/api/v1/leagues", headers={"Origin": origin})
+        assert "access-control-allow-origin" not in foreign.headers
     assert client.get("/openapi.json").status_code == 200
 
 

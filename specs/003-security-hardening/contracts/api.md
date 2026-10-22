@@ -45,6 +45,7 @@ Se suma a [`../../001-prediction-model/contracts/api.md`](../../001-prediction-m
 
 | Estado | Código | Cuándo |
 |---|---|---|
+| 400 | `INVALID_HOST` | Cabecera `Host` fuera de `ALLOWED_HOSTS`. |
 | 401 | `UNAUTHORIZED` | Sin credencial o credencial inválida/vencida. |
 | 401 | `INVALID_CREDENTIALS` | Login con contraseña incorrecta. |
 | 403 | `CSRF_FAILED` | Escritura con cookie sin `X-CSRF-Token` válido. |
@@ -69,8 +70,8 @@ Referrer-Policy: no-referrer
 Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()
 Cross-Origin-Opener-Policy: same-origin
 Strict-Transport-Security: max-age=31536000; includeSubDomains      (solo prod)
-Cache-Control: no-store                                             (respuestas autenticadas)
+Cache-Control: no-store                                             (todas las respuestas de la API)
 X-Request-ID: <uuid>
 ```
 
-`style-src 'unsafe-inline'` se mantiene porque Tailwind/Recharts generan estilos en línea; los scripts no lo permiten. La CSP exacta se ajusta en T011 tras probarla en modo `Report-Only`.
+`style-src 'unsafe-inline'` se mantiene porque Tailwind/Recharts generan estilos en línea; los scripts no lo permiten. Probada en T011 con el frontend construido (`vite preview` la aplica; el servidor de desarrollo la envía como `Report-Only`, porque Vite inyecta un script en línea). La API la envía en todas sus respuestas salvo `/docs` y `/redoc` (solo existen en `dev`). `frontend/security-headers.ts` y `api/middleware/security_headers.py` comparten la misma política (un test lo comprueba).

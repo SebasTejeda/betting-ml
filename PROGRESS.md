@@ -162,3 +162,13 @@ Spec activa: [`specs/003-security-hardening/`](specs/003-security-hardening/). T
   - El frontend borra la clave antigua de localStorage y recupera el CSRF tras CSRF_FAILED.
   - prod rechaza parámetros Argon2id débiles; hash-password funciona con python -m.
   Riesgos aceptados registrados en decisions.md. Mutaciones comprobadas: validate permisivo, CSRF desactivado y sin refreshCsrf hacen fallar los tests. 452 tests de backend (cobertura 98,8 %) y 55 de frontend en verde
+- 2026-10-22 · T011 · Middlewares, de fuera hacia dentro: SecurityHeaders → RequestId → TrustedHost → CORS → BodyLimit → RateLimit.
+  - Cabeceras: CSP del contrato, nosniff, DENY, no-referrer, Permissions-Policy, COOP y no-store en toda respuesta (también 400/401/404/405/413/422/429/500/503); HSTS solo en prod.
+  - Errores: 500 INTERNAL_ERROR uniforme con request_id y sin traza.
+  - X-Request-ID: se conserva el entrante si es válido; si no, se genera un UUID.
+  - Hosts: 400 INVALID_HOST fuera de ALLOWED_HOSTS (cableado desde el Container).
+  - CORS: orígenes, métodos y cabeceras explícitos; en prod solo https.
+  - /docs, /redoc y /openapi.json solo en dev (betting-ml openapi sigue exportando).
+  - Frontend: theme-init.js fuera de index.html; security-headers.ts con la misma CSP (aplicada en vite preview, Report-Only en dev); Zod jitless; bundle sin eval.
+  - Verificación: CSP probada en Chrome con el build (sin violaciones, tema y fuente bien).
+  - Tests aislados del .env local. Mutaciones comprobadas (sin TrustedHost y sin la red de seguridad del 500 fallan los tests). 476 backend (cobertura 98.8 %) + 57 frontend en verde

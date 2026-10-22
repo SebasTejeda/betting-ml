@@ -131,3 +131,17 @@ Formato:
   - `SessionStore` tipado con `Any`: se deja así porque el puerto no importa el modelo.
 - Motivo: corregir todo lo barato y con un camino de explotación concreto; documentar el resto con su condición de disparo.
 - Impacto: suben los tests de backend y de frontend; el contrato de la API no cambia.
+
+## 2026-10-22 — T011: orden de los middlewares, hosts por servicios y cabeceras
+- Contexto: el plan (§3) ponía `RequestId → TrustedHost → SecurityHeaders` de fuera hacia dentro.
+- Decisión:
+  - `SecurityHeadersMiddleware` va el **más externo**: así las cabeceras llegan también al 400 de host, al 413 y al 429, y el middleware convierte cualquier excepción no controlada en `500 INTERNAL_ERROR` con `request_id` y sin traza, que después relanza para que el servidor registre la traza (T012 y T018 completan el registro).
+  - `ALLOWED_HOSTS` se lee de los servicios en cada petición, como los límites. El `Container` siempre lo fija (hay un test que lo comprueba) y los tests funcionales lo omiten.
+  - CORS, HSTS y la documentación se fijan al crear la app con `create_app(services, config)`. Los tests usan la configuración por defecto, nunca el `.env` del desarrollador (fixture en `tests/conftest.py`).
+  - `Cache-Control: no-store` va en **todas** las respuestas de la API (el contrato decía "autenticadas"): todas son JSON con datos personales o sin valor para la caché.
+  - La CSP no se aplica a `/docs` ni `/redoc`, que solo existen en `dev` y cargan sus propios scripts.
+  - En prod, `CORS_ORIGINS` solo admite `https://`, coherente con HSTS y con las cookies `Secure` (pendiente de T010).
+  - CORS con orígenes, métodos y cabeceras explícitos, y `allow_credentials=True`, porque los orígenes son explícitos (prod rechaza `*`).
+  - Zod se configura con `jitless` para no usar `new Function`, que la CSP bloquea.
+- Motivo: que ninguna respuesta, ni siquiera un error de un middleware o una excepción, salga sin cabeceras; y que los tests no dependan de la máquina.
+- Impacto: verificado en Chrome con `vite preview` (CSP aplicada): consola sin violaciones, el script del tema funciona desde un archivo y la fuente se carga con `font-src 'self'`. El servidor web de producción (T020, `docs/deploy.md`) debe enviar las mismas cabeceras que `frontend/security-headers.ts`.

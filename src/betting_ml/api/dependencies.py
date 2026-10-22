@@ -92,6 +92,10 @@ class ServicesApi(Protocol):
     def max_body_bytes(self) -> int: ...
 
     @property
+    def allowed_hosts(self) -> list[str] | None:
+        """ALLOWED_HOSTS (spec 003, US4); None disables the Host check."""
+
+    @property
     def secure_cookies(self) -> bool:
         """Secure attribute on the session cookie (APP_ENV=prod)."""
 

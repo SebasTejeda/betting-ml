@@ -87,7 +87,7 @@ Reglas de ejecución:
 
 ## Fase 3 — Endurecimiento HTTP
 
-- [ ] **T011** Cabeceras, hosts, CORS y documentación (US3, US4)
+- [x] **T011** Cabeceras, hosts, CORS y documentación (US3, US4)
   - `RequestIdMiddleware`, `SecurityHeadersMiddleware` (contrato §4), `TrustedHostMiddleware`, CORS explícito; `/docs`, `/redoc` y `/openapi.json` solo en `dev` (el comando `betting-ml openapi` sigue funcionando).
   - Mover el script del tema de `index.html` a `public/theme-init.js`; probar la CSP con el frontend construido (primero en modo `Report-Only`).
   - Tests: cabeceras en 200/401/404/422/500; host no permitido → 400; origen no permitido sin cabeceras CORS; documentación ausente en `prod`.

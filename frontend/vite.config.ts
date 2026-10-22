@@ -5,13 +5,16 @@ import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
+import { DEV_HEADERS, PREVIEW_HEADERS } from "./security-headers";
+
 // The API runs on :8000 (`make serve`); the dev server proxies /api to it.
 const API = process.env.VITE_API_PROXY ?? "http://127.0.0.1:8000";
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   resolve: { alias: { "@": path.resolve(import.meta.dirname, "./src") } },
-  server: { port: 5173, proxy: { "/api": API } },
+  server: { port: 5173, proxy: { "/api": API }, headers: DEV_HEADERS },
+  preview: { port: 4173, proxy: { "/api": API }, headers: PREVIEW_HEADERS },
   test: {
     environment: "jsdom",
     setupFiles: ["./src/test/setup.ts"],

@@ -1,4 +1,5 @@
-"""Shared test helpers: a synthetic league with known team strengths."""
+"""Shared test helpers: a synthetic league with known team strengths, and API apps built
+from default settings (never from the developer's .env)."""
 
 from __future__ import annotations
 
@@ -6,6 +7,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from betting_ml.config import Settings
 from betting_ml.domain.entities import make_match_id
 
 
@@ -106,3 +108,10 @@ def make_synthetic_matches(
 @pytest.fixture
 def synthetic_matches() -> pd.DataFrame:
     return make_synthetic_matches()
+
+
+@pytest.fixture(autouse=True)
+def _api_default_settings(monkeypatch: pytest.MonkeyPatch) -> None:
+    """create_app() reads CORS, HSTS and the docs switch from the environment: the tests use
+    the defaults (dev) unless they pass their own ``config``."""
+    monkeypatch.setattr("betting_ml.api.main.get_settings", lambda: Settings(_env_file=None))

@@ -77,6 +77,7 @@ def test_prod_with_defaults_fails_listing_every_problem() -> None:
         ({"allowed_hosts": ["*"]}, "ALLOWED_HOSTS"),
         ({"cors_origins": ["*"]}, "CORS_ORIGINS"),
         ({"cors_origins": ["bets.example.com"]}, "CORS_ORIGINS"),
+        ({"cors_origins": ["http://bets.example.com"]}, "CORS_ORIGINS"),
     ],
 )
 def test_each_insecure_value_blocks_prod(override: dict[str, Any], variable: str) -> None:

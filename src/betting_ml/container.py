@@ -105,6 +105,7 @@ class ApiServices:
     secure_cookies: bool = False
     rate_limits: RateLimits | None = None  # None: no request limits (functional tests)
     max_body_bytes: int = DEFAULT_MAX_BODY_BYTES
+    allowed_hosts: list[str] | None = None  # None: Host not checked (functional tests)
 
 
 class Container:
@@ -297,6 +298,7 @@ class Container:
                 odds_refresh_per_hour=self.settings.odds_refresh_max_per_hour,
             ),
             max_body_bytes=self.settings.max_body_bytes,
+            allowed_hosts=list(self.settings.allowed_hosts),
         )
 
     def backtest_pinnacle(self, allow_holdout: bool = False) -> BacktestPinnacle:

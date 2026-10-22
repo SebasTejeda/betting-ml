@@ -22,7 +22,7 @@ ARGON2_PARAMS = re.compile(r"\$m=(\d+),t=(\d+),p=\d+\$")
 MIN_ARGON2_MEMORY_KIB = 19_456
 MIN_ARGON2_TIME_COST = 2
 DEFAULT_MAX_BODY_BYTES = 65_536
-ORIGIN_PATTERN = re.compile(r"^https?://[^/\s*]+$")
+ORIGIN_PATTERN = re.compile(r"^https://[^/\s*]+$")  # prod: TLS only (HSTS, Secure cookies)
 
 logger = logging.getLogger(__name__)
 

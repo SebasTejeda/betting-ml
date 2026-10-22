@@ -42,6 +42,7 @@ def test_container_wires_every_limit_with_the_settings(tmp_path: Path) -> None:
     assert auth.throttle.max_attempts == 5
     assert auth.throttle.limiter is limits.limiter  # one limiter for the whole API
     assert services.secure_cookies is False  # dev
+    assert services.allowed_hosts == ["localhost", "127.0.0.1"]
 
 
 def test_container_follows_custom_limits(tmp_path: Path) -> None:
@@ -66,6 +67,7 @@ def test_prod_cookies_are_secure(tmp_path: Path) -> None:
         cors_origins=["https://bets.example.com"],
     )
     assert services.secure_cookies is True
+    assert services.allowed_hosts == ["bets.example.com"]
 
 
 def test_the_container_login_locks_after_the_limit(tmp_path: Path) -> None:
