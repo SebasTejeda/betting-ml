@@ -24,6 +24,7 @@ from betting_ml.api.routers import (
     tracking,
 )
 from betting_ml.application.predict_matches import ModelNotAvailableError
+from betting_ml.config import ensure_secure, get_settings
 
 logger = logging.getLogger(__name__)
 LOCALHOST_ORIGINS = r"https?://(localhost|127\.0\.0\.1|\[::1\])(:\d+)?"
@@ -38,6 +39,8 @@ def create_app(services: Any | None = None) -> FastAPI:
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         if app.state.container is None:
             from betting_ml.container import Container
+
+            ensure_secure(get_settings())  # before loading anything (spec 003, US3)
 
             app.state.container = Container().api_services()
         try:  # warm-up: load models and Elo state once

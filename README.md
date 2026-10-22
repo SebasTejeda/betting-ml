@@ -58,7 +58,7 @@ Requisitos: Python ≥ 3.11 y [uv](https://docs.astral.sh/uv/). GNU make es opci
 make setup
 ```
 
-Sin make: `uv sync --extra dev`, seguido de `uv run pre-commit install`. Después copia `.env.example` a `.env` y cambia `ADMIN_API_KEY`.
+Sin make: `uv sync --extra dev`, seguido de `uv run pre-commit install`. Después copia `.env.example` a `.env` y cambia `APP_API_KEY` (y, para producción, las variables de seguridad de la spec 003: ver los comentarios de `.env.example`).
 
 ## Cómo correr
 

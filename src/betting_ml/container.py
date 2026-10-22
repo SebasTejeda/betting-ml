@@ -253,7 +253,7 @@ class Container:
             tracking=self.tracking,
             leagues=self.leagues,
             read_experiments=self.experiment_store.read_rows,
-            admin_api_key=self.settings.admin_api_key,
+            admin_api_key=self.settings.app_api_key.get_secret_value(),  # ADMIN_API_KEY is an alias
             refresher=RefreshData(
                 refresh_fixtures=self._refresh_fixtures,
                 rebuild=self._rebuild_current_season,
@@ -266,7 +266,7 @@ class Container:
                 bets=self.manage_bets,
                 settle=self.settle_bets,
                 bookmakers=self.bookmakers,
-                app_api_key=self.settings.app_api_key,
+                app_api_key=self.settings.app_api_key.get_secret_value(),
                 reports_path=self.settings.reports_path,
                 start_auto_refresh=self._auto_refresh if self.settings.odds_auto_refresh else None,
             ),
@@ -325,7 +325,9 @@ class Container:
         return SqlSettingsRepository(self.db_sessions)
 
     def odds_client(self) -> TheOddsApiClient:
-        return TheOddsApiClient(self.settings.odds_api_key, self.settings.odds_api_regions)
+        return TheOddsApiClient(
+            self.settings.odds_api_key.get_secret_value(), self.settings.odds_api_regions
+        )
 
     def map_odds_events(self, events: list[dict[str, Any]], league: str) -> MappedOdds:
         return map_events(events, league, self.team_names, self.bookmakers.api_keys)

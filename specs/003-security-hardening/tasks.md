@@ -28,7 +28,7 @@ Reglas de ejecución:
 
 ## Fase 1 — Arquitectura
 
-- [ ] **T003** Configuración por entorno y fail-fast (US3)
+- [x] **T003** Configuración por entorno y fail-fast (US3)
   - `APP_ENV=dev|prod`; claves como `SecretStr`; nuevas variables de `plan.md` §6 en `Settings` y `.env.example`.
   - Validador de `prod`: hash de contraseña, `APP_API_KEY` ≥ 32 caracteres y distinta del ejemplo, `SESSION_SECRET`, `ALLOWED_HOSTS` y `CORS_ORIGINS` explícitos. Falla con mensaje claro y sin imprimir secretos.
   - `ADMIN_API_KEY` como alias temporal de `APP_API_KEY` (aviso en el log).

@@ -20,7 +20,7 @@ def refresh(
     container: Any = Depends(get_container),
 ) -> RefreshResponse:
     if container.admin_api_key in ("", DEFAULT_ADMIN_KEY):
-        raise ApiError(503, "ADMIN_DISABLED", "Configura ADMIN_API_KEY en .env para usar /admin")
+        raise ApiError(503, "ADMIN_DISABLED", "Configura APP_API_KEY en .env para usar /admin")
     if x_api_key is None or not secrets.compare_digest(x_api_key, container.admin_api_key):
         raise ApiError(401, "UNAUTHORIZED", "Header X-API-Key inválido o ausente")
     fixtures = container.refresher.fixtures()
