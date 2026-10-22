@@ -10,6 +10,7 @@ from typing import Any, Protocol
 from zoneinfo import ZoneInfo
 
 from betting_ml.config import LeaguesFile
+from betting_ml.domain.audit import AuditInfo
 from betting_ml.domain.journal import OddsSnapshot, QuoteSource
 from betting_ml.domain.ports import OddsRepository
 
@@ -91,7 +92,7 @@ class RefreshOdds:
             last_refresh=None if latest is None else latest.fetched_at,
         )
 
-    def refresh(self, leagues: Sequence[str] | None = None) -> RefreshResult:
+    def refresh(self, leagues: Sequence[str] | None = None, actor: str = "system") -> RefreshResult:
         codes = list(leagues) if leagues else self.leagues.codes
         unknown = [c for c in codes if c not in self.leagues.codes]
         if unknown:
@@ -102,7 +103,7 @@ class RefreshOdds:
         remaining = budget.credits_remaining
         if remaining is not None and remaining - cost < self.min_reserve:
             # The stored balance may be stale (credits reset monthly): ask the API for free.
-            remaining = self._probe(client, remaining)
+            remaining = self._probe(client, remaining, actor)
             if remaining is not None and remaining - cost < self.min_reserve:
                 raise OddsBudgetLowError(remaining, self.min_reserve)
         now = self.clock()
@@ -135,7 +136,9 @@ class RefreshOdds:
             snapshot.credits_used = used
             snapshot.credits_remaining = remaining
             snapshot_id = (
-                self.repository.save_snapshot(snapshot) if (snapshot.leagues or used) else None
+                self.repository.save_snapshot(snapshot, AuditInfo(actor, "ODDS_REFRESHED"))
+                if (snapshot.leagues or used)
+                else None
             )
         if unmapped:
             logger.error(
@@ -152,7 +155,7 @@ class RefreshOdds:
             stopped_by_budget=stopped,
         )
 
-    def _probe(self, client: OddsClient, stored: int | None) -> int | None:
+    def _probe(self, client: OddsClient, stored: int | None, actor: str = "system") -> int | None:
         """Read the current balance with GET /v4/sports (costs no credits) and store it."""
         try:
             client.sports()
@@ -165,7 +168,8 @@ class RefreshOdds:
             self.repository.save_snapshot(
                 OddsSnapshot(
                     self.clock(), QuoteSource.API, credits_remaining=remaining, credits_used=0
-                )
+                ),
+                AuditInfo(actor, "ODDS_CREDITS_PROBED"),
             )
         if remaining is None:
             # No balance header: a new month (Lima) means the provider renewed the credits.

@@ -14,6 +14,7 @@ import pandas as pd
 import pytest
 from sqlalchemy.orm import Session, sessionmaker
 
+from betting_ml.adapters.sql.audit import SqlIntegrity
 from betting_ml.adapters.sql.db import make_engine, prepare, session_factory
 from betting_ml.adapters.sql.models import Base
 from betting_ml.adapters.sql.repositories import (
@@ -22,8 +23,10 @@ from betting_ml.adapters.sql.repositories import (
     SqlSettingsRepository,
 )
 from betting_ml.adapters.team_names import TeamNameResolver
+from betting_ml.application.maintenance import VerifyIntegrity
 from betting_ml.application.settle_bets import SettleBets
 from betting_ml.config import load_team_aliases
+from betting_ml.domain.audit import SYSTEM, AuditInfo
 from betting_ml.domain.entities import Outcome
 from betting_ml.domain.journal import (
     BankrollSettings,
@@ -144,13 +147,13 @@ class RacingRepository(SqlBetRepository):
         super().__init__(sessions)
         self.raced = False
 
-    def update(self, bet: Bet) -> Bet:
+    def update(self, bet: Bet, audit: AuditInfo = SYSTEM) -> Bet:
         if not self.raced:
             self.raced = True
             read = self.get(bet.id)  # type: ignore[arg-type]
             assert read is not None
             super().update(read.settle(BetStatus.LOST, NOW, source="manual"))
-        return super().update(bet)
+        return super().update(bet, audit)
 
 
 def test_settlement_skips_a_bet_changed_in_between(sessions: sessionmaker[Session]) -> None:
@@ -201,3 +204,4 @@ def test_concurrent_settlement_runs_settle_each_bet_once(tmp_path: Path) -> None
         assert stored is not None
         assert stored.status is BetStatus.WON and stored.profit == Decimal("34.00")
         assert stored.version == 2  # one write: never settled twice
+    assert VerifyIntegrity(SqlIntegrity(sessions)).run().ok  # one unbroken audit chain

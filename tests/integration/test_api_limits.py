@@ -49,7 +49,7 @@ def _services(
     hasher = SpyHasher()
     refreshed: list[Any] = []
     refresh_odds = SimpleNamespace(
-        refresh=lambda leagues: (
+        refresh=lambda leagues, actor="system": (
             refreshed.append(leagues)
             or SimpleNamespace(
                 snapshot_id=1,

@@ -15,6 +15,7 @@ from datetime import UTC, date, datetime, timedelta
 import numpy as np
 import pandas as pd
 
+from betting_ml.domain.audit import AuditInfo
 from betting_ml.domain.clv import bet_clv
 from betting_ml.domain.entities import OUTCOMES, OddsTriple, Outcome, make_match_id
 from betting_ml.domain.journal import (
@@ -118,17 +119,18 @@ class SettleBets:
                 return OddsTriple(*(float(v) for v in values)), FOOTBALL_DATA_PSC
         return self._api_closing(bet)
 
-    def _save(self, bet: Bet) -> bool:
+    def _save(self, bet: Bet, audit: AuditInfo) -> bool:
         """Conditional save: a bet changed by someone else since it was read (a manual
         settlement, another run) is left alone, so it is never settled twice."""
         try:
-            self.bets.update(bet)
+            self.bets.update(bet, audit)
         except VersionConflictError:
             logger.info("bet %s changed while settling: skipped", bet.id)
             return False
         return True
 
-    def run(self) -> SettleResult:
+    def run(self, actor: str = "system") -> SettleResult:
+        """``actor``: who started the run (``scheduler`` for a scheduled task)."""
         pending = self.bets.all(BetFilters(status=BetStatus.PENDING))
         now = self.clock()
         recent = now - timedelta(days=RECONCILE_DAYS)
@@ -151,9 +153,11 @@ class SettleBets:
                 fixed = replace(
                     fixed, note=((bet.note or "") + " [corregida con el resultado oficial]").strip()
                 )
-                corrected += self._save(fixed)
+                corrected += self._save(fixed, AuditInfo(actor, "BET_CORRECTED"))
             elif bet.result_source != "official":  # the manual result was right: confirm it
-                self._save(replace(bet, result_source="official"))
+                self._save(
+                    replace(bet, result_source="official"), AuditInfo(actor, "BET_CONFIRMED")
+                )
         missing_clv = [
             b for b in self.bets.all() if b.status is not BetStatus.PENDING and b.clv is None
         ]
@@ -167,7 +171,7 @@ class SettleBets:
                 updated = replace(
                     updated, clv=bet_clv(float(bet.odds), bet.outcome, closing), clv_source=source
                 )
-            if self._save(updated):
+            if self._save(updated, AuditInfo(actor, "BET_SETTLED")):
                 settled += 1
                 clv_count += closing is not None
         for bet in missing_clv:  # manually settled bets: add the CLV when possible
@@ -176,7 +180,8 @@ class SettleBets:
                 clv_count += self._save(
                     replace(
                         bet, clv=bet_clv(float(bet.odds), bet.outcome, closing), clv_source=source
-                    )
+                    ),
+                    AuditInfo(actor, "BET_CLV"),
                 )
         return SettleResult(settled, clv_count, len(pending) - settled, corrected)
 

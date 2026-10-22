@@ -203,3 +203,36 @@ Formato:
     - Ajustes sin la condición: falla 1.
     - Liquidación que no captura el conflicto: fallan 2.
     - Formulario que no se recarga tras el 409: falla 1.
+
+## 2026-10-22 — T015: auditoría registrada por los repositorios, estados en crudo y línea base
+- Contexto: la auditoría debe ir en la misma transacción que el cambio, cubrir apuestas, ajustes, login/logout, liquidación y cuotas, y `verify-integrity` debe comparar cada apuesta con su último evento.
+- Decisión:
+  - **Dónde vive.** El dominio puro está en `domain/audit.py`, no en `security.py` como decía el plan, porque son conceptos distintos. El caso de uso `VerifyIntegrity` está en `application/maintenance.py`, donde T016 añadirá los backups. El adaptador está en `adapters/sql/audit.py`.
+  - **Toda escritura de los repositorios SQL añade su evento en la misma transacción**, aunque quien llame no lo pida. No hay forma de cambiar una apuesta, los ajustes o un snapshot por la aplicación sin dejar rastro.
+    - Los casos de uso pasan `AuditInfo(actor, acción)`. Sin actor conocido, el actor es `system`.
+    - Actores: `session`, `api_key`, `cli` y `scheduler`. Además: `migration` (línea base), `anonymous` (login fallido) y `system`.
+    - La API toma el actor del `Principal` autenticado. La CLI tiene `--actor cli|scheduler` en `settle` y `odds`, y el refresco automático usa `scheduler`.
+  - **Estados en crudo.** El "antes" y el "después" son la fila tal como la guarda SQLite (`SELECT *`), leída dentro de la transacción. Así el evento escrito ahora, la línea base de la migración y la comprobación de `verify-integrity` ven exactamente los mismos valores, sin conversiones de `Decimal` ni de fechas.
+    - Incluyen `version`, así que un cambio que no la suba también se detecta.
+    - De los snapshots de cuotas se guarda un resumen (fuente, ligas, nº de cuotas, créditos), no las cuotas.
+  - **Bloqueo primero.** Cada escritura auditada empieza con una escritura que no toca filas (`UPDATE audit_log SET seq = seq WHERE 0`) y que toma el bloqueo de escritura de SQLite. pysqlite no abre la transacción hasta la primera escritura; sin esto, dos altas simultáneas leían la misma cabeza de la cadena. Un test con 4 hilos lo demuestra: sin el bloqueo falla con `UNIQUE constraint failed: audit_log.seq`.
+  - **Línea base.** La migración 0007 crea la tabla y los *triggers* y sella un evento `BASELINE` por cada apuesta y ajuste ya existentes. Desde entonces, una apuesta sin eventos es una inserción hecha fuera de la aplicación.
+    - La migración usa las funciones puras del dominio. El formato del *payload* lleva `"v": 1` y nunca cambia en el sitio.
+  - **Login y logout.** Se auditan `LOGIN_OK`, `LOGIN_FAILED` (con la IP del cliente) y `LOGOUT`. Nunca se guardan la contraseña, el token ni su hash.
+    - Las sesiones caducadas que se borran al usarse o en la purga son mantenimiento y no se auditan.
+    - Los intentos bloqueados por fuerza bruta no llegan a Argon2 ni a la auditoría: los registrará el log de seguridad (T018). Esto también limita lo que un atacante puede hacer crecer la tabla.
+  - **`verify-integrity`** comprueba cinco cosas y termina con código 1 si alguna falla:
+    - `PRAGMA integrity_check` y `PRAGMA foreign_key_check`.
+    - La cadena: secuencia sin huecos, enlace, hash y columnas iguales a lo firmado.
+    - Cada apuesta y los ajustes iguales al "después" de su último evento.
+    - Las filas sin eventos.
+    - Las filas que faltan sin un evento de borrado.
+- Alcance (riesgo aceptado, ya previsto en la spec):
+  - La cadena no detecta que se recorten los **últimos** registros si las filas afectadas vuelven a su estado anterior.
+  - Tampoco detecta que alguien con el archivo `.db` reescriba toda la cadena. Eso lo cubren las copias de seguridad con hash fuera del equipo (T016).
+- Impacto: mutaciones comprobadas.
+  - Sin el evento en `update`: fallan 5 tests.
+  - Sin los *triggers*: falla 1 (en las bases de archivo los crea la migración, que cubren otros tests).
+  - Sin comprobar el hash: fallan 41.
+  - Sin comparar estados: fallan 5.
+  - Sin el bloqueo previo: falla el test de concurrencia.

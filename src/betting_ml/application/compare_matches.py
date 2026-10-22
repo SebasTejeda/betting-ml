@@ -14,6 +14,7 @@ from typing import Protocol
 from zoneinfo import ZoneInfo
 
 from betting_ml.config import BookmakersFile
+from betting_ml.domain.audit import AuditInfo
 from betting_ml.domain.entities import OUTCOMES, Fixture, OddsTriple, Outcome, Probabilities
 from betting_ml.domain.journal import OddsQuote, OddsSnapshot, QuoteSource
 from betting_ml.domain.ports import OddsRepository, SettingsRepository
@@ -384,7 +385,12 @@ class EvaluateManualOdds:
         self.clock = clock
 
     def evaluate(
-        self, match_id: str, outcome: Outcome, bookmaker: str, odds: float
+        self,
+        match_id: str,
+        outcome: Outcome,
+        bookmaker: str,
+        odds: float,
+        actor: str = "system",
     ) -> ManualEvaluation:
         if odds <= 1:
             raise ValueError("odds must be > 1")
@@ -425,7 +431,8 @@ class EvaluateManualOdds:
                     )
                 ],
                 leagues=[comparison.league],
-            )
+            ),
+            AuditInfo(actor, "ODDS_MANUAL_QUOTE"),
         )
         return ManualEvaluation(
             assessment=result,

@@ -8,6 +8,7 @@ from betting_ml.api.dependencies import JournalApi, get_journal
 from betting_ml.api.mappers.journal import bankroll_settings, settings_out
 from betting_ml.api.schemas_002 import SettingsIO, SettingsOut
 from betting_ml.api.security import require_read, require_write
+from betting_ml.domain.security import Principal
 
 reads = APIRouter(prefix="/api/v1", tags=["spec-002"], dependencies=[Depends(require_read)])
 writes = APIRouter(prefix="/api/v1", tags=["spec-002"], dependencies=[Depends(require_write)])
@@ -19,6 +20,10 @@ def get_settings(journal: JournalApi = Depends(get_journal)) -> SettingsOut:
 
 
 @writes.put("/settings", response_model=SettingsOut)
-def put_settings(body: SettingsIO, journal: JournalApi = Depends(get_journal)) -> SettingsOut:
-    saved = journal.bets.update_settings(bankroll_settings(body))
+def put_settings(
+    body: SettingsIO,
+    journal: JournalApi = Depends(get_journal),
+    principal: Principal = Depends(require_write),
+) -> SettingsOut:
+    saved = journal.bets.update_settings(bankroll_settings(body), actor=principal.actor)
     return settings_out(saved, journal.bets.current_limit())

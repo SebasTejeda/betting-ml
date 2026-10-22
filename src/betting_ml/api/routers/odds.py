@@ -9,6 +9,7 @@ from betting_ml.api.errors import ApiError
 from betting_ml.api.schemas_002 import BudgetOut, RefreshOut
 from betting_ml.api.security import require_read, require_write
 from betting_ml.api.validation import LeagueCode
+from betting_ml.domain.security import Principal
 
 writes = APIRouter(prefix="/api/v1", tags=["spec-002"], dependencies=[Depends(require_write)])
 reads = APIRouter(prefix="/api/v1", tags=["spec-002"], dependencies=[Depends(require_read)])
@@ -28,10 +29,12 @@ def refresh_quota(services: ServicesApi = Depends(get_services)) -> None:
     dependencies=[Depends(refresh_quota)],
 )
 def refresh_odds(
-    league: LeagueCode | None = Query(None), journal: JournalApi = Depends(get_journal)
+    league: LeagueCode | None = Query(None),
+    journal: JournalApi = Depends(get_journal),
+    principal: Principal = Depends(require_write),
 ) -> RefreshOut:
     try:
-        result = journal.refresh_odds.refresh([league] if league else None)
+        result = journal.refresh_odds.refresh([league] if league else None, actor=principal.actor)
     except KeyError as exc:
         raise ApiError(
             404, "LEAGUE_NOT_FOUND", f"Liga '{league}' no soportada", {"league": league}

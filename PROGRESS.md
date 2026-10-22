@@ -197,3 +197,10 @@ Spec activa: [`specs/003-security-hardening/`](specs/003-security-hardening/). T
   - Frontend: envía version; ante un 409 recarga y avisa (el formulario de ajustes se recarga).
   - Postman con variables de versión y una petición 409.
   - 587 tests backend (cobertura 98.8 %) y 59 frontend en verde
+- 2026-10-22 · T015 · Auditoría encadenada SHA-256 de solo inserción (audit_log, migración 0007).
+  - Triggers contra UPDATE y DELETE; línea base de los datos existentes.
+  - Cada escritura de apuestas, ajustes y snapshots, y cada login, login fallido y logout, añade su evento en la misma transacción, con actor (session/api_key/cli/scheduler) y la fila antes y después.
+  - `betting-ml verify-integrity` (+ make): PRAGMAs, cadena y apuestas/ajustes iguales a su último evento; código 1 si falla.
+  - Detecta registros alterados (indica el seq), borrados y filas cambiadas, insertadas o borradas fuera de la API.
+  - Tests de propiedad del encadenado (40 semillas) y de concurrencia (4 hilos).
+  - 820 tests backend (cobertura 98.8 %; auditoría 98–100 %)

@@ -202,15 +202,27 @@ def backtest_002_final() -> None:
     typer.echo(f"Nivel: {payload['level']} — conclusión: {payload['conclusion']}")
 
 
+ACTOR_HELP = "Quién lo ejecuta, para la auditoría: cli (a mano) o scheduler (tarea programada)"
+
+
+def _actor(value: str) -> str:
+    if value not in ("cli", "scheduler"):
+        raise typer.BadParameter("usa cli o scheduler")
+    return value
+
+
 @app.command()
-def odds(league: list[str] = typer.Option(None, help="Ligas (por defecto todas)")) -> None:
+def odds(
+    league: list[str] = typer.Option(None, help="Ligas (por defecto todas)"),
+    actor: str = typer.Option("cli", help=ACTOR_HELP, callback=_actor),
+) -> None:
     """Refresco manual de cuotas desde The Odds API (consume créditos: ~2 por liga)."""
     from betting_ml.application.refresh_odds import OddsBudgetLowError
     from betting_ml.container import Container
 
     use_case = Container().refresh_odds
     try:
-        result = use_case.refresh(league or None)
+        result = use_case.refresh(league or None, actor=actor)
     except OddsBudgetLowError as exc:
         typer.echo(str(exc), err=True)
         raise typer.Exit(code=1) from exc
@@ -225,14 +237,30 @@ def odds(league: list[str] = typer.Option(None, help="Ligas (por defecto todas)"
 
 
 @app.command()
-def settle() -> None:
+def settle(actor: str = typer.Option("cli", help=ACTOR_HELP, callback=_actor)) -> None:
     """Liquida las apuestas pendientes con los resultados de football-data y calcula el CLV."""
     from betting_ml.container import Container
 
-    result = Container().settle_bets.run()
+    result = Container().settle_bets.run(actor=actor)
     typer.echo(
         f"liquidadas={result.settled} con CLV={result.clv_computed} pendientes={result.still_pending}"
     )
+
+
+@app.command("verify-integrity")
+def verify_integrity() -> None:
+    """Comprueba la base (integrity_check, foreign_key_check), la cadena de la auditoría y que
+    cada apuesta y los ajustes coinciden con su último evento. Código 1 si algo falla."""
+    from betting_ml.container import Container
+
+    report = Container().verify_integrity().run()
+    checked = ", ".join(f"{entity}={n}" for entity, n in report.checked.items())
+    typer.echo(f"eventos de auditoría={report.records} filas comparadas: {checked}")
+    if not report.ok:
+        for problem in report.problems:
+            typer.echo(f"FALLO: {problem}", err=True)
+        raise typer.Exit(code=1)
+    typer.echo("Integridad verificada: sin problemas")
 
 
 @app.command("db-upgrade")

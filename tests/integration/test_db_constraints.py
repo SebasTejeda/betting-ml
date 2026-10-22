@@ -208,6 +208,7 @@ def _checks(engine: sa.Engine) -> dict[str, set[tuple[str, str]]]:
             for c in inspector.get_check_constraints(table)
         }
         for table in Base.metadata.tables
+        if table in inspector.get_table_names()  # older revisions lack the newer tables
     }
 
 
@@ -223,7 +224,7 @@ def test_migrated_schema_has_the_same_checks_as_the_models(tmp_path: Path) -> No
     Base.metadata.create_all(memory)
     migrated = _checks(make_engine(url))
     assert migrated == _checks(memory)
-    assert sum(len(c) for c in migrated.values()) == 30
+    assert sum(len(c) for c in migrated.values()) == 32
 
 
 def test_migration_keeps_valid_data(tmp_path: Path) -> None:

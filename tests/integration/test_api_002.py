@@ -679,3 +679,36 @@ def test_stale_versions_answer_409_and_change_nothing(ctx) -> None:  # type: ign
     assert client.get("/api/v1/settings").json()["min_edge"] == 0.03
     without = {k: v for k, v in body.items() if k != "version"}
     _error(client.put("/api/v1/settings", json=without, headers=AUTH), 422, "VALIDATION_ERROR")
+
+
+def test_api_writes_are_audited_with_their_principal(ctx) -> None:  # type: ignore[no-untyped-def]
+    """Spec 003, T015: the machine key is the actor of every write it makes."""
+    from betting_ml.adapters.sql.audit import SqlAuditLog, SqlIntegrity
+    from betting_ml.application.maintenance import VerifyIntegrity
+
+    client, journal, *_ = ctx
+    match_id = _match_id(client)
+    bet = client.post("/api/v1/bets", json=_bet(match_id, stake=5), headers=AUTH).json()
+    client.patch(f"/api/v1/bets/{bet['id']}", json={"note": "n", "version": 1}, headers=AUTH)
+    body = {
+        k: v
+        for k, v in client.get("/api/v1/settings").json().items()
+        if k != "monthly_loss_limit_in_force"
+    }
+    client.put("/api/v1/settings", json={**body, "min_edge": 0.03}, headers=AUTH)
+    client.post(
+        "/api/v1/calculator",
+        json={"match_id": match_id, "outcome": "away", "bookmaker": "teapuesto", "odds": 4.6},
+        headers=AUTH,
+    )
+    client.delete(f"/api/v1/bets/{bet['id']}", headers=AUTH)
+    sessions = journal.bets.bets.sessions
+    events = [(r.actor, r.action) for r in SqlAuditLog(sessions).records() if r.actor != "system"]
+    assert events == [
+        ("api_key", "BET_CREATED"),
+        ("api_key", "BET_UPDATED"),
+        ("api_key", "SETTINGS_CHANGED"),
+        ("api_key", "ODDS_MANUAL_QUOTE"),
+        ("api_key", "BET_DELETED"),
+    ]
+    assert VerifyIntegrity(SqlIntegrity(sessions)).run().ok

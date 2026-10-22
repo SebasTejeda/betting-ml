@@ -10,6 +10,7 @@ from datetime import UTC, date, datetime, time
 from decimal import Decimal
 from typing import Any
 
+from betting_ml.domain.audit import AuditInfo
 from betting_ml.domain.entities import OUTCOMES, Outcome
 from betting_ml.domain.journal import (
     BankrollSettings,
@@ -142,7 +143,7 @@ class ManageBets:
     def get_settings(self) -> BankrollSettings:
         return self.settings_repo.get()
 
-    def update_settings(self, new: BankrollSettings) -> BankrollSettings:
+    def update_settings(self, new: BankrollSettings, actor: str = "system") -> BankrollSettings:
         """Lowering the monthly limit applies now; raising it applies from next month (compared
         with the limit currently in force). Every change is kept in the history. ``new.version``
         is the version that was edited: if another save came first, VersionConflictError."""
@@ -168,7 +169,8 @@ class ManageBets:
             if name == "monthly_loss_limit":
                 effective = effective_from_for(in_force, after, now)
             changes.append(SettingsChange(now, name, str(before), str(after), effective))
-        saved: BankrollSettings = self.settings_repo.save(new, changes)
+        audit = AuditInfo(actor, "SETTINGS_CHANGED")
+        saved: BankrollSettings = self.settings_repo.save(new, changes, audit)
         return saved
 
     # ------------------------------------------------------------------ bets
@@ -239,7 +241,7 @@ class ManageBets:
             overdue=overdue,
         )
 
-    def create(self, request: NewBet, confirm: bool = False) -> Bet:
+    def create(self, request: NewBet, confirm: bool = False, actor: str = "system") -> Bet:
         if request.stake <= 0 or request.odds <= 1:
             raise ValueError("stake > 0 y cuota > 1")
         info = self._match_info(request.match_id)
@@ -276,7 +278,7 @@ class ManageBets:
             warnings=warnings,
             no_reference=fair is None,
         )
-        return self.bets.add(bet)
+        return self.bets.add(bet, AuditInfo(actor, "BET_CREATED"))
 
     def search(
         self, filters: BetFilters | None = None, page: int = 1, size: int = 50
@@ -295,11 +297,13 @@ class ManageBets:
         note: str | None = None,
         status: BetStatus | None = None,
         version: int | None = None,
+        actor: str = "system",
     ) -> Bet:
         """``version`` is the one the client edited; the save itself is conditional too."""
         bet = self.get(bet_id)
         if version is not None and version != bet.version:
             raise VersionConflictError("bet", bet.version)
+        action = "BET_UPDATED"
         if note is not None:
             bet = replace(bet, note=note)
         if status is not None and status is not bet.status:
@@ -314,9 +318,10 @@ class ManageBets:
                     "el partido aún no empieza: no se puede liquidar", "MATCH_NOT_STARTED"
                 )
             bet = bet.settle(status, self.clock(), source="manual")
-        return self.bets.update(bet)
+            action = "BET_SETTLED"
+        return self.bets.update(bet, AuditInfo(actor, action))
 
-    def delete(self, bet_id: int) -> None:
+    def delete(self, bet_id: int, actor: str = "system") -> None:
         bet = self.get(bet_id)
         if bet.status is not BetStatus.PENDING:
             raise BetNotPendingError("solo se pueden borrar apuestas pendientes")
@@ -325,7 +330,7 @@ class ManageBets:
                 "el partido ya empezó: la apuesta se liquida con el resultado, no se borra",
                 "MATCH_ALREADY_STARTED",
             )
-        self.bets.delete(bet_id)
+        self.bets.delete(bet_id, AuditInfo(actor, "BET_DELETED"))
 
     # ------------------------------------------------------------------ summary
     def summary(

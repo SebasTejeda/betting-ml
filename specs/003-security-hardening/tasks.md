@@ -114,7 +114,7 @@ Reglas de ejecución:
   - Tests: dos ediciones con la misma versión (una gana); liquidación concurrente.
   - Commit: `feat(journal): optimistic concurrency on bets and settings`
 
-- [ ] **T015** Auditoría encadenada (US5)
+- [x] **T015** Auditoría encadenada (US5)
   - Dominio: `AuditEvent`, canonicalización y encadenado SHA-256 (puro, con tests de propiedad).
   - Migración 0007: tabla `audit_log` + triggers que impiden `UPDATE`/`DELETE`.
   - Registro en la **misma transacción** que el cambio: apuestas (crear, editar, liquidar, borrar), ajustes/límites, login/logout, liquidación automática y refresco de cuotas (actor `scheduler`/`cli`).

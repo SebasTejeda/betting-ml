@@ -40,6 +40,11 @@ class Principal:
     kind: PrincipalKind
     session: Session | None = None
 
+    @property
+    def actor(self) -> str:
+        """Its name in the audit log."""
+        return self.kind.value
+
 
 def keyed_digest(key: bytes, value: str) -> str:
     """HMAC-SHA256 hex digest: tokens and fingerprints are stored keyed by SESSION_SECRET."""

@@ -25,6 +25,7 @@ from betting_ml.adapters.joblib_registry import JoblibModelRegistry
 from betting_ml.adapters.memory_rate_limiter import MemoryRateLimiter
 from betting_ml.adapters.parquet_repository import ParquetMatchRepository
 from betting_ml.adapters.report_store import JsonReportStore
+from betting_ml.adapters.sql.audit import SqlAuditLog, SqlIntegrity
 from betting_ml.adapters.sql.db import prepare, session_factory
 from betting_ml.adapters.sql.repositories import (
     SqlBetRepository,
@@ -43,6 +44,7 @@ from betting_ml.application.catalog import RefreshData
 from betting_ml.application.compare_matches import CompareMatches, EvaluateManualOdds
 from betting_ml.application.evaluate_holdout import EvaluateHoldout
 from betting_ml.application.generate_report import GenerateReport
+from betting_ml.application.maintenance import VerifyIntegrity
 from betting_ml.application.manage_bets import ManageBets
 from betting_ml.application.predict_matches import PredictMatches
 from betting_ml.application.read_backtest import ReadBacktestReport
@@ -342,7 +344,11 @@ class Container:
             idle=timedelta(minutes=self.settings.session_idle_minutes),
             max_age=timedelta(hours=self.settings.session_max_hours),
             throttle=LoginThrottle(self.rate_limiter, self.settings.login_max_attempts_per_minute),
+            audit_log=SqlAuditLog(self.db_sessions),
         )
+
+    def verify_integrity(self) -> VerifyIntegrity:
+        return VerifyIntegrity(SqlIntegrity(self.db_sessions))
 
     @cached_property
     def rate_limiter(self) -> MemoryRateLimiter:
@@ -358,7 +364,7 @@ class Container:
         return start_scheduler(
             self.settings.odds_auto_refresh_times,
             self.refresh_odds.should_auto_refresh,
-            self.refresh_odds.refresh,
+            lambda: self.refresh_odds.refresh(actor="scheduler"),
         )
 
     @cached_property

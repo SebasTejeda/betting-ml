@@ -13,7 +13,8 @@ from dataclasses import dataclass, replace
 from datetime import UTC, datetime, timedelta
 
 from betting_ml.application.throttle import LoginThrottle
-from betting_ml.domain.ports import PasswordHasher, SessionStore
+from betting_ml.domain.audit import AuditInfo
+from betting_ml.domain.ports import AuditLog, PasswordHasher, SessionStore
 from betting_ml.domain.security import Session, keyed_digest
 
 TOKEN_BYTES = 32  # 256 bits
@@ -47,6 +48,7 @@ class Authenticate:
         idle: timedelta,
         max_age: timedelta,
         throttle: LoginThrottle,  # required: there is no login without brute-force limits
+        audit_log: AuditLog | None = None,  # failed logins (successful ones go with the session)
         clock: Callable[[], datetime] = lambda: datetime.now(UTC),
         token_factory: Callable[[int], str] = secrets.token_urlsafe,
     ) -> None:
@@ -59,6 +61,7 @@ class Authenticate:
         self.clock = clock
         self.token_factory = token_factory
         self.throttle = throttle
+        self.audit_log = audit_log
         self.fingerprint = keyed_digest(secret, password_hash)
 
     @property
@@ -72,6 +75,9 @@ class Authenticate:
             raise LoginDisabledError()
         self.throttle.begin(client)  # before Argon2: a locked client costs no CPU
         if not self.hasher.verify(self.password_hash, password):
+            if self.audit_log is not None:
+                failed = AuditInfo("anonymous", "LOGIN_FAILED", {"client": client})
+                self.audit_log.append(failed, "session")
             raise InvalidCredentialsError()
         self.throttle.succeeded(client)
         if current_token:  # rotation: the previous session never survives a new login
@@ -87,7 +93,7 @@ class Authenticate:
             expires_at=now + self.max_age,
             password_fingerprint=self.fingerprint,
         )
-        self.sessions.add(session)
+        self.sessions.add(session, AuditInfo("session", "LOGIN_OK", {"client": client}))
         return Login(token=token, session=session)
 
     def validate(self, token: str) -> Session | None:
@@ -107,7 +113,7 @@ class Authenticate:
 
     def logout(self, token: str) -> None:
         if token:
-            self.sessions.delete(keyed_digest(self.secret, token))
+            self.sessions.delete(keyed_digest(self.secret, token), AuditInfo("session", "LOGOUT"))
 
     def purge(self) -> int:
         now = self.clock()

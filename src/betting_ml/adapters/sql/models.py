@@ -11,6 +11,7 @@ from datetime import datetime
 from decimal import Decimal
 
 from sqlalchemy import (
+    DDL,
     Boolean,
     CheckConstraint,
     DateTime,
@@ -20,6 +21,7 @@ from sqlalchemy import (
     Numeric,
     String,
     Text,
+    event,
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
@@ -222,3 +224,35 @@ class SessionRow(Base):
     last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
     password_fingerprint: Mapped[str] = mapped_column(String(64))
+
+
+class AuditRow(Base):
+    """Append-only, hash-chained audit log (spec 003, US5): see ``domain.audit``. Triggers
+    reject any UPDATE or DELETE; the chain detects whatever bypasses them."""
+
+    __tablename__ = "audit_log"
+    __table_args__ = (
+        Index("ix_audit_log_entity", "entity", "entity_id"),
+        CheckConstraint("seq >= 1", name="ck_audit_log_seq"),
+        CheckConstraint("length(hash) = 64 AND length(prev_hash) = 64", name="ck_audit_log_hashes"),
+    )
+
+    seq: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=False)
+    ts_utc: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    actor: Mapped[str] = mapped_column(String(20))
+    action: Mapped[str] = mapped_column(String(40))
+    entity: Mapped[str] = mapped_column(String(20))
+    entity_id: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    payload: Mapped[str] = mapped_column(Text)
+    prev_hash: Mapped[str] = mapped_column(String(64))
+    hash: Mapped[str] = mapped_column(String(64), unique=True)
+
+
+APPEND_ONLY_TRIGGERS = {
+    "audit_log_no_update": "CREATE TRIGGER audit_log_no_update BEFORE UPDATE ON audit_log "
+    "BEGIN SELECT RAISE(ABORT, 'audit_log es de solo inserción'); END",
+    "audit_log_no_delete": "CREATE TRIGGER audit_log_no_delete BEFORE DELETE ON audit_log "
+    "BEGIN SELECT RAISE(ABORT, 'audit_log es de solo inserción'); END",
+}
+for _trigger in APPEND_ONLY_TRIGGERS.values():
+    event.listen(AuditRow.__table__, "after_create", DDL(_trigger))
