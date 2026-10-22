@@ -1,5 +1,5 @@
 # Comandos del proyecto (ver plan.md §8). Todos delegan en `uv run` y en la CLI `betting-ml`.
-.PHONY: web web-test web-api dev backtest-002 backtest-002-final setup lint test data baselines exp select holdout report train-prod serve track docker all
+.PHONY: security web web-test web-api dev backtest-002 backtest-002-final setup lint test data baselines exp select holdout report train-prod serve track docker all
 
 UV ?= uv
 RUN = $(UV) run
@@ -90,3 +90,13 @@ web-api:
 # API (:8000) y frontend (:5173, con proxy /api) juntos.
 dev:
 	$(CLI) serve --host 127.0.0.1 --port 8000 & cd frontend && npm run dev
+
+# ---- Seguridad (spec 003). Modo informe hasta T019: cada paso muestra sus hallazgos y sigue (-).
+AUDIT_REQS = .audit-requirements.txt
+
+security:
+	-$(RUN) ruff check --select S src
+	$(UV) export --frozen --no-emit-project --no-dev --format requirements-txt -o $(AUDIT_REQS)
+	-$(RUN) pip-audit --disable-pip --require-hashes -r $(AUDIT_REQS)
+	-cd frontend && npm audit --omit=dev --audit-level=high
+	-gitleaks git --redact --no-banner .

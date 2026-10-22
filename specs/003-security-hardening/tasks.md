@@ -20,7 +20,7 @@ Reglas de ejecución:
   - Ampliar `ml-reviewer` con un bloque de revisión para la spec 003 (autenticación en todas las rutas, CSRF, tests negativos, auditoría, migraciones sin pérdida de datos).
   - Commit: `docs: integrate spec 003`
 
-- [ ] **T002** Línea base de seguridad
+- [x] **T002** Línea base de seguridad
   - Añadir las herramientas sin hacer fallar todavía el CI: ruff con `S` (bandit) en modo informe, `pip-audit`, `npm audit`, `gitleaks`; objetivo `make security`.
   - Generar `reports/SECURITY_BASELINE.md`: hallazgos de las herramientas + tabla de la spec §1, cada uno con severidad y la tarea que lo resuelve.
   - Corregir solo lo trivial (sin cambiar comportamiento); el resto queda asignado a su tarea.

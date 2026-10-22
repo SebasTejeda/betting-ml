@@ -42,6 +42,7 @@ dev = [
     "nbformat>=5.10",
     "nbconvert>=7.16",
     "ipykernel>=6.29",
+    "pip-audit>=2.10.1",
 ]
 
 [project.scripts]

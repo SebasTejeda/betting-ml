@@ -1,0 +1,11 @@
+# gitleaks (spec 003, T002): reglas por defecto + rutas de terceros excluidas en `gitleaks dir`.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Dependencias instaladas y artefactos generados"
+paths = [
+  '''(^|/)\.venv/''',
+  '''(^|/)node_modules/''',
+  '''(^|/)frontend/dist/''',
+]
