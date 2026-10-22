@@ -10,6 +10,7 @@ from fastapi.testclient import TestClient
 from betting_ml.api.main import create_app
 from betting_ml.application.catalog import RefreshData
 from betting_ml.container import ApiServices
+from tests.clients import ReaderClient
 from tests.serving import FIXTURE_DAY, ServingEnv, build_serving_env, leagues
 
 API_KEY = "test-key"
@@ -45,7 +46,7 @@ def client(env: ServingEnv, refreshed: list[str]) -> Iterator[TestClient]:
             on_done=env.predictor.reset,
         ),
     )
-    with TestClient(create_app(services)) as test_client:
+    with ReaderClient(create_app(services), API_KEY) as test_client:
         yield test_client
 
 
@@ -226,7 +227,7 @@ def test_model_not_available_returns_503(tmp_path: Path) -> None:
         API_KEY,
         RefreshData(lambda: 0, lambda: None, env.predictor.reset),
     )
-    with TestClient(create_app(services)) as client:
+    with ReaderClient(create_app(services), API_KEY) as client:
         assert client.get("/health").json()["model_loaded"] is False
         _assert_error(client.get("/api/v1/matches"), 503, "MODEL_NOT_AVAILABLE")
         _assert_error(client.get("/api/v1/model"), 503, "MODEL_NOT_AVAILABLE")
@@ -280,6 +281,6 @@ def test_admin_disabled_with_default_key(env: ServingEnv) -> None:
         "cambia-esto",
         RefreshData(lambda: 0, lambda: None, env.predictor.reset),
     )
-    with TestClient(create_app(services)) as client:
+    with ReaderClient(create_app(services), "cambia-esto") as client:
         response = client.post("/api/v1/admin/refresh", headers={"X-API-Key": "cambia-esto"})
         _assert_error(response, 503, "WRITES_DISABLED")

@@ -53,7 +53,7 @@ def current_principal(
         key = services.app_api_key
         if key in ("", EXAMPLE_KEY):
             raise ApiError(
-                503, "WRITES_DISABLED", "Configura APP_API_KEY en .env para escribir datos"
+                503, "WRITES_DISABLED", "Configura APP_API_KEY en .env para usar X-API-Key"
             )
         if not x_api_key or not _same(x_api_key, key):
             raise _unauthorized()
@@ -69,9 +69,11 @@ def public() -> None:
     """Explicitly public route (health, login)."""
 
 
-def require_read() -> Principal | None:
-    """Reads stay open until the frontend logs in (T007 requires a principal here)."""
-    return None
+def require_read(principal: Principal | None = Depends(current_principal)) -> Principal:
+    """Every private route, reads included (spec 003, T007): machine key or owner session."""
+    if principal is None:
+        raise _unauthorized()
+    return principal
 
 
 def require_write(

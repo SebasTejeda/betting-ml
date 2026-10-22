@@ -88,7 +88,12 @@
           ],
           "request": {
             "method": "GET",
-            "header": [],
+            "header": [
+              {
+                "key": "X-API-Key",
+                "value": "{{appApiKey}}"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/api/v1/leagues",
               "host": [
@@ -119,7 +124,12 @@
           ],
           "request": {
             "method": "GET",
-            "header": [],
+            "header": [
+              {
+                "key": "X-API-Key",
+                "value": "{{appApiKey}}"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/api/v1/leagues/E0/teams",
               "host": [
@@ -152,7 +162,12 @@
           ],
           "request": {
             "method": "GET",
-            "header": [],
+            "header": [
+              {
+                "key": "X-API-Key",
+                "value": "{{appApiKey}}"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/api/v1/leagues/XX/teams",
               "host": [
@@ -191,7 +206,12 @@
           ],
           "request": {
             "method": "GET",
-            "header": [],
+            "header": [
+              {
+                "key": "X-API-Key",
+                "value": "{{appApiKey}}"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/api/v1/matches",
               "host": [
@@ -222,7 +242,12 @@
           ],
           "request": {
             "method": "GET",
-            "header": [],
+            "header": [
+              {
+                "key": "X-API-Key",
+                "value": "{{appApiKey}}"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/api/v1/matches?date={{date}}",
               "host": [
@@ -259,7 +284,12 @@
           ],
           "request": {
             "method": "GET",
-            "header": [],
+            "header": [
+              {
+                "key": "X-API-Key",
+                "value": "{{appApiKey}}"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/api/v1/matches?date={{date}}&league=E0&only_value=true&min_edge=0.05",
               "host": [
@@ -308,7 +338,12 @@
           ],
           "request": {
             "method": "GET",
-            "header": [],
+            "header": [
+              {
+                "key": "X-API-Key",
+                "value": "{{appApiKey}}"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/api/v1/matches?date=2026-07-01",
               "host": [
@@ -345,7 +380,12 @@
           ],
           "request": {
             "method": "GET",
-            "header": [],
+            "header": [
+              {
+                "key": "X-API-Key",
+                "value": "{{appApiKey}}"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/api/v1/matches?date=27-09-2026",
               "host": [
@@ -392,6 +432,10 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "X-API-Key",
+                "value": "{{appApiKey}}"
               }
             ],
             "url": {
@@ -438,6 +482,10 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "X-API-Key",
+                "value": "{{appApiKey}}"
               }
             ],
             "url": {
@@ -484,6 +532,10 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "X-API-Key",
+                "value": "{{appApiKey}}"
               }
             ],
             "url": {
@@ -529,6 +581,10 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "X-API-Key",
+                "value": "{{appApiKey}}"
               }
             ],
             "url": {
@@ -575,7 +631,12 @@
           ],
           "request": {
             "method": "GET",
-            "header": [],
+            "header": [
+              {
+                "key": "X-API-Key",
+                "value": "{{appApiKey}}"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/api/v1/model",
               "host": [
@@ -606,7 +667,12 @@
           ],
           "request": {
             "method": "GET",
-            "header": [],
+            "header": [
+              {
+                "key": "X-API-Key",
+                "value": "{{appApiKey}}"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/api/v1/experiments",
               "host": [
@@ -642,7 +708,12 @@
           ],
           "request": {
             "method": "GET",
-            "header": [],
+            "header": [
+              {
+                "key": "X-API-Key",
+                "value": "{{appApiKey}}"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/api/v1/tracking/summary",
               "host": [
@@ -765,7 +836,12 @@
               ],
               "request": {
                 "method": "GET",
-                "header": [],
+                "header": [
+                  {
+                    "key": "X-API-Key",
+                    "value": "{{appApiKey}}"
+                  }
+                ],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/bookmakers",
                   "host": [
@@ -796,7 +872,12 @@
               ],
               "request": {
                 "method": "GET",
-                "header": [],
+                "header": [
+                  {
+                    "key": "X-API-Key",
+                    "value": "{{appApiKey}}"
+                  }
+                ],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/odds/budget",
                   "host": [
@@ -908,7 +989,12 @@
               ],
               "request": {
                 "method": "GET",
-                "header": [],
+                "header": [
+                  {
+                    "key": "X-API-Key",
+                    "value": "{{appApiKey}}"
+                  }
+                ],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/comparator?date={{date}}",
                   "host": [
@@ -944,7 +1030,12 @@
               ],
               "request": {
                 "method": "GET",
-                "header": [],
+                "header": [
+                  {
+                    "key": "X-API-Key",
+                    "value": "{{appApiKey}}"
+                  }
+                ],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/comparator?date={{date}}&accessible_only=false",
                   "host": [
@@ -984,7 +1075,12 @@
               ],
               "request": {
                 "method": "GET",
-                "header": [],
+                "header": [
+                  {
+                    "key": "X-API-Key",
+                    "value": "{{appApiKey}}"
+                  }
+                ],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/comparator/{{matchId}}",
                   "host": [
@@ -1016,7 +1112,12 @@
               ],
               "request": {
                 "method": "GET",
-                "header": [],
+                "header": [
+                  {
+                    "key": "X-API-Key",
+                    "value": "{{appApiKey}}"
+                  }
+                ],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/comparator/E0-2030-01-01-a-b",
                   "host": [
@@ -1048,7 +1149,12 @@
               ],
               "request": {
                 "method": "GET",
-                "header": [],
+                "header": [
+                  {
+                    "key": "X-API-Key",
+                    "value": "{{appApiKey}}"
+                  }
+                ],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/comparator?date=10-10-2026",
                   "host": [
@@ -1382,7 +1488,12 @@
               ],
               "request": {
                 "method": "GET",
-                "header": [],
+                "header": [
+                  {
+                    "key": "X-API-Key",
+                    "value": "{{appApiKey}}"
+                  }
+                ],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/bets?kind=paper",
                   "host": [
@@ -1577,7 +1688,12 @@
               ],
               "request": {
                 "method": "GET",
-                "header": [],
+                "header": [
+                  {
+                    "key": "X-API-Key",
+                    "value": "{{appApiKey}}"
+                  }
+                ],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/bets/summary",
                   "host": [
@@ -1591,6 +1707,38 @@
                   ]
                 },
                 "description": ""
+              }
+            },
+            {
+              "name": "GET diario sin clave (401)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status 401\", function () { pm.response.to.have.status(401); });",
+                      "pm.test(\"las lecturas también exigen credencial\", function () {",
+                      "    pm.expect(pm.response.json().error.code).to.eql(\"UNAUTHORIZED\");",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/bets",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "bets"
+                  ]
+                }
               }
             }
           ]
@@ -1613,7 +1761,12 @@
               ],
               "request": {
                 "method": "GET",
-                "header": [],
+                "header": [
+                  {
+                    "key": "X-API-Key",
+                    "value": "{{appApiKey}}"
+                  }
+                ],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/settings",
                   "host": [
@@ -1740,7 +1893,12 @@
               ],
               "request": {
                 "method": "GET",
-                "header": [],
+                "header": [
+                  {
+                    "key": "X-API-Key",
+                    "value": "{{appApiKey}}"
+                  }
+                ],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/backtest/pinnacle",
                   "host": [

@@ -59,7 +59,7 @@ Reglas de ejecución:
   - Tests: contraseña incorrecta, cookie alterada, vencida por inactividad y por máximo, sesión cerrada, cambio de contraseña invalida sesiones, cookie con `HttpOnly`/`SameSite=Strict`/`Secure` según el entorno, CSRF ausente/falso/de otra sesión → 403.
   - Commit: `feat(auth): owner login with argon2id and server-side sessions`
 
-- [ ] **T007** Proteger todas las lecturas (US1, US2)
+- [x] **T007** Proteger todas las lecturas (US1, US2)
   - `require_read` exige sesión o `X-API-Key`: todas las rutas privadas quedan autenticadas (el CSRF de las escrituras ya está desde T006).
   - Tests: sin credencial → 401 en cada ruta privada (generado desde las rutas de la app).
   - Actualizar la colección de Postman (`X-API-Key` en todas las peticiones privadas) y su test.

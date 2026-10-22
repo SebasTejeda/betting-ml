@@ -1289,7 +1289,9 @@ export interface operations {
     leagues_api_v1_leagues_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "x-api-key"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -1304,12 +1306,23 @@ export interface operations {
                     "application/json": components["schemas"]["League"][];
                 };
             };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
     };
     teams_api_v1_leagues__code__teams_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "x-api-key"?: string | null;
+            };
             path: {
                 code: string;
             };
@@ -1349,7 +1362,9 @@ export interface operations {
                 /** @description Umbral de valor esperado */
                 min_edge?: number;
             };
-            header?: never;
+            header?: {
+                "x-api-key"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -1378,7 +1393,9 @@ export interface operations {
     predict_api_v1_predictions_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "x-api-key"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -1411,7 +1428,9 @@ export interface operations {
     model_api_v1_model_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "x-api-key"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -1426,12 +1445,23 @@ export interface operations {
                     "application/json": components["schemas"]["ModelInfo"];
                 };
             };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
     };
     experiments_api_v1_experiments_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "x-api-key"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -1448,12 +1478,23 @@ export interface operations {
                     }[];
                 };
             };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
     };
     summary_api_v1_tracking_summary_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "x-api-key"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -1466,6 +1507,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TrackingSummaryOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -1539,7 +1589,9 @@ export interface operations {
     odds_budget_api_v1_odds_budget_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "x-api-key"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -1554,12 +1606,23 @@ export interface operations {
                     "application/json": components["schemas"]["BudgetOut"];
                 };
             };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
     };
     bookmakers_api_v1_bookmakers_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "x-api-key"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -1572,6 +1635,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BookmakerOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -1587,7 +1659,9 @@ export interface operations {
                 min_edge?: number | null;
                 accessible_only?: boolean;
             };
-            header?: never;
+            header?: {
+                "x-api-key"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -1616,7 +1690,9 @@ export interface operations {
     comparator_detail_api_v1_comparator__match_id__get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "x-api-key"?: string | null;
+            };
             path: {
                 match_id: string;
             };
@@ -1691,7 +1767,9 @@ export interface operations {
                 page?: number;
                 size?: number;
             };
-            header?: never;
+            header?: {
+                "x-api-key"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -1862,7 +1940,9 @@ export interface operations {
                 from?: string | null;
                 to?: string | null;
             };
-            header?: never;
+            header?: {
+                "x-api-key"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -1891,7 +1971,9 @@ export interface operations {
     get_settings_api_v1_settings_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "x-api-key"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -1904,6 +1986,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SettingsOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -1947,7 +2038,9 @@ export interface operations {
     backtest_api_v1_backtest_pinnacle_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "x-api-key"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -1962,6 +2055,15 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

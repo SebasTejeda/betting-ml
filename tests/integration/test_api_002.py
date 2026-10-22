@@ -28,6 +28,7 @@ from betting_ml.config import load_bookmakers, load_leagues, load_team_aliases
 from betting_ml.container import ApiServices, JournalServices
 from betting_ml.domain.entities import Probabilities
 from betting_ml.domain.journal import OddsSnapshot, QuoteSource
+from tests.clients import ReaderClient
 from tests.serving import build_serving_env, leagues
 
 FIXTURES = Path(__file__).parents[1] / "fixtures" / "the_odds_api"
@@ -130,7 +131,7 @@ def ctx(tmp_path: Path):  # type: ignore[no-untyped-def]
         RefreshData(lambda: 0, lambda: None, serving.predictor.reset),
         journal,
     )
-    with TestClient(create_app(services)) as client:
+    with ReaderClient(create_app(services), KEY) as client:
         yield client, journal, clock, client_box, results, services
 
 
@@ -449,6 +450,8 @@ def test_writes_disabled_with_default_key_and_missing_services(ctx, tmp_path: Pa
         503,
         "WRITES_DISABLED",
     )
+    _error(client.get("/api/v1/bookmakers"), 503, "WRITES_DISABLED")  # reads too (T007)
+    services.app_api_key = KEY
     services.journal = None
     _error(client.get("/api/v1/bookmakers"), 503, "SERVICE_NOT_AVAILABLE")
 
@@ -513,7 +516,7 @@ def test_lifespan_starts_and_stops_the_auto_refresh(ctx) -> None:  # type: ignor
         return FakeScheduler()
 
     app = create_app(replace(services, journal=replace(journal, start_auto_refresh=start)))
-    with TestClient(app) as client:
+    with ReaderClient(app, KEY) as client:
         assert events == ["start"]
         assert client.get("/api/v1/bookmakers").status_code == 200
     assert events == ["start", "stop"]

@@ -1,5 +1,6 @@
-"""Spec 003, T005: every route declares exactly one access policy, built from app.routes so a
-new unclassified route fails here, and every write route rejects missing or wrong keys."""
+"""Spec 003, T005/T007: every route declares exactly one access policy, built from app.routes
+so a new unclassified route fails here, and every private route (reads included) rejects missing
+or wrong credentials."""
 
 from __future__ import annotations
 
@@ -69,25 +70,52 @@ def test_state_changing_methods_are_writes() -> None:
             assert access is not Access.WRITE, f"{method} {path} must not be a write"
 
 
-def _writes() -> list[tuple[str, str]]:
-    return [(m, p) for m, p, r in _routes() if route_access(r) == [Access.WRITE]]
+def _private(access: Access | None = None) -> list[tuple[str, str]]:
+    return [
+        (m, p)
+        for m, p, r in _routes()
+        if route_access(r) != [Access.PUBLIC] and (access is None or route_access(r) == [access])
+    ]
 
 
-@pytest.mark.parametrize("headers", [{}, {"X-API-Key": "wrong"}, {"X-API-Key": ""}])
-def test_every_write_rejects_missing_or_wrong_key(
+def test_reads_and_writes_are_both_covered() -> None:
+    assert len(_private(Access.READ)) >= 14
+    assert len(_private(Access.WRITE)) >= 8
+
+
+@pytest.mark.parametrize(
+    "headers",
+    [{}, {"X-API-Key": "wrong"}, {"X-API-Key": ""}, {"X-API-Key": KEY + "x"}],
+    ids=["none", "wrong", "empty", "suffix"],
+)
+def test_every_private_route_rejects_missing_or_wrong_key(
     client: TestClient, headers: dict[str, str]
 ) -> None:
-    writes = _writes()
-    assert len(writes) >= 8
-    for method, path in writes:
+    for method, path in _private():
         response = client.request(method, _url(path), headers=headers)
         assert response.status_code == 401, f"{method} {path}: {response.status_code}"
         assert response.json()["error"]["code"] == "UNAUTHORIZED"
 
 
-def test_every_write_is_disabled_with_the_example_key() -> None:
+def test_forged_session_cookie_is_not_a_credential(client: TestClient) -> None:
+    client.cookies.set("bml_session", "forged-session-token")
+    for method, path in _private():
+        response = client.request(method, _url(path))
+        assert response.status_code == 401, f"{method} {path}: {response.status_code}"
+
+
+def test_valid_key_passes_the_gate_on_every_read() -> None:
+    # The stub services lack the use cases, so a route may fail after the gate (500/503/422):
+    # only the gate's own answers matter here.
+    with TestClient(_app(), raise_server_exceptions=False) as client:
+        for method, path in _private(Access.READ):
+            response = client.request(method, _url(path), headers={"X-API-Key": KEY})
+            assert response.status_code not in (401, 403), f"{method} {path}"
+
+
+def test_every_private_route_is_disabled_with_the_example_key() -> None:
     with TestClient(_app("cambia-esto")) as client:
-        for method, path in _writes():
+        for method, path in _private():
             response = client.request(method, _url(path), headers={"X-API-Key": "cambia-esto"})
             assert response.status_code == 503, f"{method} {path}"
             assert response.json()["error"]["code"] == "WRITES_DISABLED"
