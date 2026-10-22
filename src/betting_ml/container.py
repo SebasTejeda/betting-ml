@@ -47,6 +47,7 @@ from betting_ml.application.select_champion import SelectChampion
 from betting_ml.application.settle_bets import SettleBets
 from betting_ml.application.track_predictions import TrackPredictions
 from betting_ml.application.train_production import TrainProduction
+from betting_ml.application.validate_markets import ValidateMarkets
 from betting_ml.config import (
     BookmakersFile,
     FeaturesFile,
@@ -58,6 +59,7 @@ from betting_ml.config import (
     load_europe_aliases,
     load_features,
     load_leagues,
+    load_markets,
     load_team_aliases,
 )
 
@@ -169,6 +171,14 @@ class Container:
             names=self.europe_names,
             repository=self.repository,
             report_path=self.settings.reports_path / "europe_data_quality.md",
+        )
+
+    def validate_markets(self) -> ValidateMarkets:
+        return ValidateMarkets(
+            repository=self.repository,
+            catalog=load_markets(self.settings.configs_dir / "markets.yaml"),
+            experiment_path=self.settings.reports_path / "experiments" / "E09.json",
+            reports_dir=self.settings.reports_path,
         )
 
     @cached_property

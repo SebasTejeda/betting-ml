@@ -69,3 +69,26 @@ Formato:
 - Decisión (del dueño): cerrar T004 sin la llamada. `configs/markets.yaml` queda con las claves esperadas según la documentación de The Odds API (`h2h`, `totals`, `btts`, `team_totals`, `double_chance`, `draw_no_bet`); hándicap europeo y marcador exacto quedan como `manual`.
 - Motivo: no bloquear la fase de modelos y validación (T005–T010), que no necesita cuotas en vivo.
 - Impacto: la llamada (1 de las 3 permitidas) se hace antes de T014 (adaptador de cuotas por evento), que es la primera tarea que depende de esas claves. Si algún mercado no existe en el plan gratis, se marca `odds_source: manual` y se registra aquí.
+
+## 2026-10-22 — Reglas pre-registradas de la validación de mercados (T007, antes de ver resultados)
+- Contexto: US1 pide un nivel de confianza por mercado y un backtest de valor de Más/Menos 2.5; para no ajustar las reglas a los resultados, se fijan antes de correr `validate-markets`.
+- Decisión:
+  - **Grupo calibrado:** un mercado en una línea (`totals:2.5`), un equipo de `team_totals` en una línea (`team_totals:home:1.5`) o un mercado sin líneas (`h2h`, `btts`, `double_chance`, `draw_no_bet`, `correct_score`). Cada grupo tiene su propio nivel: no tiene sentido que Más de 0.5 (≈ 93 %) y Más de 4.5 compartan nivel.
+  - **Métricas:** binarias por selección (cada selección es un evento sí/no), agrupadas dentro del grupo: log loss, Brier y ECE con 10 bins de igual ancho. Empate no apuesta se evalúa solo en partidos decididos, con p = P(gana) / (1 − P(empate)). Marcador exacto: los 5 más probables de cada partido.
+  - **Línea base:** frecuencia de cada selección en la misma liga durante las temporadas de entrenamiento del fold, suavizada como (k + 0,5)/(n + 1).
+  - **Niveles:** `alta` si ECE < 0.02 y el modelo mejora a la línea base en log loss **y** Brier; `media` si ECE < 0.04; `baja` el resto (spec US1).
+  - **Backtest Más/Menos 2.5:** probabilidad del modelo (matriz walk-forward) contra la cuota **pre-cierre** de cada escenario (`b365` realista, `avg` control, `max` mejor precio, no apostable); una apuesta por partido (el lado con mayor EV); umbrales {0, 2, 4, 6, 8, 10 %}; se elige el umbral con mayor CLV medio entre los que tienen ≥ 300 apuestas en F1–F3 (empate → el menor). CLV = cuota × p de Pinnacle al cierre (Shin) − 1; el cierre nunca entra en la decisión. Placebo: CLV de apostar los dos lados de todos los partidos al precio del escenario.
+- Motivo: mismas garantías que la spec 002 (umbral elegido en validación, cierre solo para medir, control y placebo).
+- Impacto: estos niveles son provisionales (F1–F3); los definitivos salen de la evaluación única de T009.
+
+## 2026-10-22 — T007 adelantada sin la parte europea
+- Contexto: ClubElo sigue caído (502) y T006 (ajuste entre ligas) no se puede hacer; el dueño pidió adelantar T007 con las ligas locales.
+- Decisión: T007 cubre la calibración de todos los mercados P1 en las 5 ligas y el backtest de Más/Menos 2.5. La calibración de Champions/Europa League se hace al terminar T006.
+- Motivo: la calibración de las ligas no depende de ClubElo.
+- Impacto: T008 (checkpoint) revisa la parte local; la europea entra en la revisión de T009 o en un checkpoint adicional si cambia algo de fondo.
+
+## 2026-10-22 — Resultado de la validación F1–F3: calibración buena, sin valor en Más/Menos 2.5 (T007)
+- Contexto: `validate-markets` en 5 330 partidos de validación (F1–F3).
+- Resultado: 14 de 18 grupos con confianza `alta` y 4 `media` (empate no apuesta, Más/Menos 3.5 y 4.5, goles del local Más/Menos 2.5); ninguno `baja`. El backtest de Más/Menos 2.5 es negativo en todos los escenarios: Bet365 umbral 10 % → 1 098 apuestas, ROI −11.7 % [−18.3, −4.8], CLV −4.8 % [−5.2, −4.4], igual al placebo (−4.8 %); el promedio (control) da CLV −5.4 %; el máximo, CLV −1.7 % (placebo −1.5 %). El 73–76 % de las apuestas son "Más": el modelo sobreestima la frecuencia de más de 2.5 goles (55.3 % vs 53.5 %), lo que se ve como "valor" contra la cuota pero el cierre no lo confirma.
+- Decisión: los niveles de confianza se usan para mostrar probabilidades con aviso; la señal de valor en Más/Menos 2.5 no tiene evidencia y sigue EXPERIMENTAL — solo papel (principio XI). No se ajusta nada a la vista de estos resultados antes de T009.
+- Impacto: el criterio "Bueno" de la spec (Más/Menos 2.5 con CLV medio ≥ 0) no se cumple en validación. La puerta T010 solo mira la confianza, así que se pasaría; los consejos de valor deben dejar clara la falta de evidencia.

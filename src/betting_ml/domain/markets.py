@@ -162,6 +162,16 @@ def _win_void_masks(
     return (h == sh) & (a == sa), no
 
 
+def selection_mask(
+    market: Market | str, selection: str, line: float | None, size: int = MAX_GOALS + 1
+) -> tuple[npt.NDArray[np.bool_], npt.NDArray[np.bool_]]:
+    """ "Won" and "void" masks over a ``size × size`` grid of scores (rows: home goals)."""
+    mk = validate_selection(market, selection, line)
+    i, j = np.indices((size, size))
+    won, void = _win_void_masks(mk, selection, line, i, j)
+    return np.asarray(won, dtype=bool), np.asarray(void, dtype=bool)
+
+
 def selection_probability(
     matrix: FloatArray, market: Market | str, selection: str, line: float | None = None
 ) -> SelectionProbability:

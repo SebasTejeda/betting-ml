@@ -50,6 +50,22 @@ def data_europe(verbose: bool = False) -> None:
     )
 
 
+@app.command("validate-markets")
+def validate_markets(verbose: bool = False) -> None:
+    """Calibración de los mercados derivados y backtest Más/Menos 2.5 en F1–F3 (spec 003)."""
+    from betting_ml.container import Container
+
+    _setup_logging(verbose)
+    result = Container().validate_markets().run()
+    for cal in result.calibration:
+        typer.echo(
+            f"{cal.group:<24} {cal.confidence:<5} ece={cal.model['ece']:.4f} "
+            f"ll={cal.model['log_loss']:.4f} (base {cal.baseline['log_loss']:.4f}) n={cal.model['n']}"
+        )
+    for scenario, data in result.ou_backtest["scenarios"].items():
+        typer.echo(f"ou25 {scenario}: umbral={data['chosen_threshold']}")
+
+
 @app.command()
 def exp(exp_id: str, verbose: bool = False, skip_existing: bool = False) -> None:
     """Corre un experimento de configs/experiments/{ID}_*.yaml en F1–F3."""

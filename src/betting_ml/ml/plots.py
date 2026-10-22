@@ -87,3 +87,23 @@ def cumulative_plot(series: dict[str, list[float]], path: Path, title: str) -> P
         ax.legend(loc="best", fontsize=8)
     fig.tight_layout()
     return _save(fig, path)
+
+
+def market_calibration_plot(
+    curves: dict[str, list[dict[str, float]]], path: Path, title: str
+) -> Path:
+    """Reliability curves of several selection groups of one market (spec 003)."""
+    fig, ax = plt.subplots(figsize=(5.5, 5))
+    ax.plot([0, 1], [0, 1], ls="--", color="#adb5bd", lw=1)
+    for label, curve in curves.items():
+        if curve:
+            ax.plot([c["p"] for c in curve], [c["rate"] for c in curve], marker="o", label=label)
+    ax.set_xlabel("Probabilidad predicha")
+    ax.set_ylabel("Frecuencia observada")
+    ax.set_title(title)
+    ax.set_xlim(0, 1)
+    ax.set_ylim(0, 1)
+    if ax.get_legend_handles_labels()[0]:
+        ax.legend(loc="upper left", fontsize=8)
+    fig.tight_layout()
+    return _save(fig, path)
