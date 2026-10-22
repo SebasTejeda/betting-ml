@@ -66,3 +66,11 @@ Nada de `train_test_split` aleatorio ni `KFold` mezclado. La validación es *wal
 
 1. Ninguna estrategia de apuesta se expone en el frontend sin un backtest que la respalde (puerta de la spec 002, US1).
 2. Si la evidencia es negativa, se detiene la construcción y se informa al dueño.
+
+## XII. Consejos honestos
+
+1. Todo consejo muestra su probabilidad, su precio y su porqué con datos verificables (cada número es trazable en la evidencia del análisis).
+2. Nunca usa lenguaje de certeza ("segura", "fija", "garantizada", "no falla" o similares).
+3. Una apuesta probable pero mal pagada se presenta como tal: probabilidad alta no es lo mismo que valor.
+
+_Enmienda agregada por la spec 003 (2026-10-21)._
