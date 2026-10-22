@@ -139,7 +139,7 @@ Spec activa: [`specs/002-odds-comparator/`](specs/002-odds-comparator/). Una lí
 
 # Spec 003 — Seguridad, integridad de datos y arquitectura
 
-Spec activa: [`specs/003-security-hardening/`](specs/003-security-hardening/). Trabajo en la rama `Daniel`; tras cada tarea se pide confirmación al dueño. Una línea por tarea: `AAAA-MM-DD · TXXX · qué se hizo · resultado clave`.
+**Terminada** (2026-10-22, nivel Bueno; ver "Resumen final (spec 003)" al final). Spec: [`specs/003-security-hardening/`](specs/003-security-hardening/). Trabajo en la rama `Daniel`; tras cada tarea se pidió confirmación al dueño. Una línea por tarea: `AAAA-MM-DD · TXXX · qué se hizo · resultado clave`.
 
 ## Bitácora (spec 003)
 

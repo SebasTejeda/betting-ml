@@ -4,19 +4,20 @@ Responde siempre al usuario en español.
 
 Proyecto: modelo de ML para predecir partidos de fútbol (1X2), detectar value bets y servirlo con una API REST; comparador de cuotas con referencia Pinnacle, diario de apuestas y frontend. Se construye con **Spec-Driven Development (SDD)**.
 
-**Spec activa: `specs/003-security-hardening/`** (las specs 001, `specs/001-prediction-model/`, y 002, `specs/002-odds-comparator/`, están terminadas; su código y resultados se mantienen).
+**Spec activa: ninguna.** Las specs 001 (`specs/001-prediction-model/`), 002 (`specs/002-odds-comparator/`) y 003 (`specs/003-security-hardening/`) están terminadas; su código y resultados se mantienen. El trabajo nuevo empieza con una spec nueva (`specs/004-…/`) aprobada por el dueño.
 
 ## Lee en este orden antes de hacer nada
 
 1. `specs/constitution.md` — reglas no negociables (I–XII).
-2. `specs/003-security-hardening/spec.md` — qué se construye y criterio de éxito (spec activa).
-3. `specs/003-security-hardening/plan.md` — cómo se construye.
-4. `specs/003-security-hardening/contracts/api.md` — extensión del contrato de la API (se suma a los de las specs 001 y 002).
-5. `specs/003-security-hardening/tasks.md` — lista de tareas a ejecutar.
-6. `specs/003-security-hardening/decisions.md` — decisiones de la spec activa.
-7. `PROGRESS.md` — dónde se quedó el trabajo (sección "Spec 003").
+2. `SECURITY.md` — modelo de amenazas y controles que ningún cambio puede debilitar.
+3. `PROGRESS.md` — estado del proyecto (resúmenes finales de cada spec).
 
-Referencia de las specs terminadas: `specs/001-prediction-model/{spec,plan,experiments,decisions}.md` con `reports/REPORT.md`, y `specs/002-odds-comparator/{spec,plan,decisions}.md` con su `contracts/api.md` y `reports/REPORT_002_backtest.md`.
+Referencia de las specs terminadas:
+- `specs/001-prediction-model/{spec,plan,experiments,decisions}.md` con `reports/REPORT.md`.
+- `specs/002-odds-comparator/{spec,plan,decisions}.md` con su `contracts/api.md` y `reports/REPORT_002_backtest.md`.
+- `specs/003-security-hardening/{spec,plan,decisions}.md` con su `contracts/api.md`, `reports/SECURITY_BASELINE.md`, `reports/SECURITY_AUDIT_003.md` y `docs/deploy.md`.
+
+El contrato de la API es la suma de los tres `contracts/api.md`.
 
 ## Forma de trabajar
 
@@ -27,7 +28,7 @@ Referencia de las specs terminadas: `specs/001-prediction-model/{spec,plan,exper
 - Si un resultado es sospechosamente bueno, asume fuga de información y revísalo antes de celebrarlo.
 - En los checkpoints 🔍 usa el subagente `ml-reviewer`.
 - No preguntes al usuario salvo que estés bloqueado de verdad (credenciales, decisión irreversible). Para todo lo demás, decide con criterio y documenta.
-- **Excepción en la spec 003:** el dueño pidió confirmar cada paso. Al terminar cada tarea (con su commit), presenta el resultado y pide confirmación antes de empezar la siguiente. El trabajo va en la rama `Daniel`.
+- **Confirmación por paso (pedida por el dueño en la spec 003):** al terminar cada tarea (con su commit), presenta el resultado y pide confirmación antes de empezar la siguiente, salvo que el dueño diga otra cosa para una spec nueva. El trabajo va en la rama `Daniel`.
 
 ## Reglas duras (resumen de la constitución)
 
@@ -49,7 +50,7 @@ Referencia de las specs terminadas: `specs/001-prediction-model/{spec,plan,exper
 ```
 make setup | lint | test | data | baselines | exp ID=E05 | select | holdout | report | train-prod | serve | track | all
 make backtest-002 | backtest-002-final | db-upgrade | odds | settle | web | web-test | dev     (spec 002)
-make security | backup | restore FILE=... | verify-integrity                                   (spec 003, a medida que se implementan)
+make security | backup | restore FILE=... | verify-integrity                                   (spec 003)
 ```
 
 En esta máquina no hay `make`: usa los equivalentes `uv run ...` / `npm run ...` del `Makefile`.
@@ -58,4 +59,4 @@ Comandos del agente en `.claude/commands/`: `/next` (siguiente tarea), `/exp E07
 
 ## Si se acaba el contexto o se reinicia la sesión
 
-Lee `PROGRESS.md` y la primera tarea sin `[x]` en el `tasks.md` de la spec activa, verifica con `git log --oneline -5` y `git status` que no haya trabajo a medias, y continúa desde ahí.
+Lee `PROGRESS.md` y verifica con `git log --oneline -5` y `git status` que no haya trabajo a medias. Si hay una spec activa, continúa desde la primera tarea sin `[x]` de su `tasks.md`; si no la hay, pregunta al dueño qué sigue.
