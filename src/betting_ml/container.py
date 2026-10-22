@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 import json
+import logging
+import secrets
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import timedelta
 from functools import cached_property
 from pathlib import Path
 from typing import Any
@@ -12,6 +15,7 @@ from typing import Any
 import pandas as pd
 from sqlalchemy.orm import Session, sessionmaker
 
+from betting_ml.adapters.argon2_hasher import Argon2Hasher
 from betting_ml.adapters.experiment_store import FileExperimentStore
 from betting_ml.adapters.fixtures import FootballDataFixtures
 from betting_ml.adapters.football_data import FootballDataSource
@@ -24,12 +28,14 @@ from betting_ml.adapters.sql.db import prepare, session_factory
 from betting_ml.adapters.sql.repositories import (
     SqlBetRepository,
     SqlOddsRepository,
+    SqlSessionStore,
     SqlSettingsRepository,
 )
 from betting_ml.adapters.team_names import TeamNameResolver
 from betting_ml.adapters.the_odds_api import MappedOdds, TheOddsApiClient, map_events
 from betting_ml.adapters.tracking_store import ParquetTrackingStore
 from betting_ml.adapters.understat import UnderstatSource
+from betting_ml.application.authenticate import Authenticate
 from betting_ml.application.backtest_pinnacle import BacktestPinnacle
 from betting_ml.application.build_dataset import BuildDataset
 from betting_ml.application.catalog import RefreshData
@@ -57,6 +63,8 @@ from betting_ml.config import (
     load_leagues,
     load_team_aliases,
 )
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -90,6 +98,8 @@ class ApiServices:
     app_api_key: str  # the single machine key; ADMIN_API_KEY is only a settings alias
     refresher: RefreshData
     journal: JournalServices | None = None
+    auth: Authenticate | None = None
+    secure_cookies: bool = False
 
 
 class Container:
@@ -274,6 +284,8 @@ class Container:
                 reports_path=self.settings.reports_path,
                 start_auto_refresh=self._auto_refresh if self.settings.odds_auto_refresh else None,
             ),
+            auth=self.authenticate,
+            secure_cookies=self.settings.app_env == "prod",
         )
 
     def backtest_pinnacle(self, allow_holdout: bool = False) -> BacktestPinnacle:
@@ -300,6 +312,23 @@ class Container:
     @cached_property
     def bookmakers(self) -> BookmakersFile:
         return load_bookmakers(self.settings.configs_dir / "bookmakers.yaml")
+
+    @cached_property
+    def authenticate(self) -> Authenticate:
+        secret = self.settings.session_secret.get_secret_value().encode()
+        if not secret:  # dev only: prod refuses to start without SESSION_SECRET
+            logger.info(
+                "SESSION_SECRET vacío: secreto temporal, las sesiones no sobreviven reinicios"
+            )
+            secret = secrets.token_bytes(32)
+        return Authenticate(
+            sessions=SqlSessionStore(self.db_sessions),
+            hasher=Argon2Hasher(),
+            password_hash=self.settings.app_password_hash.get_secret_value(),
+            secret=secret,
+            idle=timedelta(minutes=self.settings.session_idle_minutes),
+            max_age=timedelta(hours=self.settings.session_max_hours),
+        )
 
     @cached_property
     def db_sessions(self) -> sessionmaker[Session]:

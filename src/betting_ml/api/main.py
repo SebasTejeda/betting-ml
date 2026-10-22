@@ -14,6 +14,7 @@ from betting_ml.api.dependencies import ServicesApi
 from betting_ml.api.errors import register_error_handlers
 from betting_ml.api.routers import (
     admin,
+    auth,
     backtest,
     bets,
     bookmakers,
@@ -37,6 +38,9 @@ LOCALHOST_ORIGINS = r"https?://(localhost|127\.0\.0\.1|\[::1\])(:\d+)?"
 # Order = order of the paths in OpenAPI. Each router declares its access policy (api/security.py).
 ROUTERS = (
     health.router,
+    auth.login_router,
+    auth.reads,
+    auth.writes,
     leagues.router,
     matches.router,
     predictions.router,
@@ -72,6 +76,9 @@ def create_app(services: ServicesApi | None = None) -> FastAPI:
             app.state.container.predictor.state()
         except ModelNotAvailableError as exc:
             logger.warning("API started without a trained model: %s", exc)
+        auth = getattr(app.state.container, "auth", None)
+        if auth is not None:
+            auth.purge()  # expired sessions do not outlive a restart
         journal = getattr(app.state.container, "journal", None)
         starter = getattr(journal, "start_auto_refresh", None)
         scheduler = starter() if starter is not None else None

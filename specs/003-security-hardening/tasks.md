@@ -50,20 +50,28 @@ Reglas de ejecución:
 
 ## Fase 2 — Identidad y acceso
 
-- [ ] **T006** Sesiones de servidor y login (US1)
+- [x] **T006** Sesiones de servidor, login y CSRF en escrituras con sesión (US1)
   - Dominio: `Session`, `Principal`; puertos `SessionStore` y `PasswordHasher`.
   - Adaptadores: `Argon2Hasher` (`argon2-cffi`), `SqlSessionStore` (migración 0004: tabla `sessions` con `token_hash` único, `csrf_token`, `created_at`, `last_seen_at`, `expires_at`, `password_fingerprint`).
   - Caso de uso `authenticate`: login (rotación), validación con expiración deslizante y absoluta, logout y purga de vencidas.
   - Router `auth`: `login`, `logout`, `me` según el contrato. CLI `betting-ml hash-password` (sin eco).
-  - Tests: contraseña incorrecta, cookie alterada, vencida por inactividad y por máximo, sesión cerrada, cambio de contraseña invalida sesiones, cookie con `HttpOnly`/`SameSite=Strict`/`Secure` según el entorno.
+  - **Adelantado de T007:** `require_write` acepta la sesión además de `X-API-Key` y exige `X-CSRF-Token` con la sesión (una escritura con cookie nunca existe sin CSRF). Ver `decisions.md`.
+  - Tests: contraseña incorrecta, cookie alterada, vencida por inactividad y por máximo, sesión cerrada, cambio de contraseña invalida sesiones, cookie con `HttpOnly`/`SameSite=Strict`/`Secure` según el entorno, CSRF ausente/falso/de otra sesión → 403.
   - Commit: `feat(auth): owner login with argon2id and server-side sessions`
 
-- [ ] **T007** Proteger todas las rutas y CSRF (US1, US2)
-  - `require_auth` acepta sesión o `X-API-Key`; todos los routers privados lo usan, también las lecturas.
-  - `require_csrf` en escrituras con sesión (`X-CSRF-Token`, `compare_digest`); no se exige con `X-API-Key`.
-  - Tests: sin credencial → 401 en cada ruta privada (generado desde OpenAPI); escrituras sin token o con token de otra sesión → 403 `CSRF_FAILED`.
-  - Actualizar la colección de Postman (login o `X-API-Key` en todas las peticiones) y su test.
-  - Commit: `feat(auth): require authentication on every private route and csrf on writes`
+- [ ] **T007** Proteger todas las lecturas (US1, US2)
+  - `require_read` exige sesión o `X-API-Key`: todas las rutas privadas quedan autenticadas (el CSRF de las escrituras ya está desde T006).
+  - Tests: sin credencial → 401 en cada ruta privada (generado desde las rutas de la app).
+  - Actualizar la colección de Postman (`X-API-Key` en todas las peticiones privadas) y su test.
+  - Tras este commit el frontend no puede leer hasta T009, que va justo después.
+  - Commit: `feat(auth): require authentication on every private route`
+
+- [ ] **T009** Frontend con login (US1) — se ejecuta antes que T008 (decisión del dueño)
+  - Página `/login`, `AuthProvider` (`/auth/me`), rutas protegidas, logout en la barra.
+  - Se elimina la clave de `localStorage` (`lib/apiKey.ts` y `ApiKeyButton`); `credentials: "same-origin"` y `X-CSRF-Token` en memoria para las escrituras.
+  - Regenerar los tipos (`make web-api`).
+  - Tests MSW: login correcto/incorrecto, 429, redirección por 401, CSRF en escrituras, logout; cobertura ≥ 80 %.
+  - Commit: `feat(web): login page and cookie session without secrets in local storage`
 
 - [ ] **T008** Rate limit y anti fuerza bruta (US2)
   - Puerto `RateLimiter` y adaptador en memoria (ventana deslizante, thread-safe).
@@ -71,13 +79,6 @@ Reglas de ejecución:
   - `BodyLimitMiddleware`: `413 PAYLOAD_TOO_LARGE`.
   - Tests con reloj falso: límites, bloqueo progresivo, `Retry-After`, 413.
   - Commit: `feat(security): rate limiting, login lockout and body size limit`
-
-- [ ] **T009** Frontend con login (US1)
-  - Página `/login`, `AuthProvider` (`/auth/me`), rutas protegidas, logout en la barra.
-  - Se elimina la clave de `localStorage` (`lib/apiKey.ts` y `ApiKeyButton`); `credentials: "same-origin"` y `X-CSRF-Token` en memoria para las escrituras.
-  - Regenerar los tipos (`make web-api`).
-  - Tests MSW: login correcto/incorrecto, 429, redirección por 401, CSRF en escrituras, logout; cobertura ≥ 80 %.
-  - Commit: `feat(web): login page and cookie session without secrets in local storage`
 
 - [ ] **T010** 🔍 Checkpoint de identidad y acceso
   - `ml-reviewer` (arquitectura y tests) + revisión de seguridad del diff T003–T009 (`security-audit` o `/security-review`).

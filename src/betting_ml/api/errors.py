@@ -11,6 +11,7 @@ from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from betting_ml.adapters.the_odds_api import OddsApiError
+from betting_ml.application.authenticate import InvalidCredentialsError, LoginDisabledError
 from betting_ml.application.compare_matches import (
     BookmakerNotFoundError,
     MatchNotFoundError,
@@ -122,6 +123,14 @@ def register_error_handlers(app: FastAPI) -> None:
     @app.exception_handler(NoReferenceError)
     async def _no_reference(_: Request, exc: NoReferenceError) -> JSONResponse:
         return error_response(422, "NO_REFERENCE", str(exc), {"match_id": exc.match_id})
+
+    @app.exception_handler(InvalidCredentialsError)
+    async def _credentials(_: Request, exc: InvalidCredentialsError) -> JSONResponse:
+        return error_response(401, "INVALID_CREDENTIALS", str(exc))
+
+    @app.exception_handler(LoginDisabledError)
+    async def _login_disabled(_: Request, exc: LoginDisabledError) -> JSONResponse:
+        return error_response(503, "LOGIN_DISABLED", str(exc))
 
     @app.exception_handler(BacktestReportNotFoundError)
     async def _backtest_missing(_: Request, exc: BacktestReportNotFoundError) -> JSONResponse:

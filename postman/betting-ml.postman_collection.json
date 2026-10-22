@@ -18,6 +18,14 @@
       "value": "cambia-esto"
     },
     {
+      "key": "ownerPassword",
+      "value": ""
+    },
+    {
+      "key": "csrfToken",
+      "value": ""
+    },
+    {
       "key": "matchId",
       "value": ""
     },
@@ -1749,6 +1757,229 @@
               }
             }
           ]
+        }
+      ]
+    },
+    {
+      "name": "Spec 003 — Autenticación",
+      "description": "Login del dueño con sesión de servidor (cookie HttpOnly bml_session, que Postman guarda solo) y token CSRF para las escrituras con sesión. Pon tu contraseña en la variable ownerPassword (nunca la guardes en el repo). Postman y los scripts pueden seguir usando X-API-Key = {{appApiKey}} en lugar de la sesión.",
+      "item": [
+        {
+          "name": "POST login con contraseña incorrecta (401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 401\", function () { pm.response.to.have.status(401); });",
+                  "pm.test(\"código INVALID_CREDENTIALS\", function () { pm.expect(pm.response.json().error.code).to.eql(\"INVALID_CREDENTIALS\"); });",
+                  "pm.test(\"sin cookie de sesión\", function () { pm.expect(pm.response.headers.has(\"Set-Cookie\")).to.be.false; });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"password\": \"no-es-la-contraseña\"}"
+            }
+          }
+        },
+        {
+          "name": "POST login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"cookie HttpOnly y SameSite=Strict\", function () { var c = pm.response.headers.get(\"Set-Cookie\").toLowerCase(); pm.expect(c).to.include(\"httponly\"); pm.expect(c).to.include(\"samesite=strict\"); });",
+                  "pm.test(\"el token no viaja en el cuerpo\", function () { pm.expect(Object.keys(pm.response.json()).sort()).to.eql([\"csrf_token\", \"expires_at\", \"idle_minutes\"]); });",
+                  "pm.collectionVariables.set(\"csrfToken\", pm.response.json().csrf_token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"password\": \"{{ownerPassword}}\"}"
+            }
+          }
+        },
+        {
+          "name": "GET me (sesión)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"sesión del dueño\", function () { pm.expect(pm.response.json().kind).to.eql(\"session\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "me"
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "POST logout sin token CSRF (403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 403\", function () { pm.response.to.have.status(403); });",
+                  "pm.test(\"código CSRF_FAILED\", function () { pm.expect(pm.response.json().error.code).to.eql(\"CSRF_FAILED\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "logout"
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "POST logout",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 204\", function () { pm.response.to.have.status(204); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "logout"
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "GET me tras logout (401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 401\", function () { pm.response.to.have.status(401); });",
+                  "pm.test(\"código UNAUTHORIZED\", function () { pm.expect(pm.response.json().error.code).to.eql(\"UNAUTHORIZED\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "me"
+              ]
+            },
+            "description": ""
+          }
         }
       ]
     }

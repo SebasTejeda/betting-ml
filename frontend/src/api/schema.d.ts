@@ -21,6 +21,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Login */
+        post: operations["login_api_v1_auth_login_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Me */
+        get: operations["me_api_v1_auth_me_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/logout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Logout */
+        post: operations["logout_api_v1_auth_logout_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/leagues": {
         parameters: {
             query?: never;
@@ -702,6 +753,23 @@ export interface components {
             /** Teams */
             teams: number;
         };
+        /** LoginIn */
+        LoginIn: {
+            /** Password */
+            password: string;
+        };
+        /** LoginOut */
+        LoginOut: {
+            /** Csrf Token */
+            csrf_token: string;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /** Idle Minutes */
+            idle_minutes: number;
+        };
         /** MarginsOut */
         MarginsOut: {
             /** Best Combined */
@@ -754,6 +822,20 @@ export interface components {
             message: string | null;
             /** Matches */
             matches: components["schemas"]["MatchOut"][];
+        };
+        /** MeOut */
+        MeOut: {
+            /** Authenticated */
+            authenticated: boolean;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "session" | "api_key";
+            /** Csrf Token */
+            csrf_token: string | null;
+            /** Expires At */
+            expires_at: string | null;
         };
         /** ModelInfo */
         ModelInfo: {
@@ -1110,6 +1192,100 @@ export interface operations {
             };
         };
     };
+    login_api_v1_auth_login_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoginIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoginOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    me_api_v1_auth_me_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-api-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MeOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    logout_api_v1_auth_logout_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-csrf-token"?: string | null;
+                "x-api-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     leagues_api_v1_leagues_get: {
         parameters: {
             query?: never;
@@ -1298,6 +1474,7 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
+                "x-csrf-token"?: string | null;
                 "x-api-key"?: string | null;
             };
             path?: never;
@@ -1331,6 +1508,7 @@ export interface operations {
                 league?: string | null;
             };
             header?: {
+                "x-csrf-token"?: string | null;
                 "x-api-key"?: string | null;
             };
             path?: never;
@@ -1470,6 +1648,7 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
+                "x-csrf-token"?: string | null;
                 "x-api-key"?: string | null;
             };
             path?: never;
@@ -1542,6 +1721,7 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
+                "x-csrf-token"?: string | null;
                 "x-api-key"?: string | null;
             };
             path?: never;
@@ -1577,6 +1757,7 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
+                "x-csrf-token"?: string | null;
                 "x-api-key"?: string | null;
             };
             path?: never;
@@ -1608,6 +1789,7 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
+                "x-csrf-token"?: string | null;
                 "x-api-key"?: string | null;
             };
             path: {
@@ -1639,6 +1821,7 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
+                "x-csrf-token"?: string | null;
                 "x-api-key"?: string | null;
             };
             path: {
@@ -1729,6 +1912,7 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
+                "x-csrf-token"?: string | null;
                 "x-api-key"?: string | null;
             };
             path?: never;

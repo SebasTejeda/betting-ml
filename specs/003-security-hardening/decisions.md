@@ -57,3 +57,27 @@ Formato:
 - Decisión: el trabajo se hace en la rama `Daniel`, un commit por tarea, y tras cada tarea se pide confirmación antes de seguir. Nunca `git push`.
 - Motivo: control del dueño sobre cada cambio.
 - Impacto: excepción explícita a la regla de CLAUDE.md "no preguntes al usuario salvo bloqueo", válida solo para esta spec.
+
+## 2026-10-22 — T009 (frontend con login) antes que T008 (rate limit)
+- Contexto: T007 protege las lecturas y el frontend solo aprende a iniciar sesión en T009; con el orden original quedaba sin poder leer durante dos commits.
+- Decisión: el dueño aprobó ejecutar T009 justo después de T007 y antes de T008. Los IDs no cambian.
+- Motivo: la rama queda usable salvo en un único commit; el rate limit no depende del frontend.
+- Impacto: los tests del frontend simulan el `429` del login con MSW antes de que el backend lo implemente.
+
+## 2026-10-22 — El CSRF de las escrituras con sesión se adelanta a T006
+- Contexto: `POST /auth/logout` es una escritura con sesión; en T006 la sesión ya existe.
+- Decisión: `require_write` acepta la sesión desde T006 y exige `X-CSRF-Token` en ese mismo commit. T007 queda solo para proteger las lecturas.
+- Motivo: no debe existir ni un commit en el que una escritura con cookie funcione sin CSRF.
+- Impacto: T007 es más pequeña; los tests de CSRF viven en `tests/integration/test_api_auth.py`.
+
+## 2026-10-22 — Tokens de sesión con HMAC y secreto temporal en dev
+- Contexto: el plan pedía guardar el SHA-256 del token y usar SESSION_SECRET como "huella".
+- Decisión: se guarda HMAC-SHA256(SESSION_SECRET, token), y la huella de la contraseña es HMAC-SHA256(SESSION_SECRET, APP_PASSWORD_HASH). En `dev` sin SESSION_SECRET se usa un secreto aleatorio por proceso.
+- Motivo: con la base filtrada pero sin el secreto no se puede comprobar ningún token; rotar SESSION_SECRET o la contraseña cierra todas las sesiones.
+- Impacto: en `dev` sin SESSION_SECRET las sesiones no sobreviven a un reinicio de la API (en `prod` el secreto es obligatorio desde T003).
+
+## 2026-10-22 — Purga de sesiones al arrancar y en cada login
+- Contexto: el plan proponía purgar las sesiones vencidas al arrancar y cada hora.
+- Decisión: se purgan al arrancar la API, en cada login y una a una al detectarlas vencidas al validar; sin tarea horaria.
+- Motivo: una sesión vencida nunca se acepta (se comprueba en cada petición); la purga solo limpia filas, así que no hace falta un scheduler.
+- Impacto: pueden quedar filas vencidas hasta el siguiente login o reinicio; no tienen efecto.

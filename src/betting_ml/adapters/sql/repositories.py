@@ -7,7 +7,7 @@ from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from decimal import Decimal
 
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, func, or_, select, update
 from sqlalchemy.orm import Session, sessionmaker
 
 from betting_ml.adapters.sql.models import (
@@ -15,6 +15,7 @@ from betting_ml.adapters.sql.models import (
     BookmakerRow,
     OddsQuoteRow,
     OddsSnapshotRow,
+    SessionRow,
     SettingsHistoryRow,
     SettingsRow,
 )
@@ -31,6 +32,7 @@ from betting_ml.domain.journal import (
     QuoteSource,
     SettingsChange,
 )
+from betting_ml.domain.security import Session as OwnerSession
 
 __all__ = [
     "BetFilters",
@@ -374,3 +376,58 @@ class SqlSettingsRepository:
                 )
                 for r in session.scalars(query).all()
             ]
+
+
+# ---------------------------------------------------------------------- sessions (spec 003)
+class SqlSessionStore:
+    def __init__(self, sessions: sessionmaker[Session]) -> None:
+        self.sessions = sessions
+
+    def add(self, owner_session: OwnerSession) -> None:
+        with self.sessions.begin() as session:
+            session.add(
+                SessionRow(
+                    token_hash=owner_session.token_hash,
+                    csrf_token=owner_session.csrf_token,
+                    created_at=owner_session.created_at,
+                    last_seen_at=owner_session.last_seen_at,
+                    expires_at=owner_session.expires_at,
+                    password_fingerprint=owner_session.password_fingerprint,
+                )
+            )
+
+    def get(self, token_hash: str) -> OwnerSession | None:
+        with self.sessions() as session:
+            row = session.get(SessionRow, token_hash)
+            if row is None:
+                return None
+            return OwnerSession(
+                token_hash=row.token_hash,
+                csrf_token=row.csrf_token,
+                created_at=_utc(row.created_at),  # type: ignore[arg-type]
+                last_seen_at=_utc(row.last_seen_at),  # type: ignore[arg-type]
+                expires_at=_utc(row.expires_at),  # type: ignore[arg-type]
+                password_fingerprint=row.password_fingerprint,
+            )
+
+    def touch(self, token_hash: str, last_seen_at: datetime) -> None:
+        with self.sessions.begin() as session:
+            session.execute(
+                update(SessionRow)
+                .where(SessionRow.token_hash == token_hash)
+                .values(last_seen_at=last_seen_at)
+            )
+
+    def delete(self, token_hash: str) -> None:
+        with self.sessions.begin() as session:
+            session.execute(delete(SessionRow).where(SessionRow.token_hash == token_hash))
+
+    def purge(self, now: datetime, idle_cutoff: datetime) -> int:
+        """Deletes sessions past their absolute expiry or idle since before ``idle_cutoff``."""
+        with self.sessions.begin() as session:
+            result = session.execute(
+                delete(SessionRow).where(
+                    or_(SessionRow.expires_at <= now, SessionRow.last_seen_at <= idle_cutoff)
+                )
+            )
+            return int(result.rowcount)  # type: ignore[attr-defined]

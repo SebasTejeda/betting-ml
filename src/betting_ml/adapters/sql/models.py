@@ -114,3 +114,16 @@ class SettingsHistoryRow(Base):
     old_value: Mapped[str] = mapped_column(String(40))
     new_value: Mapped[str] = mapped_column(String(40))
     effective_from: Mapped[str] = mapped_column(String(7))  # YYYY-MM (Lima calendar month)
+
+
+class SessionRow(Base):
+    """Owner sessions (spec 003). ``token_hash`` is HMAC-SHA256(SESSION_SECRET, token)."""
+
+    __tablename__ = "sessions"
+
+    token_hash: Mapped[str] = mapped_column(String(64), primary_key=True)
+    csrf_token: Mapped[str] = mapped_column(String(64))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    password_fingerprint: Mapped[str] = mapped_column(String(64))

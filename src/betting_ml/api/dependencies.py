@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Protocol
 from fastapi import Depends, Request
 
 from betting_ml.api.errors import ApiError
+from betting_ml.application.authenticate import Authenticate
 from betting_ml.application.compare_matches import CompareMatches, EvaluateManualOdds
 from betting_ml.application.manage_bets import ManageBets
 from betting_ml.application.predict_matches import PredictMatches
@@ -77,6 +78,14 @@ class ServicesApi(Protocol):
 
     @property
     def journal(self) -> JournalApi | None: ...
+
+    @property
+    def auth(self) -> Authenticate | None:
+        """Owner login (spec 003); None disables session logins."""
+
+    @property
+    def secure_cookies(self) -> bool:
+        """Secure attribute on the session cookie (APP_ENV=prod)."""
 
 
 def get_services(request: Request) -> ServicesApi:

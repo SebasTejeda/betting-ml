@@ -272,3 +272,15 @@ def _fmt(value: float | None) -> str:
 
 if __name__ == "__main__":  # pragma: no cover
     app()
+
+
+@app.command("hash-password")
+def hash_password() -> None:
+    """Pide la contraseña del dueño (sin eco) y muestra su hash Argon2id para APP_PASSWORD_HASH."""
+    from betting_ml.adapters.argon2_hasher import Argon2Hasher
+
+    password = typer.prompt("Contraseña", hide_input=True, confirmation_prompt=True)
+    if len(password) < 12:
+        typer.echo("Usa al menos 12 caracteres.", err=True)
+        raise typer.Exit(code=1)
+    typer.echo(f"APP_PASSWORD_HASH={Argon2Hasher().hash(password)}")
