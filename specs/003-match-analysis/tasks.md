@@ -37,7 +37,7 @@ Regla de procesos: si levantas servidores para probar o tomar capturas, hazlo en
 - [x] **T011** `application/team_form.py` (US2) con tests anti-fuga: la forma de un partido en fecha `d` no cambia si se alteran partidos en fecha ≥ `d`.
 - [x] **T012** `domain/advice.py` + `configs/advice.yaml` (motor de consejos, plan §7): reglas a favor, en contra y de contexto; evidencia trazable; aviso de EV > 0.15; comentario de precio; mensaje sin valor. Tests: cada regla, lenguaje prohibido, máximo 4 razones, números del texto = números de la evidencia.
 - [x] **T013** `application/analyze_match.py` que une matriz, mercados, cuotas, confianza, forma y consejos.
-- [ ] **T014** Adaptador de cuotas por evento en `the_odds_api.py` + estimación de costo + caché de 30 min. **Antes:** la llamada de verificación de market keys que quedó pendiente en T004 (decisions.md).
+- [x] **T014** Adaptador de cuotas por evento en `the_odds_api.py` + estimación de costo + caché de 30 min. **Antes:** la llamada de verificación de market keys que quedó pendiente en T004 (decisions.md).
 - [ ] **T015** Routers según `contracts/api.md` + cambio en `POST /bets` para `market/selection/line` + liquidación por mercado (incluida la regla de "empate no apuesta" y hándicap europeo). Migración de base de datos.
 - [ ] **T016** Tests de API (incluidos 404/422/429/503 y partido entre ligas) y carpeta "Spec 003" en Postman.
   - Commits: uno por tarea.

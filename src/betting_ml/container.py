@@ -30,7 +30,13 @@ from betting_ml.adapters.sql.repositories import (
     SqlSettingsRepository,
 )
 from betting_ml.adapters.team_names import TeamNameResolver
-from betting_ml.adapters.the_odds_api import MappedOdds, TheOddsApiClient, map_events
+from betting_ml.adapters.the_odds_api import (
+    EVENT_SPORT_KEYS,
+    MappedOdds,
+    TheOddsApiClient,
+    map_events,
+    parse_event_prices,
+)
 from betting_ml.adapters.tracking_store import ParquetTrackingStore
 from betting_ml.adapters.understat import UnderstatSource
 from betting_ml.application.analyze_match import AnalyzeMatch, PriceKey
@@ -45,6 +51,7 @@ from betting_ml.application.compare_matches import (
     MatchNotFoundError,
 )
 from betting_ml.application.evaluate_holdout import EvaluateHoldout
+from betting_ml.application.event_odds import EventOddsService
 from betting_ml.application.generate_report import GenerateReport
 from betting_ml.application.manage_bets import ManageBets
 from betting_ml.application.predict_matches import PredictMatches
@@ -77,6 +84,7 @@ from betting_ml.config import (
     load_team_aliases,
 )
 from betting_ml.domain.entities import Outcome
+from betting_ml.domain.journal import QuoteSource
 from betting_ml.ml.models.cross_league import CrossLeagueModel
 from betting_ml.ml.models.goal_model import ScoreMatrixModel
 
@@ -288,7 +296,7 @@ class Container:
         return dict(json.loads(path.read_text(encoding="utf-8"))["levels"])
 
     def h2h_prices(self, match_id: str) -> dict[PriceKey, tuple[float, str]]:
-        """Best accessible 1X2 prices of the spec 002 comparator (other markets: T014)."""
+        """Best accessible 1X2 prices of the spec 002 comparator."""
         try:
             comparison, _ = self.compare_matches.detail(match_id, accessible_only=True)
         except MatchNotFoundError:
@@ -298,6 +306,43 @@ class Container:
             ("h2h", names[outcome], None): (best.odds, best.bookmaker)
             for outcome, best in comparison.best.items()
         }
+
+    @cached_property
+    def event_odds(self) -> EventOddsService:
+        """Spec 003 T014: odds of the additional markets of one event (explicit refresh)."""
+        catalog = load_markets(self.settings.configs_dir / "markets.yaml")
+        sports = {lg.code: lg.odds_api for lg in self.leagues.leagues if lg.odds_api}
+        commissions = {b.key: b.commission for b in self.bookmakers.bookmakers}
+        aliases = {
+            team: self.team_names.aliases(code, team, "the_odds_api")
+            for code in self.team_names.leagues
+            for team in self.team_names.teams(code)
+        }
+
+        def remaining() -> int | None:
+            snapshot = self.odds_repository.latest_snapshot(QuoteSource.API)
+            return None if snapshot is None else snapshot.credits_remaining
+
+        return EventOddsService(
+            client=self.odds_client,
+            cache_dir=self.settings.data_path / "cache" / "event_odds",
+            markets=[m.odds_key for m in catalog.markets if m.odds_source == "api" and m.odds_key],
+            regions=self.settings.odds_api_regions,
+            sport_key=lambda comp: EVENT_SPORT_KEYS.get(comp) or sports.get(comp),
+            parse=lambda event: parse_event_prices(
+                event, self.bookmakers.accessible_keys, commissions
+            ),
+            credits_remaining=remaining,
+            min_reserve=self.settings.odds_min_credits_reserve,
+            aliases=aliases,
+        )
+
+    def analysis_prices(self, match_id: str) -> dict[PriceKey, tuple[float, str]]:
+        """1X2 of the comparator, overridden by the cached event odds of every market."""
+        prices = self.h2h_prices(match_id)
+        event_prices, _ = self.event_odds.prices(match_id)
+        prices.update(event_prices)
+        return prices
 
     @cached_property
     def analyze_match(self) -> AnalyzeMatch:
@@ -320,7 +365,7 @@ class Container:
             europe_levels=self._levels("market_calibration_europe.json"),
             advice=load_advice(self.settings.configs_dir / "advice.yaml").to_settings(),
             min_edge=lambda: self.settings_repository.get().min_edge,
-            prices=self.h2h_prices,
+            prices=self.analysis_prices,
         )
 
     def validate_cross_league(self) -> ValidateCrossLeague:

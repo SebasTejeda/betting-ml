@@ -128,6 +128,23 @@ class TheOddsApiClient:
         )
         return OddsResponse(list(response.json()), Credits.from_headers(response.headers))
 
+    def events(self, sport_key: str) -> list[dict[str, Any]]:
+        """Upcoming events of a sport (does not consume credits; spec 003)."""
+        return list(self._get(f"/sports/{sport_key}/events", {"dateFormat": "iso"}).json())
+
+    def event_odds(self, sport_key: str, event_id: str, markets: list[str]) -> OddsResponse:
+        """Odds of one event for several markets (spec 003). Costs `estimate_event_cost`."""
+        response = self._get(
+            f"/sports/{sport_key}/events/{event_id}/odds",
+            {
+                "regions": self.regions,
+                "markets": ",".join(markets),
+                "oddsFormat": "decimal",
+                "dateFormat": "iso",
+            },
+        )
+        return OddsResponse([response.json()], Credits.from_headers(response.headers))
+
 
 def _message(response: httpx.Response) -> str:
     try:
@@ -221,3 +238,72 @@ def map_events(
                         )
                     )
     return mapped
+
+
+# ---------------------------------------------------------------------- spec 003: event odds
+# Market keys of The Odds API for the catalog markets (configs/markets.yaml). The response
+# format below follows the v4 documentation; it must be checked against a recorded real
+# response with the pending T004 call (decisions.md).
+EVENT_SPORT_KEYS = {"UCL": "soccer_uefa_champs_league", "UEL": "soccer_uefa_europa_league"}
+
+
+def estimate_event_cost(markets: list[str], regions: str) -> int:
+    """Credits of one event-odds request: unique markets × regions (v4 pricing)."""
+    return len(set(markets)) * len([r for r in regions.split(",") if r.strip()])
+
+
+def _event_selection(
+    market: str, outcome: dict[str, Any], home: str, away: str
+) -> tuple[str, str, float | None] | None:
+    name = str(outcome.get("name", ""))
+    point = outcome.get("point")
+    line = float(point) if point is not None else None
+    low = name.lower()
+    if market == "h2h":
+        side = {home: "home", away: "away"}.get(name) or ("draw" if low == "draw" else None)
+        return ("h2h", side, None) if side else None
+    if market == "totals" and low in ("over", "under") and line is not None:
+        return ("totals", low, line)
+    if market == "btts" and low in ("yes", "no"):
+        return ("btts", low, None)
+    if market == "team_totals" and low in ("over", "under") and line is not None:
+        team = {home: "home", away: "away"}.get(str(outcome.get("description", "")))
+        return ("team_totals", f"{team}_{low}", line) if team else None
+    if market == "draw_no_bet":
+        side = {home: "home", away: "away"}.get(name)
+        return ("draw_no_bet", side, None) if side else None
+    if market == "double_chance":
+        has_home, has_away, has_draw = home in name, away in name, "draw" in low
+        if has_home and has_draw:
+            return ("double_chance", "1X", None)
+        if has_away and has_draw:
+            return ("double_chance", "X2", None)
+        if has_home and has_away:
+            return ("double_chance", "12", None)
+    return None
+
+
+def parse_event_prices(
+    event: dict[str, Any],
+    accessible: set[str],
+    commissions: dict[str, float],
+) -> dict[tuple[str, str, float | None], tuple[float, str]]:
+    """Best accessible price per (market, selection, line) of one event (exchanges net of
+    commission). Unknown markets or outcomes are ignored."""
+    home, away = str(event.get("home_team", "")), str(event.get("away_team", ""))
+    best: dict[tuple[str, str, float | None], tuple[float, str]] = {}
+    for book in event.get("bookmakers", []):
+        key = str(book.get("key", ""))
+        if key not in accessible:
+            continue
+        commission = commissions.get(key, 0.0)
+        for market in book.get("markets", []):
+            for outcome in market.get("outcomes", []):
+                selection = _event_selection(str(market.get("key", "")), outcome, home, away)
+                price = outcome.get("price")
+                if selection is None or price is None or float(price) <= 1.0:
+                    continue
+                net = 1.0 + (float(price) - 1.0) * (1.0 - commission)
+                if selection not in best or net > best[selection][0]:
+                    best[selection] = (net, key)
+    return best
