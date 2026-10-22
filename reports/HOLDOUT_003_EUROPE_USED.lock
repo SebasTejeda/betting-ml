@@ -1,0 +1,11 @@
+{
+  "status": "completed",
+  "timestamp": "2026-10-22T16:33:16+00:00",
+  "git_commit": "2d53cae",
+  "validation_json_sha256": "98ba90eab1b67a72cbb5e0646a524cf016fe2782ab415724517efaf54d3cf0a6",
+  "n_test_matches": 113,
+  "levels": {
+    "h2h": "baja",
+    "totals:2.5": "baja"
+  }
+}

@@ -198,3 +198,9 @@ Formato:
   - **Calibración:** h2h y totals:2.5 con la regla final de T008, línea base = frecuencias europeas de entrenamiento. Nivel publicado en `reports/market_calibration_europe.json` = peor entre validación y test.
 - Motivo: misma disciplina que T009 y la spec 002.
 - Impacto: con ≈ 100–150 partidos elegibles en el test, ningún nivel puede ser `alta` (exige ≥ 400 casos positivos), así que el nivel publicado será a lo sumo `media`.
+
+## 2026-10-22 — Resultado del test europeo 2025-26 (una sola vez)
+- Contexto: `ml-reviewer` aprobó la regla de los 60 días (3.ª ronda) y se corrió `validate-cross-league --final` (lock `HOLDOUT_003_EUROPE_USED.lock`, commit 2d53cae con las reglas pre-registradas).
+- Resultado: 113 partidos elegibles de 189 de la Champions 2025-26. Log loss 1X2: frecuencias 1.0306, Elo crudo 0.9439, **ajuste por liga 0.9298** (el mejor también en el test). Más/Menos 2.5: 0.6736 / 0.6707 / 0.6782; la Champions 2025-26 tuvo 3.41 goles por partido frente a 2.94 esperados, y el ajuste por liga no mejora a la línea base en ese mercado. Niveles en el test: 1X2 `baja` y Más/Menos 2.5 `baja` (ECE de 10 bins > 0.04 en todas las selecciones con solo 113 partidos; ningún sesgo significativo, |z| ≤ 1.2). **Publicados: 1X2 `baja`, Más/Menos 2.5 `baja`.**
+- Decisión: los partidos entre ligas se analizan con el ajuste por liga (mejora clara en 1X2 en validación y test), pero **sin consejos de valor**: todos sus mercados se muestran como información, con el aviso de partido entre ligas. El informe `REPORT_003_europe.md` se corrigió a mano en la sección "Cómo leerlo" porque el texto generado describía la validación.
+- Impacto: para T013 en adelante, `market_calibration_europe.json` manda para partidos entre ligas o de competiciones europeas: ningún consejo de "Mejores opciones" en esos partidos; "Lo más probable" sí, con el precio honesto.
