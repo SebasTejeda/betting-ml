@@ -10,6 +10,7 @@ import yaml
 from pydantic import BaseModel, Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from betting_ml.domain.advice import AdviceSettings, Rule
 from betting_ml.domain.markets import (
     LINE_MARKETS,
     SELECTIONS,
@@ -365,6 +366,66 @@ def load_elo_leagues(path: Path | None = None) -> dict[str, Any]:
         if set(entry) != {"country", "folder", "file"}:
             raise ValueError(f"bad elo_leagues entry: {entry}")
     return content
+
+
+class AdviceRuleConfig(BaseModel):
+    metric: str
+    op: Literal[">=", "<=", ">", "<"]
+    value: float
+    stance: Literal["for", "against", "context"]
+    text: str
+
+
+class AdviceFile(BaseModel):
+    """configs/advice.yaml (spec 003, plan §7)."""
+
+    best_options: dict[str, Any]
+    most_likely: dict[str, Any]
+    min_reasons_for: int = 1
+    max_reasons: int = Field(default=4, ge=1, le=4)
+    ev_warning: float = 0.15
+    messages: dict[str, str]
+    forbidden_words: list[str] = Field(min_length=1)
+    rules: dict[str, list[AdviceRuleConfig]]
+
+    @model_validator(mode="after")
+    def _check(self) -> AdviceFile:
+        required = {
+            "ev_warning",
+            "no_value",
+            "price_only",
+            "experimental",
+            "cross_league",
+            "low_confidence",
+        }
+        missing = required - set(self.messages)
+        if missing:
+            raise ValueError(f"advice.yaml messages missing {sorted(missing)}")
+        for group, rules in self.rules.items():
+            for rule in rules:
+                if any(w.lower() in rule.text.lower() for w in self.forbidden_words):
+                    raise ValueError(f"forbidden word in rule text of {group}: {rule.text}")
+        return self
+
+    def to_settings(self) -> AdviceSettings:
+        return AdviceSettings(
+            rules={g: [Rule(**r.model_dump()) for r in rules] for g, rules in self.rules.items()},
+            messages=self.messages,
+            forbidden_words=self.forbidden_words,
+            best_options_enabled=bool(self.best_options.get("enabled", False)),
+            best_options_max=int(self.best_options.get("max", 3)),
+            best_options_note=str(self.best_options.get("note", "")),
+            most_likely_max=int(self.most_likely.get("max", 3)),
+            exclude_above=float(self.most_likely.get("exclude_above", 0.95)),
+            one_per_market=bool(self.most_likely.get("one_per_market", True)),
+            max_reasons=self.max_reasons,
+            min_reasons_for=self.min_reasons_for,
+            ev_warning=self.ev_warning,
+        )
+
+
+def load_advice(path: Path | None = None) -> AdviceFile:
+    return AdviceFile.model_validate(_read_yaml(path or CONFIGS_DIR / "advice.yaml"))
 
 
 def load_data_overrides(path: Path | None = None) -> DataOverrides:

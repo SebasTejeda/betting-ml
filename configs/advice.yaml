@@ -1,0 +1,73 @@
+# Motor de consejos de la spec 003 (domain/advice.py, plan §7). Reglas deterministas: cada razón
+# se activa solo si su condición se cumple con los datos y cita esos números (evidence).
+# Plantillas: {team}/{opp} = equipo de la selección y su rival; {home}/{away}; métricas entre
+# llaves con formato de Python. Los porcentajes de forma vienen en escala 0–100 (*_pct).
+#
+# Métricas disponibles (por selección; team = equipo de la selección, home si es del partido):
+#   lambda_home, lambda_away, lambda_total, lambda_team, lambda_opp, lambda_diff (team − opp)
+#   {team,opp,home,away}_n, _goals_for_avg, _goals_against_avg, _xg_for_avg, _xg_against_avg,
+#   _over25_pct, _btts_pct, _scored_2plus, _failed_to_score, _clean_sheets, _wins
+#   (todas sobre el resumen de su condición, local o visita; *_venue_text = " de local" / " de visita")
+best_options:
+  enabled: false   # decisión del dueño tras T010 (decisions.md): sin evidencia de valor
+  max: 3
+  note: >-
+    Los consejos de valor están desactivados: el backtest no mostró que las cuotas con
+    "valor" según el modelo le ganen al cierre. Se muestran las selecciones más probables con
+    su precio honesto; registra en papel si quieres medirlas.
+most_likely:
+  max: 3
+  exclude_above: 0.95     # selecciones triviales (p. ej. "Más de 0.5 goles" al 97 %)
+  one_per_market: true
+min_reasons_for: 1
+max_reasons: 4
+ev_warning: 0.15
+messages:
+  ev_warning: >-
+    EV inusualmente alto: lo más probable es un error del modelo o una cuota desactualizada.
+    Verifica la cuota antes de nada.
+  no_value: "Hoy no hay apuestas con valor en este partido. No apostar también es una decisión."
+  price_only: "El valor viene del precio, no de una tendencia clara."
+  experimental: "EXPERIMENTAL — solo papel"
+  cross_league: "⚠️ Partido entre ligas: la fuerza se ajusta con el Elo entre ligas, hay más incertidumbre."
+  low_confidence: "Mercado de confianza baja: solo información."
+forbidden_words: [segura, seguro, fija, fijo, garantizada, garantizado, "no falla", "sin riesgo", "100 %", "100%", infalible]
+rules:
+  team_over:
+    - {metric: lambda_team, op: ">=", value: 1.8, stance: for, text: "El modelo espera {lambda_team:.1f} goles de {team} en este partido."}
+    - {metric: team_scored_2plus, op: ">=", value: 4, stance: for, text: "{team} marcó 2 o más en {team_scored_2plus} de sus últimos {team_n} partidos{team_venue_text}."}
+    - {metric: opp_goals_against_avg, op: ">=", value: 1.5, stance: for, text: "{opp} recibe {opp_goals_against_avg:.1f} goles por partido{opp_venue_text} en sus últimos {opp_n}."}
+    - {metric: opp_clean_sheets, op: ">=", value: 3, stance: against, text: "{opp} no recibió goles en {opp_clean_sheets} de sus últimos {opp_n} partidos{opp_venue_text}."}
+  team_under:
+    - {metric: lambda_team, op: "<=", value: 1.0, stance: for, text: "El modelo espera solo {lambda_team:.1f} goles de {team}."}
+    - {metric: team_failed_to_score, op: ">=", value: 3, stance: for, text: "{team} no marcó en {team_failed_to_score} de sus últimos {team_n} partidos{team_venue_text}."}
+    - {metric: opp_clean_sheets, op: ">=", value: 3, stance: for, text: "{opp} no recibió goles en {opp_clean_sheets} de sus últimos {opp_n} partidos{opp_venue_text}."}
+    - {metric: team_scored_2plus, op: ">=", value: 4, stance: against, text: "{team} marcó 2 o más en {team_scored_2plus} de sus últimos {team_n} partidos{team_venue_text}."}
+  totals_over:
+    - {metric: lambda_total, op: ">=", value: 2.8, stance: for, text: "El modelo espera {lambda_total:.1f} goles en el partido."}
+    - {metric: home_over25_pct, op: ">=", value: 60, stance: for, text: "{home} tuvo más de 2.5 goles en el {home_over25_pct:.0f} % de sus últimos {home_n} partidos de local."}
+    - {metric: away_over25_pct, op: ">=", value: 60, stance: for, text: "{away} tuvo más de 2.5 goles en el {away_over25_pct:.0f} % de sus últimos {away_n} partidos de visita."}
+    - {metric: lambda_total, op: "<=", value: 2.2, stance: against, text: "El modelo espera solo {lambda_total:.1f} goles en el partido."}
+  totals_under:
+    - {metric: lambda_total, op: "<=", value: 2.3, stance: for, text: "El modelo espera {lambda_total:.1f} goles en el partido."}
+    - {metric: home_over25_pct, op: "<=", value: 35, stance: for, text: "Solo el {home_over25_pct:.0f} % de los últimos {home_n} partidos de local de {home} tuvo más de 2.5 goles."}
+    - {metric: away_over25_pct, op: "<=", value: 35, stance: for, text: "Solo el {away_over25_pct:.0f} % de los últimos {away_n} partidos de visita de {away} tuvo más de 2.5 goles."}
+    - {metric: lambda_total, op: ">=", value: 3.0, stance: against, text: "El modelo espera {lambda_total:.1f} goles en el partido."}
+  btts_yes:
+    - {metric: lambda_min, op: ">=", value: 1.1, stance: for, text: "El modelo espera al menos {lambda_min:.1f} goles de cada equipo."}
+    - {metric: home_btts_pct, op: ">=", value: 60, stance: for, text: "Marcaron ambos en el {home_btts_pct:.0f} % de los últimos {home_n} partidos de local de {home}."}
+    - {metric: away_btts_pct, op: ">=", value: 60, stance: for, text: "Marcaron ambos en el {away_btts_pct:.0f} % de los últimos {away_n} partidos de visita de {away}."}
+    - {metric: lambda_min, op: "<=", value: 0.8, stance: against, text: "El modelo espera solo {lambda_min:.1f} goles del equipo menos goleador."}
+  btts_no:
+    - {metric: lambda_min, op: "<=", value: 0.9, stance: for, text: "El modelo espera solo {lambda_min:.1f} goles del equipo menos goleador."}
+    - {metric: home_clean_sheets, op: ">=", value: 3, stance: for, text: "{home} no recibió goles en {home_clean_sheets} de sus últimos {home_n} partidos de local."}
+    - {metric: away_clean_sheets, op: ">=", value: 3, stance: for, text: "{away} no recibió goles en {away_clean_sheets} de sus últimos {away_n} partidos de visita."}
+    - {metric: lambda_min, op: ">=", value: 1.2, stance: against, text: "El modelo espera al menos {lambda_min:.1f} goles de cada equipo."}
+  team_win:
+    - {metric: lambda_diff, op: ">=", value: 0.6, stance: for, text: "El modelo espera {lambda_team:.1f} goles de {team} y {lambda_opp:.1f} de {opp}."}
+    - {metric: team_wins, op: ">=", value: 4, stance: for, text: "{team} ganó {team_wins} de sus últimos {team_n} partidos{team_venue_text}."}
+    - {metric: opp_wins, op: ">=", value: 4, stance: against, text: "{opp} ganó {opp_wins} de sus últimos {opp_n} partidos{opp_venue_text}."}
+  draw:
+    - {metric: lambda_gap, op: "<=", value: 0.3, stance: for, text: "El modelo ve un partido parejo: {lambda_home:.1f} goles esperados de {home} y {lambda_away:.1f} de {away}."}
+    - {metric: lambda_total, op: "<=", value: 2.3, stance: for, text: "El modelo espera pocos goles ({lambda_total:.1f}), lo que favorece el empate."}
+    - {metric: lambda_gap, op: ">=", value: 0.8, stance: against, text: "El modelo ve una diferencia clara: {lambda_home:.1f} goles esperados de {home} y {lambda_away:.1f} de {away}."}

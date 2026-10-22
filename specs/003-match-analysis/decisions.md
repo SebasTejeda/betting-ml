@@ -214,3 +214,8 @@ Formato:
 ## 2026-10-22 — Forma reciente: fuentes y límite de la temporada actual (T011)
 - Decisión: la forma (US2) une partidos de liga (football-data + Understat, con xG) y de UCL/UEL (openfootball, sin xG); todo con fecha estrictamente anterior al partido. Con menos de 4 partidos en la condición (local/visita) se usan todos y se avisa; el xG que falta se marca "sin dato".
 - Límite: openfootball aún no publica la Champions/Europa League 2026-27, así que la forma de la temporada actual solo incluye partidos de liga; el análisis lo avisará (T013).
+
+## 2026-10-22 — Motor de consejos: detalles de diseño (T012)
+- "Lo más probable": hasta 3 selecciones, una por mercado (para no repetir variantes de lo mismo), sin las triviales (p > 95 %) y **sin mercados `baja`** (se ven en la tabla como información). Cada una lleva su comentario honesto de precio y, además de lo que pide el contrato, sus razones con evidencia (campo extra `reasons`).
+- Razones: reglas de `configs/advice.yaml`; una regla no se activa si falta alguno de los números que su texto necesita ("sin dato" no se inventa). Hasta 4 razones: primero a favor, se reserva un lugar para una en contra si existe, y el aviso de partido entre ligas al final. Trazabilidad: cada razón guarda en `evidence` exactamente los valores de su plantilla (test: volver a generar el texto desde la evidencia da el mismo texto).
+- Lenguaje: lista de palabras prohibidas validada al cargar `advice.yaml` y aplicada a todos los textos generados.
