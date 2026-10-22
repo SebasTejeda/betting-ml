@@ -132,7 +132,8 @@ class BackupDatabase:
             target.unlink(missing_ok=True)
             raise BackupError("la copia no pasó la verificación: " + "; ".join(problems))
         digest = self.files.sha256(target)
-        sidecar_of(target).write_text(f"{digest}  {target.name}\n", encoding="utf-8")
+        # LF on every OS: ``sha256sum -c`` rejects the CRLF line Windows would write (T022)
+        sidecar_of(target).write_text(f"{digest}  {target.name}\n", encoding="utf-8", newline="\n")
         return BackupResult(target, digest, self._rotate(prefix, protect))
 
     def _rotate(self, prefix: str, protect: Path | None = None) -> list[Path]:

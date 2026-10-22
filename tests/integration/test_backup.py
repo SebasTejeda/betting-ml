@@ -116,8 +116,8 @@ def test_a_backup_is_one_checked_file_with_its_sha256(
     result = _backups(live).run()
     assert result.path.name == "app-20261022-120000.db" and result.removed == []
     assert result.sha256 == hashlib.sha256(result.path.read_bytes()).hexdigest()
-    assert sidecar_of(result.path).read_text(encoding="utf-8") == (
-        f"{result.sha256}  {result.path.name}\n"  # the format of ``sha256sum -c``
+    assert sidecar_of(result.path).read_bytes() == (  # bytes: LF even on Windows (T022)
+        f"{result.sha256}  {result.path.name}\n".encode()  # the format of ``sha256sum -c``
     )
     # Self-contained: rollback journal, nothing left in a -wal beside it.
     assert sorted(p.name for p in result.path.parent.iterdir()) == [

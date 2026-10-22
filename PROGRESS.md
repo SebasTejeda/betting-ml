@@ -255,4 +255,24 @@ Spec activa: [`specs/003-security-hardening/`](specs/003-security-hardening/). T
     - los importes de ajustes enormes dan 422 en lugar de 500.
   - 8 mutaciones detectadas. reports/SECURITY_AUDIT_003.md.
   - 938 tests backend (cobertura 99 %), 59 frontend.
+- 2026-10-22 · T022 · Documentación y verificación de punta a punta.
+  - SECURITY.md nuevo, sección de seguridad en el README (con `curl`, Postman y la instalación corregidos) y SECURITY_BASELINE.md con el estado final: escaneos en 0 y H-01..H-21 resueltos.
+  - Verificación en dev y prod contra una base desechable: API, CLI (backup, `sha256sum -c`, restore, verify-integrity) y navegador (login, 6 páginas, logout, sin secretos en el almacenamiento). Todo correcto.
+  - Corregido: el `.sha256` se escribía con CRLF en Windows y `sha256sum -c` lo rechazaba. Ahora va con LF y el test compara bytes (mutación detectada).
+  - 938 tests backend (cobertura 99 %), 59 frontend.
+
+## Resumen final (spec 003)
+
+- **Nivel: Bueno.** Excelente queda pendiente solo de probar el despliegue con Docker (job `docker` de CI tras el push, o el primer despliegue con `docs/deploy.md`). La auditoría final no tuvo hallazgos altos ni críticos.
+- **Hecho:**
+  - **Acceso.** Login de un solo dueño (Argon2id) con sesión `HttpOnly` y CSRF. Todas las rutas protegidas salvo `/health` y el login. `X-API-Key` para máquinas.
+  - **Abuso.** Límites de login y peticiones, cuerpo máximo, hosts permitidos, CSP y cabeceras, configuración que falla en prod con claves débiles.
+  - **Integridad.** `CHECK` en la base, concurrencia optimista y auditoría de solo inserción encadenada con `verify-integrity`.
+  - **Recuperación y cargas.** Copias verificadas y restauración segura; hash de modelos.
+  - **Operación.** Logs JSON con redacción y eventos de seguridad. CI de seguridad que falla, con acciones por SHA y Dependabot. Docker endurecido con Caddy y TLS.
+- **Hallazgos.** Los 21 de la línea base están resueltos. La auditoría final dio 0 confirmados; los 2 por validar se corrigieron y 1 se rechazó. Los riesgos aceptados están en SECURITY.md §3.
+- **Pendiente para el dueño:**
+  - hacer el `git push` de la rama `Daniel` y revisar los jobs `security` y `docker` de CI;
+  - desplegar siguiendo `docs/deploy.md`;
+  - programar las copias externas.
 

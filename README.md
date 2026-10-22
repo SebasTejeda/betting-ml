@@ -58,7 +58,12 @@ Requisitos: Python ≥ 3.11 y [uv](https://docs.astral.sh/uv/). GNU make es opci
 make setup
 ```
 
-Sin make: `uv sync --extra dev`, seguido de `uv run pre-commit install`. Después copia `.env.example` a `.env` y cambia `APP_API_KEY` (y, para producción, las variables de seguridad de la spec 003: ver los comentarios de `.env.example`).
+Sin make: `uv sync --extra dev`, seguido de `uv run pre-commit install`. Después copia `.env.example` a `.env` y rellena:
+
+- `APP_API_KEY`: una clave larga e inventada (32 caracteres o más), para Postman y la CLI;
+- `APP_PASSWORD_HASH`: la salida de `uv run betting-ml hash-password` (la contraseña con la que entras al frontend).
+
+Para producción hacen falta además `APP_ENV=prod`, `SESSION_SECRET`, `ALLOWED_HOSTS` y `CORS_ORIGINS`: ver los comentarios de `.env.example` y [`docs/deploy.md`](docs/deploy.md).
 
 ## Cómo correr
 
@@ -75,7 +80,7 @@ Sin make: `uv sync --extra dev`, seguido de `uv run pre-commit install`. Despué
 | `make train-prod` | `uv run betting-ml train-prod` | Re-entrena los modelos de producción con todos los datos |
 | `make serve` | `uv run betting-ml serve` | API en `http://localhost:8000` (Swagger en `/docs`) |
 | `make track` | `uv run betting-ml track` | Califica las predicciones servidas con los resultados reales |
-| `make docker` | `docker build -t betting-ml:latest .` | Imagen de la API (ver comentario en el [`Dockerfile`](Dockerfile); aún no se construyó porque la máquina de desarrollo no tiene Docker) |
+| `make docker` | `docker build -t betting-ml:latest .` | Imagen endurecida de la API (la construye el job `docker` de CI). Despliegue con Caddy y TLS: [`docs/deploy.md`](docs/deploy.md) |
 | `make all` | — | data → baselines → experimentos (omite los ya registrados) → select y holdout (si ya existe el lock, se validan y se omiten) → report → train-prod |
 
 Para servir en una máquina limpia: `make data && make train-prod && make serve`. `train-prod` necesita el lock del holdout, que está versionado.
@@ -84,17 +89,17 @@ Para servir en una máquina limpia: `make data && make train-prod && make serve`
 
 1. Levanta la API con `make serve`.
 2. Importa [`postman/betting-ml.postman_collection.json`](postman/betting-ml.postman_collection.json).
-3. Ajusta las variables de la colección: `baseUrl` (por defecto `http://localhost:8000`), `date` y `adminApiKey` (la de tu `.env`).
+3. Ajusta las variables de la colección: `baseUrl` (por defecto `http://localhost:8000`), `date` y `appApiKey` (el `APP_API_KEY` de tu `.env`). Todas las rutas salvo `/health` exigen la cabecera `X-API-Key`.
 4. Ejecuta la colección con el *Runner*. Cada request trae tests: status, suma de probabilidades ≈ 1 y formato de error.
 
 Contrato completo: [`contracts/api.md`](specs/001-prediction-model/contracts/api.md). Ejemplos:
 
 ```bash
-curl "http://localhost:8000/api/v1/matches?date=2026-10-03&league=E0"
+curl -H "X-API-Key: $APP_API_KEY" "http://localhost:8000/api/v1/matches?date=2026-10-03&league=E0"
 ```
 
 ```bash
-curl -X POST http://localhost:8000/api/v1/predictions -H "Content-Type: application/json" -d "{\"league\":\"E0\",\"home_team\":\"Arsenal\",\"away_team\":\"Chelsea\",\"odds\":{\"home\":1.98,\"draw\":3.9,\"away\":4.5}}"
+curl -X POST http://localhost:8000/api/v1/predictions -H "X-API-Key: $APP_API_KEY" -H "Content-Type: application/json" -d "{\"league\":\"E0\",\"home_team\":\"Arsenal\",\"away_team\":\"Chelsea\",\"odds\":{\"home\":1.98,\"draw\":3.9,\"away\":4.5}}"
 ```
 
 `fixtures.csv` de football-data se actualiza unas dos veces por semana. Si no hay partidos de las 5 ligas para la fecha pedida, `/matches` responde `200` con una lista vacía y un mensaje.
@@ -154,6 +159,32 @@ La app usa tema oscuro por defecto; el botón de sol/luna de la barra superior c
 La app pide **iniciar sesión** con la contraseña del dueño (su hash Argon2id va en `APP_PASSWORD_HASH`; se genera con `betting-ml hash-password`). La sesión vive en una cookie `HttpOnly` que el navegador no puede leer y caduca tras 30 minutos sin uso o 12 horas en total; el botón **Salir** la cierra. El navegador no guarda ninguna clave ni contraseña: `APP_API_KEY` queda solo para Postman y la línea de comandos.
 
 > **Juego responsable.** Apuesta solo lo que puedas perder. Esta app no encontró una ventaja que permita ganar apostando: su valor es ahorrar margen eligiendo la mejor cuota y **medir** con honestidad. Los límites mensuales existen para que no persigas pérdidas. Si sientes que pierdes el control, pide ayuda.
+
+## Seguridad (spec 003)
+
+Especificación en [`specs/003-security-hardening/`](specs/003-security-hardening/). El modelo de amenazas, los controles y lo que queda fuera están en [`SECURITY.md`](SECURITY.md).
+
+- **Acceso.** Toda ruta exige autenticación salvo `/health` y el login:
+  - el frontend usa una sesión con cookie `HttpOnly` y token CSRF;
+  - Postman y la CLI usan `X-API-Key`.
+
+  El navegador no guarda ningún secreto. La contraseña solo existe como hash Argon2id.
+- **Abuso.** Límite de intentos de login con bloqueo progresivo, límite de peticiones por IP, cuerpo máximo de 64 KiB, `Host` permitido, CSP estricta y cabeceras de seguridad. En prod, `/docs` está desactivado y la API no arranca con claves débiles.
+- **Integridad de los datos.**
+  - `CHECK` en la base y concurrencia optimista: una edición simultánea da 409.
+  - Auditoría de solo inserción encadenada con SHA-256.
+  - Copias verificadas con `.sha256`.
+  - Hash de los modelos antes de cargarlos.
+
+| make | sin make | Qué hace |
+|---|---|---|
+| `make security` | ver el objetivo `security` del `Makefile` | ruff S, pip-audit, npm audit y gitleaks (falla ante cualquier hallazgo, igual que en CI) |
+| `make verify-integrity` | `uv run betting-ml verify-integrity` | Comprueba la cadena de auditoría, los datos actuales frente a su último evento, los PRAGMA y los triggers |
+| `make backup` | `uv run betting-ml backup` | Copia consistente de `data/app.db` con su `.sha256` y rotación |
+| `make restore FILE=…` | `uv run betting-ml restore <copia> --yes` | Verifica la copia y solo entonces reemplaza la base (guarda antes la actual) |
+| — | `uv run betting-ml hash-password` | Genera el hash Argon2id de la contraseña para `APP_PASSWORD_HASH` |
+
+Despliegue en producción (Docker, Caddy con TLS, copias externas, rotación de claves): [`docs/deploy.md`](docs/deploy.md). Estado final de los hallazgos: [`reports/SECURITY_BASELINE.md`](reports/SECURITY_BASELINE.md) y [`reports/SECURITY_AUDIT_003.md`](reports/SECURITY_AUDIT_003.md).
 
 ## Limitaciones
 

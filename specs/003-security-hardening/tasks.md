@@ -160,7 +160,7 @@ Reglas de ejecución:
   - Corregir altos y críticos; registrar los aceptados en `decisions.md`.
   - Commit: `fix(security): final audit findings` o `docs: final security audit`
 
-- [ ] **T022** Documentación y verificación de punta a punta
+- [x] **T022** Documentación y verificación de punta a punta
   - `SECURITY.md` (modelo de amenazas, controles, rotación de claves, recuperación de acceso, backups), sección de seguridad en el README y `reports/SECURITY_BASELINE.md` actualizado con el estado final.
   - Verificación manual con `make dev` y en modo `prod`: login, navegación, apuesta en papel, 409 de límites, logout, `verify-integrity`, backup/restore.
   - `PROGRESS.md` con el resumen de la spec 003.

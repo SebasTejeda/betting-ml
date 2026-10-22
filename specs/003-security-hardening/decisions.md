@@ -536,3 +536,27 @@ No corregido (riesgo aceptado, con su alcance real):
 
   Son las primeras unidades de una futura auditoría `standard`.
 
+## 2026-10-22 — T022: verificación de punta a punta y un fallo del `.sha256` en Windows
+- Contexto: cierre de la spec 003. La verificación se hizo con un script fuera del repositorio, contra una base desechable (nunca `data/app.db`), con contraseña y claves generadas para la prueba. Se corrió en `dev` y en `prod`:
+  - **Por la API.** Login erróneo y correcto, con los atributos de la cookie. Lecturas con sesión y con `X-API-Key`. Escritura sin CSRF (403) y apuesta en papel (201). Apuesta real por encima del stake máximo: 409 `LIMIT_WARNING` sin `confirm` y 201 con `confirm`. Ajustes con importe enorme (422). Clave errónea junto a una cookie válida (401). Logout, y la cookie usada después (401). Bloqueo tras 5 fallos, con la contraseña correcta rechazada durante el bloqueo (429).
+  - **En los logs.** Ni la contraseña, ni la clave, ni el token CSRF aparecen, y sí los eventos de seguridad.
+  - **Por la CLI.** `verify-integrity`, `backup`, `sha256sum -c`, `restore --yes` y `verify-integrity` otra vez. Un `DELETE` directo en `audit_log` es rechazado. En prod, `/docs` da 404, hay HSTS y la cookie lleva `Secure`. Con una clave corta, la API no arranca (código 3).
+  - **En el navegador** (Chrome, `vite` en modo dev con proxy a la API de prueba). Login, las seis páginas sin errores y logout de vuelta a `/login`, con `/auth/me` en 401 después. `localStorage` y `sessionStorage` quedan vacíos y la cookie no es visible para JavaScript.
+- **Fallo encontrado.** En Windows, `backup` escribía el `.sha256` con CRLF (`write_text` traduce `\n`). `sha256sum -c`, en Linux o Git Bash, no encontraba el archivo (`'app-….db'$'\r'`). La verificación propia no fallaba porque usa `split()`, y el test leía con `read_text`, que oculta el `\r`.
+  - Decisión: escribir con `newline="\n"` en todos los sistemas, y que el test compare los **bytes**.
+  - Comprobado con una mutación: sin `newline` el test falla. `restore` lee igual los dos formatos, así que las copias antiguas siguen valiendo.
+- **Documentación.**
+  - `SECURITY.md` nuevo: modelo de amenazas, controles con su ubicación, riesgos aceptados, rotación, recuperación del acceso, copias y cómo informar de una vulnerabilidad.
+  - README actualizado:
+    - sección de seguridad;
+    - `APP_PASSWORD_HASH` en la instalación;
+    - `X-API-Key` en los ejemplos de `curl`;
+    - `appApiKey` en Postman;
+    - `make docker` apunta a `docs/deploy.md`.
+  - `reports/SECURITY_BASELINE.md` con el estado final: los escaneos (gitleaks, pip-audit, npm audit, ruff S) dan 0 y H-01..H-21 están resueltos.
+- **Nivel de la spec (§5).**
+  - **Bueno, cumplido.**
+  - **Excelente, pendiente de una sola condición:**
+    - La auditoría final (T021) no tuvo hallazgos altos ni críticos.
+    - Falta que la guía de despliegue con TLS se pruebe con Docker: esta máquina no tiene Docker. Lo cubre el job `docker` de CI en el primer push del dueño y, del todo, el primer despliegue siguiendo `docs/deploy.md`.
+

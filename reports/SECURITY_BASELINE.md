@@ -2,7 +2,8 @@
 
 - **Fecha:** 2026-10-22 (T002)
 - **Rama / commit de partida:** `Daniel` @ `c5884ca`
-- **Cómo se repite:** `make security` (sin make: los comandos del objetivo `security` del `Makefile`). Está en **modo informe** hasta T019: muestra los hallazgos sin fallar.
+- **Cómo se repite:** `make security` (sin make: los comandos del objetivo `security` del `Makefile`). Desde T019 falla ante cualquier hallazgo, también en CI.
+- **Estado final:** los 21 hallazgos están resueltos (ver §4, actualizado en T022). La auditoría final está en [`SECURITY_AUDIT_003.md`](SECURITY_AUDIT_003.md).
 
 Severidad: **Crítica** (explotable a distancia, con impacto directo en datos o dinero), **Alta**, **Media**, **Baja**.
 
@@ -54,3 +55,47 @@ Tras los cambios: backend con 314 tests en verde y 1 omitido (cobertura del 98.4
 - YAML con `yaml.safe_load`; sin `eval`, `pickle` de datos externos ni `shell=True`.
 - Imagen Docker con usuario no root y sin `.env` (está en `.dockerignore`).
 - Dinero con `Decimal` y límites de juego responsable que no se pueden saltar desde la API.
+
+## 4. Estado final (T022)
+
+Rama `Daniel`, después de T021 (`7dda585`) y de las correcciones de T022.
+
+### Escaneos
+
+| Herramienta | Resultado en T002 | Resultado final |
+|---|---|---|
+| `gitleaks git` 8.30.1 (historial, 129 commits) | Limpio | ✅ Sin secretos |
+| `gitleaks dir` 8.30.1 (árbol) | Limpio con `.gitleaks.toml` | ✅ Sin secretos |
+| `pip-audit` (producción y desarrollo, con hashes) | 0 tras actualizar el lockfile | ✅ 0 vulnerabilidades |
+| `npm audit` (todo, también desarrollo) | 10 (7 altas, 3 medias) | ✅ 0 vulnerabilidades |
+| `ruff --select S` (`src`, `tests`, `migrations`) | 6 avisos | ✅ Limpio |
+
+Tests: 938 backend en verde y 1 omitido (cobertura del 98.9 %) y 59 de frontend. ruff, mypy, lint y typecheck limpios.
+
+### Hallazgos
+
+| ID | Estado | Cómo quedó |
+|---|---|---|
+| H-01 | ✅ Resuelto (T005, T007) | Toda ruta `/api/v1/*` exige sesión o `X-API-Key`, salvo `/health` y el login. `test_route_access.py` recorre todas las rutas registradas. |
+| H-02 | ✅ Resuelto (T009) | El frontend usa la sesión. El navegador no guarda ningún secreto, y la clave antigua se borra de `localStorage` al cargar. |
+| H-03 | ✅ Resuelto (T006) | Sesiones de servidor con caducidad por inactividad (30 min) y total (12 h), revocables con el logout o con el cambio de contraseña. Los tokens se guardan como HMAC. |
+| H-04 | ✅ Resuelto (T008, T021) | Login limitado por IP o /64 con bloqueo progresivo. Límite global por IP y cupo de refrescos de cuotas. La red de Docker tiene IPv6 para que cada cliente conserve su IP. |
+| H-05 | ✅ Resuelto (T011) | CSP, `X-Frame-Options`, `nosniff`, `Referrer-Policy`, HSTS en prod y `no-store`. La misma política en la API, `vite preview` y Caddy. |
+| H-06 | ✅ Resuelto (T011) | CORS con métodos, cabeceras y orígenes explícitos; `Host` permitido. |
+| H-07 | ✅ Resuelto (T011) | `/docs`, `/redoc` y `/openapi.json` desactivados en prod. |
+| H-08 | ✅ Resuelto (T003) | `SecretStr`. En prod la API no arranca con claves de ejemplo, cortas o vacías. |
+| H-09 | ✅ Resuelto (T012) | Un 500 genérico registrado con su `request_id`; el 422 no devuelve los valores enviados. |
+| H-10 | ✅ Resuelto (T008, T012, T021) | Esquemas con `extra="forbid"`, patrones y rangos (incluidos los importes de ajustes); cuerpo máximo de 64 KiB. |
+| H-11 | ✅ Resuelto (T013) | `CHECK` con los valores reales del esquema, verificados en la migración. |
+| H-12 | ✅ Resuelto (T014) | Concurrencia optimista (`version`): una edición simultánea da 409. Liquidación con `UPDATE` condicional. |
+| H-13 | ✅ Resuelto (T015, T021) | `audit_log` de solo inserción con cadena SHA-256. `verify-integrity` comprueba también el SQL de los triggers. |
+| H-14 | ✅ Resuelto (T016, T022) | `backup` y `restore` verificados, con `.sha256` compatible con `sha256sum -c` (con LF también en Windows desde T022). |
+| H-15 | ✅ Resuelto (T017) | SHA-256 de cada modelo comprobado antes de `joblib.load`. |
+| H-16 | ✅ Resuelto (T018) | Logs JSON con `request_id`, redacción global y eventos de seguridad. |
+| H-17 | ✅ Resuelto (T019) | Fuera la CLI de `shadcn` (su CSS se copió con su licencia). `npm audit` da 0. |
+| H-18 | ✅ Resuelto (T019) | `RuntimeError` explícitos en lugar de `assert`; `git` invocado por ruta absoluta. |
+| H-19 | ✅ Resuelto (T019) | CI con permisos mínimos, acciones por SHA, job `security` que falla y Dependabot. |
+| H-20 | ✅ Resuelto (T020, T021) | Imágenes por digest, contenedor endurecido y Caddy con TLS (`docs/deploy.md`). La imagen la construye el job `docker` de CI; esta máquina no tiene Docker. |
+| H-21 | ✅ Resuelto (T004, T005) | Routers sin E/S de archivos y servicios tipados con `ServicesApi`, sin `Any`. La autenticación tiene una sola implementación. |
+
+Lo que se acepta y queda fuera (cadena de auditoría sin clave, sin cifrado en reposo, un solo proceso) está en [`SECURITY.md`](../SECURITY.md) §3.
