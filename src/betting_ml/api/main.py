@@ -5,22 +5,28 @@ from __future__ import annotations
 import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import Any
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from betting_ml import __version__
+from betting_ml.api.dependencies import ServicesApi
 from betting_ml.api.errors import register_error_handlers
 from betting_ml.api.routers import (
     admin,
+    backtest,
+    bets,
+    bookmakers,
+    calculator,
+    comparator,
     experiments,
     health,
-    journal,
     leagues,
     matches,
     model,
+    odds,
     predictions,
+    settings,
     tracking,
 )
 from betting_ml.application.predict_matches import ModelNotAvailableError
@@ -28,10 +34,21 @@ from betting_ml.config import ensure_secure, get_settings
 
 logger = logging.getLogger(__name__)
 LOCALHOST_ORIGINS = r"https?://(localhost|127\.0\.0\.1|\[::1\])(:\d+)?"
-ROUTERS = (health, leagues, matches, predictions, model, experiments, tracking, admin, journal)
+SPEC_002_ROUTERS = (odds, bookmakers, comparator, calculator, bets, settings, backtest)
+ROUTERS = (
+    health,
+    leagues,
+    matches,
+    predictions,
+    model,
+    experiments,
+    tracking,
+    admin,
+    *SPEC_002_ROUTERS,
+)
 
 
-def create_app(services: Any | None = None) -> FastAPI:
+def create_app(services: ServicesApi | None = None) -> FastAPI:
     """``services`` exposes predictor, tracking, leagues, read_experiments, admin_api_key and
     refresher (see Container.api_services); by default it is built lazily at startup."""
 

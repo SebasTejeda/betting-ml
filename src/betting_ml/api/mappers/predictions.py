@@ -1,4 +1,4 @@
-"""Maps application results to response schemas (no business logic)."""
+"""Spec-001 predictions -> response schemas (no business logic)."""
 
 from __future__ import annotations
 

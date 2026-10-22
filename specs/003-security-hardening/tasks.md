@@ -35,7 +35,7 @@ Reglas de ejecución:
   - Tests: cada valor inseguro hace fallar `prod`; `dev` arranca; `repr(settings)` sin secretos.
   - Commit: `feat(config): environment-aware settings with fail-fast validation`
 
-- [ ] **T004** Dividir la capa API sin cambiar el contrato (US8)
+- [x] **T004** Dividir la capa API sin cambiar el contrato (US8)
   - `journal.py` → routers `odds`, `bookmakers`, `comparator`, `calculator`, `bets`, `settings`, `backtest`; mappers en `api/mappers/`.
   - `GET /backtest/pinnacle` pasa por el caso de uso `read_backtest` y el puerto `ReportStore` (se acaba la lectura de archivos en el router, §V.3).
   - Servicios tipados con `Protocol` en `dependencies.py`; sin `Any` en las firmas de los routers.

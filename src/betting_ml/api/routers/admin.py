@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 import secrets
-from typing import Any
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Header
 
-from betting_ml.api.dependencies import get_container
+from betting_ml.api.dependencies import ServicesApi, get_services
 from betting_ml.api.errors import ApiError
 from betting_ml.api.schemas import RefreshResponse
 
@@ -17,7 +16,7 @@ DEFAULT_ADMIN_KEY = "cambia-esto"
 def refresh(
     background: BackgroundTasks,
     x_api_key: str | None = Header(None),
-    container: Any = Depends(get_container),
+    container: ServicesApi = Depends(get_services),
 ) -> RefreshResponse:
     if container.admin_api_key in ("", DEFAULT_ADMIN_KEY):
         raise ApiError(503, "ADMIN_DISABLED", "Configura APP_API_KEY en .env para usar /admin")

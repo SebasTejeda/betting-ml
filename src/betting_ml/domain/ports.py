@@ -172,3 +172,10 @@ class Clock(Protocol):
     def now(self) -> datetime: ...
 
     def today(self) -> date: ...
+
+
+@runtime_checkable
+class ReportStore(Protocol):
+    """Generated reports (JSON) read by the API, e.g. the spec-002 backtest."""
+
+    def read_json(self, name: str) -> dict[str, Any] | None: ...

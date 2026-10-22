@@ -1,10 +1,8 @@
 from __future__ import annotations
 
-from typing import Any
-
 from fastapi import APIRouter, Depends
 
-from betting_ml.api.dependencies import get_container
+from betting_ml.api.dependencies import ServicesApi, get_services
 from betting_ml.api.schemas import Health
 from betting_ml.application.predict_matches import ModelNotAvailableError
 
@@ -12,7 +10,7 @@ router = APIRouter(tags=["health"])
 
 
 @router.get("/health", response_model=Health)
-def health(container: Any = Depends(get_container)) -> Health:
+def health(container: ServicesApi = Depends(get_services)) -> Health:
     predictor = container.predictor
     try:
         state = predictor.state()

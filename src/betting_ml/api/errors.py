@@ -29,6 +29,7 @@ from betting_ml.application.predict_matches import (
     UnknownLeagueError,
     UnknownTeamError,
 )
+from betting_ml.application.read_backtest import BacktestReportNotFoundError
 from betting_ml.application.refresh_odds import OddsBudgetLowError
 
 
@@ -121,6 +122,10 @@ def register_error_handlers(app: FastAPI) -> None:
     @app.exception_handler(NoReferenceError)
     async def _no_reference(_: Request, exc: NoReferenceError) -> JSONResponse:
         return error_response(422, "NO_REFERENCE", str(exc), {"match_id": exc.match_id})
+
+    @app.exception_handler(BacktestReportNotFoundError)
+    async def _backtest_missing(_: Request, exc: BacktestReportNotFoundError) -> JSONResponse:
+        return error_response(404, "BACKTEST_NOT_FOUND", str(exc))
 
     @app.exception_handler(RequestValidationError)
     async def _validation(_: Request, exc: RequestValidationError) -> JSONResponse:

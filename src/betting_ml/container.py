@@ -19,6 +19,7 @@ from betting_ml.adapters.git_info import current_commit
 from betting_ml.adapters.http import HttpClient
 from betting_ml.adapters.joblib_registry import JoblibModelRegistry
 from betting_ml.adapters.parquet_repository import ParquetMatchRepository
+from betting_ml.adapters.report_store import JsonReportStore
 from betting_ml.adapters.sql.db import prepare, session_factory
 from betting_ml.adapters.sql.repositories import (
     SqlBetRepository,
@@ -37,6 +38,7 @@ from betting_ml.application.evaluate_holdout import EvaluateHoldout
 from betting_ml.application.generate_report import GenerateReport
 from betting_ml.application.manage_bets import ManageBets
 from betting_ml.application.predict_matches import PredictMatches
+from betting_ml.application.read_backtest import ReadBacktestReport
 from betting_ml.application.refresh_odds import RefreshOdds
 from betting_ml.application.run_experiment import RunExperiment
 from betting_ml.application.select_champion import SelectChampion
@@ -72,6 +74,10 @@ class JournalServices:
     # Starts the optional automatic refresh (ODDS_AUTO_REFRESH); returns an object with
     # ``shutdown()``. ``None`` when disabled.
     start_auto_refresh: Callable[[], Any] | None = None
+
+    @property
+    def read_backtest(self) -> ReadBacktestReport:
+        return ReadBacktestReport(JsonReportStore(self.reports_path))
 
 
 @dataclass
