@@ -8,6 +8,7 @@ from betting_ml.api.dependencies import JournalApi, ServicesApi, get_journal, ge
 from betting_ml.api.errors import ApiError
 from betting_ml.api.schemas_002 import BudgetOut, RefreshOut
 from betting_ml.api.security import require_read, require_write
+from betting_ml.api.validation import LeagueCode
 
 writes = APIRouter(prefix="/api/v1", tags=["spec-002"], dependencies=[Depends(require_write)])
 reads = APIRouter(prefix="/api/v1", tags=["spec-002"], dependencies=[Depends(require_read)])
@@ -27,7 +28,7 @@ def refresh_quota(services: ServicesApi = Depends(get_services)) -> None:
     dependencies=[Depends(refresh_quota)],
 )
 def refresh_odds(
-    league: str | None = Query(None), journal: JournalApi = Depends(get_journal)
+    league: LeagueCode | None = Query(None), journal: JournalApi = Depends(get_journal)
 ) -> RefreshOut:
     try:
         result = journal.refresh_odds.refresh([league] if league else None)

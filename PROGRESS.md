@@ -172,3 +172,13 @@ Spec activa: [`specs/003-security-hardening/`](specs/003-security-hardening/). T
   - Frontend: theme-init.js fuera de index.html; security-headers.ts con la misma CSP (aplicada en vite preview, Report-Only en dev); Zod jitless; bundle sin eval.
   - Verificación: CSP probada en Chrome con el build (sin violaciones, tema y fuente bien).
   - Tests aislados del .env local. Mutaciones comprobadas (sin TrustedHost y sin la red de seguridad del 500 fallan los tests). 476 backend (cobertura 98.8 %) + 57 frontend en verde
+- 2026-10-22 · T012 · Validación estricta en api/validation.py.
+  - Cuerpos con extra="forbid".
+  - Patrones y longitudes: league, match_id, bookmaker, equipos, note y currency.
+  - Fechas entre 2000 y 2099, con from ≤ to.
+  - page ≤ 10 000, size ≤ 500 y bet_id acotado.
+  - El 422 lleva solo loc, msg y type; nunca el valor recibido.
+  - El 500 lleva request_id; la traza va al log con el mismo request_id y ya no se relanza.
+  - OpenAPI regenerado; el frontend valida la moneda con el mismo patrón.
+  - 58 tests negativos nuevos; mutaciones comprobadas.
+  - 534 tests backend (cobertura 98.8 %) y 57 frontend en verde.

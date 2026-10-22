@@ -9,6 +9,8 @@ from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, Field, PlainSerializer
 
+from betting_ml.api.validation import BookmakerKey, Currency, MatchId, Note, StrictInput
+
 Money = Annotated[
     Decimal,
     PlainSerializer(lambda v: float(round(v, 2)), return_type=float, when_used="json"),
@@ -125,11 +127,11 @@ class ComparatorDetailOut(ComparatorMatchOut):
     reference_history: list[HistoryPointOut]
 
 
-class CalculatorIn(BaseModel):
-    match_id: str = Field(min_length=3)
+class CalculatorIn(StrictInput):
+    match_id: MatchId
     outcome: OutcomeName
-    bookmaker: str = Field(min_length=1)
-    odds: float = Field(gt=1.0)
+    bookmaker: BookmakerKey
+    odds: float = Field(gt=1.0, le=1000)
 
 
 class CalculatorOut(BaseModel):
@@ -146,20 +148,20 @@ class CalculatorOut(BaseModel):
     best_available: BestOut | None
 
 
-class BetIn(BaseModel):
-    match_id: str = Field(min_length=3)
+class BetIn(StrictInput):
+    match_id: MatchId
     outcome: OutcomeName
-    bookmaker: str = Field(min_length=1)
+    bookmaker: BookmakerKey
     odds: Decimal = Field(gt=1, max_digits=8, decimal_places=3)
     stake: Decimal = Field(gt=0, max_digits=12, decimal_places=2)
     kind: Literal["real", "paper"]
     from_experimental_signal: bool = False
-    note: str | None = Field(default=None, max_length=500)
+    note: Note | None = None
     confirm: bool = False
 
 
-class BetPatch(BaseModel):
-    note: str | None = Field(default=None, max_length=500)
+class BetPatch(StrictInput):
+    note: Note | None = None
     status: Literal["pendiente", "ganada", "perdida", "nula"] | None = None
 
 
@@ -245,9 +247,9 @@ class SummaryOut(BaseModel):
     note: str
 
 
-class SettingsIO(BaseModel):
+class SettingsIO(StrictInput):
     bankroll_initial: Money = Field(ge=0)
-    currency: str = Field(default="PEN", min_length=3, max_length=3)
+    currency: Currency = "PEN"
     monthly_loss_limit: Money = Field(ge=0)
     max_stake_pct: float = Field(gt=0, le=1)
     kelly_fraction: float = Field(gt=0, le=1)

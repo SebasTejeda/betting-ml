@@ -145,3 +145,14 @@ Formato:
   - Zod se configura con `jitless` para no usar `new Function`, que la CSP bloquea.
 - Motivo: que ninguna respuesta, ni siquiera un error de un middleware o una excepción, salga sin cabeceras; y que los tests no dependan de la máquina.
 - Impacto: verificado en Chrome con `vite preview` (CSP aplicada): consola sin violaciones, el script del tema funciona desde un archivo y la fuente se carga con `font-src 'self'`. El servidor web de producción (T020, `docs/deploy.md`) debe enviar las mismas cabeceras que `frontend/security-headers.ts`.
+
+## 2026-10-22 — T012: patrones algo más anchos que los datos y 500 registrado sin relanzar
+- Contexto: la tarea pide patrones y longitudes máximas para `match_id`, `bookmaker`, `league` y `note`, rangos de fecha, tope de paginación y un 500 sin traza.
+- Decisión:
+  - Las reglas viven en tipos (`api/validation.py`) que sirven igual en cuerpos, consultas y rutas.
+  - Los patrones son **algo más anchos** que los datos de hoy (cualquier liga de 1–8 alfanuméricos, cualquier casa en minúsculas). Así un valor bien formado pero desconocido sigue recibiendo su 404 del caso de uso, y solo lo malformado se corta con 422.
+  - El 422 devuelve solo `loc`, `msg` y `type`: nunca `input` ni `ctx`, que podrían repetir una contraseña, un token o el texto ofensivo. Esto vale también para un JSON malformado.
+  - `from` posterior a `to` es un 422 y no un resultado vacío.
+  - El 500 ya no se relanza (T011 lo relanzaba para que el servidor registrara la traza). Ahora el middleware registra la traza con `logger.exception` en `betting_ml.api.errors`, junto con el `request_id`, el método y la ruta, y responde el 500 uniforme. Solo relanza si la respuesta ya había empezado. Motivo: una sola entrada de log por error, enlazable con el `request_id` que ve el cliente; T018 añadirá la redacción de secretos.
+  - El frontend valida la moneda con el mismo patrón (solo letras) antes de enviarla.
+- Impacto: verificado con mutaciones. Sin `extra="forbid"` fallan 7 tests; con los errores de Pydantic sin filtrar fallan 54.

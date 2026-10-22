@@ -2,22 +2,21 @@
 
 from __future__ import annotations
 
-import datetime as dt
-
 from fastapi import APIRouter, Depends, Query
 
 from betting_ml.api.dependencies import JournalApi, get_journal
 from betting_ml.api.mappers.comparator import detail_out, match_out
 from betting_ml.api.schemas_002 import ComparatorDetailOut, ComparatorMatchOut, ComparatorOut
 from betting_ml.api.security import require_read
+from betting_ml.api.validation import ApiDate, LeagueCode, MatchId
 
 router = APIRouter(prefix="/api/v1", tags=["spec-002"], dependencies=[Depends(require_read)])
 
 
 @router.get("/comparator", response_model=ComparatorOut)
 def comparator(
-    date: dt.date | None = Query(None, description="YYYY-MM-DD; por defecto hoy en America/Lima"),
-    league: str | None = Query(None),
+    date: ApiDate | None = Query(None, description="YYYY-MM-DD; por defecto hoy en America/Lima"),
+    league: LeagueCode | None = Query(None),
     only_value: bool = Query(False, description="Solo partidos con señal experimental"),
     min_edge: float | None = Query(None, ge=0.0, le=1.0),
     accessible_only: bool = Query(True),
@@ -36,7 +35,7 @@ def comparator(
 
 @router.get("/comparator/{match_id}", response_model=ComparatorDetailOut)
 def comparator_detail(
-    match_id: str, journal: JournalApi = Depends(get_journal)
+    match_id: MatchId, journal: JournalApi = Depends(get_journal)
 ) -> ComparatorDetailOut:
     comparison, history = journal.compare.detail(match_id)
     return detail_out(comparison, history)

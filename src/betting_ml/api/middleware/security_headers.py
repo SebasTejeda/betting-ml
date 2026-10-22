@@ -2,12 +2,12 @@
 
 Outermost middleware of the app, so it also covers the answers of the other middlewares
 (400 host, 413, 429) and turns an unhandled exception into a uniform ``500 INTERNAL_ERROR``
-with the request id and no trace. The exception is re-raised afterwards so the server still
-logs the trace with that request id (T012/T018 refine the logging).
+with the request id and no trace; the trace goes to the log with that same request id.
 """
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Iterable
 
 from starlette.datastructures import MutableHeaders
@@ -33,6 +33,8 @@ SECURITY_HEADERS = {
 }
 HSTS = "max-age=31536000; includeSubDomains"
 
+logger = logging.getLogger("betting_ml.api.errors")
+
 
 class SecurityHeadersMiddleware:
     def __init__(self, app: ASGIApp, hsts: bool = False, csp_exempt: Iterable[str] = ()) -> None:
@@ -57,7 +59,13 @@ class SecurityHeadersMiddleware:
         try:
             await self.app(scope, receive, send_with_headers)
         except Exception:
-            if started:
+            logger.exception(
+                "Unhandled error request_id=%s %s %s",
+                request_id_of(scope),
+                scope.get("method"),
+                scope.get("path"),
+            )
+            if started:  # pragma: no cover - the body is already on its way: cut the connection
                 raise
             response = error_response(
                 500,
@@ -66,7 +74,6 @@ class SecurityHeadersMiddleware:
                 {"request_id": request_id_of(scope)},
             )
             await response(scope, receive, send_with_headers)
-            raise
 
     def _apply(self, scope: Scope, headers: MutableHeaders) -> None:
         for name, value in SECURITY_HEADERS.items():

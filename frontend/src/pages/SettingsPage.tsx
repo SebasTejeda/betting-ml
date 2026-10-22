@@ -30,7 +30,11 @@ const percent = (min: number, max: number) =>
 
 const schema = z.object({
   bankroll_initial: amount,
-  currency: z.string().trim().length(3, "Código de 3 letras (PEN)").toUpperCase(),
+  currency: z
+    .string()
+    .trim()
+    .regex(/^[A-Za-z]{3}$/, "Código de 3 letras (PEN)")
+    .toUpperCase(),
   monthly_loss_limit: amount,
   max_stake_pct: percent(0.1, 100),
   kelly_fraction: percent(1, 100),

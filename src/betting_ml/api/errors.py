@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+from collections.abc import Sequence
 from typing import Any
 
 from fastapi import FastAPI, Request
@@ -68,6 +69,19 @@ def error_response(
 def retry_after(seconds: float) -> dict[str, str]:
     """``Retry-After`` header in whole seconds (at least 1)."""
     return {"Retry-After": str(max(1, math.ceil(seconds)))}
+
+
+def safe_validation_errors(errors: Sequence[Any]) -> list[dict[str, Any]]:
+    """Field and problem only (spec 003, US4): never the received value (``input``) nor the
+    constraint context, which could echo a password, a token or the offending text."""
+    return [
+        {
+            "loc": list(error.get("loc", ())),
+            "msg": str(error.get("msg", "")),
+            "type": error.get("type"),
+        }
+        for error in errors
+    ]
 
 
 def rate_limited_response(exc: RateLimitedError) -> JSONResponse:
@@ -187,7 +201,10 @@ def register_error_handlers(app: FastAPI) -> None:
     @app.exception_handler(RequestValidationError)
     async def _validation(_: Request, exc: RequestValidationError) -> JSONResponse:
         return error_response(
-            422, "VALIDATION_ERROR", "Parámetros de entrada inválidos", {"errors": exc.errors()}
+            422,
+            "VALIDATION_ERROR",
+            "Parámetros de entrada inválidos",
+            {"errors": safe_validation_errors(exc.errors())},
         )
 
     @app.exception_handler(StarletteHTTPException)

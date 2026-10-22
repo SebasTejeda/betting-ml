@@ -50,6 +50,7 @@ Se suma a [`../../001-prediction-model/contracts/api.md`](../../001-prediction-m
 | 401 | `INVALID_CREDENTIALS` | Login con contraseña incorrecta. |
 | 403 | `CSRF_FAILED` | Escritura con cookie sin `X-CSRF-Token` válido. |
 | 409 | `VERSION_CONFLICT` | Edición concurrente. |
+| 422 | `VALIDATION_ERROR` | Entrada inválida: campo desconocido, fuera de patrón, de longitud o de rango; `details.errors` lleva solo `loc`, `msg` y `type`, nunca el valor recibido. |
 | 413 | `PAYLOAD_TOO_LARGE` | Cuerpo > `MAX_BODY_BYTES`. |
 | 429 | `TOO_MANY_ATTEMPTS` / `RATE_LIMITED` | Login o límite global/ruta superado (`Retry-After`). |
 | 503 | `LOGIN_BUSY` | Todas las plazas de verificación Argon2 ocupadas; el login falla rápido (`Retry-After: 5`). |
@@ -57,6 +58,22 @@ Se suma a [`../../001-prediction-model/contracts/api.md`](../../001-prediction-m
 | 503 | `MODEL_INTEGRITY_ERROR` | El hash del modelo no coincide. |
 
 Formato uniforme sin cambios: `{"error": {"code", "message", "details"}}`. Toda respuesta incluye `X-Request-ID`.
+
+Validación de entrada (T012, `api/validation.py`):
+
+| Campo | Regla |
+|---|---|
+| Cuerpos de entrada | `extra="forbid"`: un campo desconocido es 422. |
+| `league` | `^[A-Za-z0-9]{1,8}$` (cuerpo, consulta y ruta). |
+| `match_id` | `^[A-Za-z0-9]{1,8}-\d{4}-\d{2}-\d{2}-[a-z0-9-]{1,140}$`, 14–160 caracteres. |
+| `bookmaker` | `^[a-z0-9_]{1,40}$`. |
+| `home_team`, `away_team` | 1–60 caracteres, sin caracteres de control ni `<>`. |
+| `note` | ≤ 500 caracteres, sin caracteres de control (salvo tabulador y saltos de línea). |
+| `currency` | `^[A-Z]{3}$`. |
+| Fechas (`date`, `from`, `to`, `match_date`) | 2000-01-01 a 2099-12-31; `from` ≤ `to`. |
+| Paginación | `page` ≤ 10 000, `size` ≤ 500. |
+| `bet_id` | 1 a 2³¹−1. |
+| `odds` (calculadora) | > 1 y ≤ 1000. |
 
 ## 4. Cabeceras de respuesta
 

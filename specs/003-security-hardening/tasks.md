@@ -93,7 +93,7 @@ Reglas de ejecución:
   - Tests: cabeceras en 200/401/404/422/500; host no permitido → 400; origen no permitido sin cabeceras CORS; documentación ausente en `prod`.
   - Commit: `feat(security): security headers, trusted hosts and strict cors`
 
-- [ ] **T012** Errores y validación estricta (US4)
+- [x] **T012** Errores y validación estricta (US4)
   - Manejador genérico de 500 con `request_id` y sin traza; 422 sin los valores recibidos.
   - `extra="forbid"` en los modelos de entrada; patrones y longitudes máximas para `match_id`, `bookmaker`, `league`, `note`; rangos de fecha; tope de paginación.
   - Tests: campos extra → 422; `match_id` con caracteres fuera del patrón → 422; excepción forzada → 500 con `request_id` y sin traza.

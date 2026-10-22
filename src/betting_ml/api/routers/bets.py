@@ -2,17 +2,26 @@
 
 from __future__ import annotations
 
-import datetime as dt
+from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query, Response
+from fastapi import APIRouter, Depends, Path, Query, Response
 
 from betting_ml.api.dependencies import JournalApi, get_journal
 from betting_ml.api.errors import ApiError
 from betting_ml.api.mappers.journal import bet_out, day_end, day_start, new_bet, summary_out
 from betting_ml.api.schemas_002 import BetIn, BetOut, BetPage, BetPatch, SettleOut, SummaryOut
 from betting_ml.api.security import require_read, require_write
+from betting_ml.api.validation import (
+    MAX_ID,
+    MAX_PAGE,
+    MAX_PAGE_SIZE,
+    ApiDate,
+    LeagueCode,
+    ordered_period,
+)
 from betting_ml.domain.journal import BetFilters, BetKind, BetStatus
 
+BetId = Annotated[int, Path(ge=1, le=MAX_ID)]
 writes = APIRouter(prefix="/api/v1", tags=["spec-002"], dependencies=[Depends(require_write)])
 reads = APIRouter(prefix="/api/v1", tags=["spec-002"], dependencies=[Depends(require_read)])
 
@@ -30,13 +39,14 @@ def create_bet(body: BetIn, journal: JournalApi = Depends(get_journal)) -> BetOu
 def list_bets(
     status: BetStatus | None = Query(None),
     kind: BetKind | None = Query(None),
-    league: str | None = Query(None),
-    date_from: dt.date | None = Query(None, alias="from"),
-    date_to: dt.date | None = Query(None, alias="to"),
-    page: int = Query(1, ge=1),
-    size: int = Query(50, ge=1, le=500),
+    league: LeagueCode | None = Query(None),
+    date_from: ApiDate | None = Query(None, alias="from"),
+    date_to: ApiDate | None = Query(None, alias="to"),
+    page: int = Query(1, ge=1, le=MAX_PAGE),
+    size: int = Query(50, ge=1, le=MAX_PAGE_SIZE),
     journal: JournalApi = Depends(get_journal),
 ) -> BetPage:
+    ordered_period(date_from, date_to)
     filters = BetFilters(
         status=status,
         kind=kind,
@@ -62,21 +72,22 @@ def settle(journal: JournalApi = Depends(get_journal)) -> SettleOut:
 @reads.get("/bets/summary", response_model=SummaryOut)
 def summary(
     kind: str = Query("real", pattern="^(real|paper|all)$"),
-    date_from: dt.date | None = Query(None, alias="from"),
-    date_to: dt.date | None = Query(None, alias="to"),
+    date_from: ApiDate | None = Query(None, alias="from"),
+    date_to: ApiDate | None = Query(None, alias="to"),
     journal: JournalApi = Depends(get_journal),
 ) -> SummaryOut:
+    ordered_period(date_from, date_to)
     chosen = None if kind == "all" else BetKind(kind)
     return summary_out(journal.bets.summary(chosen, day_start(date_from), day_end(date_to)))
 
 
 @writes.patch("/bets/{bet_id}", response_model=BetOut)
-def patch_bet(bet_id: int, body: BetPatch, journal: JournalApi = Depends(get_journal)) -> BetOut:
+def patch_bet(bet_id: BetId, body: BetPatch, journal: JournalApi = Depends(get_journal)) -> BetOut:
     status = None if body.status is None else BetStatus(body.status)
     return bet_out(journal.bets.update(bet_id, note=body.note, status=status))
 
 
 @writes.delete("/bets/{bet_id}", status_code=204)
-def delete_bet(bet_id: int, journal: JournalApi = Depends(get_journal)) -> Response:
+def delete_bet(bet_id: BetId, journal: JournalApi = Depends(get_journal)) -> Response:
     journal.bets.delete(bet_id)
     return Response(status_code=204)

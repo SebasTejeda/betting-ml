@@ -7,6 +7,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
+from betting_ml.api.validation import ApiDate, LeagueCode, StrictInput, TeamName
+
 
 class ErrorBody(BaseModel):
     code: str
@@ -79,17 +81,17 @@ class MatchesResponse(BaseModel):
     matches: list[MatchOut]
 
 
-class OddsIn(BaseModel):
+class OddsIn(StrictInput):
     home: float = Field(gt=1.0)
     draw: float = Field(gt=1.0)
     away: float = Field(gt=1.0)
 
 
-class PredictionRequest(BaseModel):
-    league: str = Field(min_length=1, examples=["E0"])
-    home_team: str = Field(min_length=1, examples=["Arsenal"])
-    away_team: str = Field(min_length=1, examples=["Chelsea"])
-    match_date: date | None = None
+class PredictionRequest(StrictInput):
+    league: LeagueCode = Field(examples=["E0"])
+    home_team: TeamName = Field(examples=["Arsenal"])
+    away_team: TeamName = Field(examples=["Chelsea"])
+    match_date: ApiDate | None = None
     odds: OddsIn | None = None
 
 

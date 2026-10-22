@@ -242,6 +242,9 @@
             "required": true,
             "schema": {
               "type": "string",
+              "minLength": 1,
+              "maxLength": 8,
+              "pattern": "^[A-Za-z0-9]+$",
               "title": "Code"
             }
           },
@@ -324,7 +327,10 @@
             "schema": {
               "anyOf": [
                 {
-                  "type": "string"
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 8,
+                  "pattern": "^[A-Za-z0-9]+$"
                 },
                 {
                   "type": "null"
@@ -694,7 +700,10 @@
             "schema": {
               "anyOf": [
                 {
-                  "type": "string"
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 8,
+                  "pattern": "^[A-Za-z0-9]+$"
                 },
                 {
                   "type": "null"
@@ -896,7 +905,10 @@
             "schema": {
               "anyOf": [
                 {
-                  "type": "string"
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 8,
+                  "pattern": "^[A-Za-z0-9]+$"
                 },
                 {
                   "type": "null"
@@ -1000,6 +1012,9 @@
             "required": true,
             "schema": {
               "type": "string",
+              "minLength": 14,
+              "maxLength": 160,
+              "pattern": "^[A-Za-z0-9]{1,8}-\\d{4}-\\d{2}-\\d{2}-[a-z0-9-]{1,140}$",
               "title": "Match Id"
             }
           },
@@ -1239,7 +1254,10 @@
             "schema": {
               "anyOf": [
                 {
-                  "type": "string"
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 8,
+                  "pattern": "^[A-Za-z0-9]+$"
                 },
                 {
                   "type": "null"
@@ -1288,6 +1306,7 @@
             "required": false,
             "schema": {
               "type": "integer",
+              "maximum": 10000,
               "minimum": 1,
               "default": 1,
               "title": "Page"
@@ -1425,6 +1444,8 @@
             "required": true,
             "schema": {
               "type": "integer",
+              "maximum": 2147483647,
+              "minimum": 1,
               "title": "Bet Id"
             }
           },
@@ -1507,6 +1528,8 @@
             "required": true,
             "schema": {
               "type": "integer",
+              "maximum": 2147483647,
+              "minimum": 1,
               "title": "Bet Id"
             }
           },
@@ -1890,7 +1913,9 @@
         "properties": {
           "match_id": {
             "type": "string",
-            "minLength": 3,
+            "maxLength": 160,
+            "minLength": 14,
+            "pattern": "^[A-Za-z0-9]{1,8}-\\d{4}-\\d{2}-\\d{2}-[a-z0-9-]{1,140}$",
             "title": "Match Id"
           },
           "outcome": {
@@ -1904,7 +1929,9 @@
           },
           "bookmaker": {
             "type": "string",
+            "maxLength": 40,
             "minLength": 1,
+            "pattern": "^[a-z0-9_]+$",
             "title": "Bookmaker"
           },
           "odds": {
@@ -1950,7 +1977,8 @@
             "anyOf": [
               {
                 "type": "string",
-                "maxLength": 500
+                "maxLength": 500,
+                "pattern": "^[^\\x00-\\x08\\x0b\\x0c\\x0e-\\x1f\\x7f]*$"
               },
               {
                 "type": "null"
@@ -1964,6 +1992,7 @@
             "default": false
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "required": [
           "match_id",
@@ -2225,7 +2254,8 @@
             "anyOf": [
               {
                 "type": "string",
-                "maxLength": 500
+                "maxLength": 500,
+                "pattern": "^[^\\x00-\\x08\\x0b\\x0c\\x0e-\\x1f\\x7f]*$"
               },
               {
                 "type": "null"
@@ -2251,6 +2281,7 @@
             "title": "Status"
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "title": "BetPatch"
       },
@@ -2396,7 +2427,9 @@
         "properties": {
           "match_id": {
             "type": "string",
-            "minLength": 3,
+            "maxLength": 160,
+            "minLength": 14,
+            "pattern": "^[A-Za-z0-9]{1,8}-\\d{4}-\\d{2}-\\d{2}-[a-z0-9-]{1,140}$",
             "title": "Match Id"
           },
           "outcome": {
@@ -2410,15 +2443,19 @@
           },
           "bookmaker": {
             "type": "string",
+            "maxLength": 40,
             "minLength": 1,
+            "pattern": "^[a-z0-9_]+$",
             "title": "Bookmaker"
           },
           "odds": {
             "type": "number",
+            "maximum": 1000.0,
             "exclusiveMinimum": 1.0,
             "title": "Odds"
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "required": [
           "match_id",
@@ -3354,6 +3391,7 @@
             "title": "Away"
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "required": [
           "home",
@@ -3366,7 +3404,9 @@
         "properties": {
           "league": {
             "type": "string",
+            "maxLength": 8,
             "minLength": 1,
+            "pattern": "^[A-Za-z0-9]+$",
             "title": "League",
             "examples": [
               "E0"
@@ -3374,7 +3414,9 @@
           },
           "home_team": {
             "type": "string",
+            "maxLength": 60,
             "minLength": 1,
+            "pattern": "^[^\\x00-\\x1f\\x7f<>]*$",
             "title": "Home Team",
             "examples": [
               "Arsenal"
@@ -3382,7 +3424,9 @@
           },
           "away_team": {
             "type": "string",
+            "maxLength": 60,
             "minLength": 1,
+            "pattern": "^[^\\x00-\\x1f\\x7f<>]*$",
             "title": "Away Team",
             "examples": [
               "Chelsea"
@@ -3411,6 +3455,7 @@
             ]
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "required": [
           "league",
@@ -3625,6 +3670,7 @@
             "type": "string",
             "maxLength": 3,
             "minLength": 3,
+            "pattern": "^[A-Z]{3}$",
             "title": "Currency",
             "default": "PEN"
           },
@@ -3660,6 +3706,7 @@
             "title": "Min Edge"
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "required": [
           "bankroll_initial",
@@ -3680,6 +3727,7 @@
             "type": "string",
             "maxLength": 3,
             "minLength": 3,
+            "pattern": "^[A-Z]{3}$",
             "title": "Currency",
             "default": "PEN"
           },
@@ -3710,6 +3758,7 @@
             "title": "Monthly Loss Limit In Force"
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "required": [
           "bankroll_initial",
