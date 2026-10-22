@@ -5,6 +5,7 @@ are not available here: the CI job ``docker`` boots the image read-only and vali
 from __future__ import annotations
 
 import http.server
+import ipaddress
 import re
 import threading
 from collections.abc import Iterator
@@ -36,8 +37,21 @@ def test_both_containers_are_locked_down() -> None:
 def test_the_api_is_only_reachable_through_caddy() -> None:
     assert "ports" not in API
     assert API["environment"]["APP_ENV"] == "prod"
-    caddy_ip = CADDY["networks"]["edge"]["ipv4_address"]
-    assert API["environment"]["FORWARDED_ALLOW_IPS"] == caddy_ip  # nobody else's XFF
+    caddy = CADDY["networks"]["edge"]
+    trusted = API["environment"]["FORWARDED_ALLOW_IPS"].split(",")
+    assert trusted == [caddy["ipv4_address"], caddy["ipv6_address"]]  # nobody else's XFF
+
+
+def test_ipv6_clients_keep_their_own_address() -> None:
+    """Spec 003, T021: with an AAAA record and an IPv4-only network, Docker relays every IPv6
+    client from the bridge gateway, so all of them would share one login lockout."""
+    edge = COMPOSE["networks"]["edge"]
+    assert edge["enable_ipv6"] is True
+    subnets = [ipaddress.ip_network(c["subnet"]) for c in edge["ipam"]["config"]]
+    v6 = next(n for n in subnets if n.version == 6)
+    assert v6.is_private  # ULA, never routed
+    for service in (API, CADDY):
+        assert ipaddress.ip_address(service["networks"]["edge"]["ipv6_address"]) in v6
 
 
 def test_only_data_is_writable_and_secrets_come_from_the_env_file() -> None:

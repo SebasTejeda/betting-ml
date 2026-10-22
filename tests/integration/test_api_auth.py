@@ -17,6 +17,7 @@ from betting_ml.adapters.sql.repositories import SqlSessionStore
 from betting_ml.api.main import create_app
 from betting_ml.application.authenticate import Authenticate
 from betting_ml.application.throttle import LoginThrottle
+from betting_ml.config import DEFAULT_MAX_BODY_BYTES
 
 PASSWORD = "owner-password-for-tests"
 KEY = "machine-key-for-auth-tests-0123456789"
@@ -40,6 +41,9 @@ def _services(password_hash: str = HASH, secure_cookies: bool = False) -> Any:
         journal=None,
         auth=auth,
         secure_cookies=secure_cookies,
+        rate_limits=None,  # controls off on purpose: the stub has to say so (T021)
+        allowed_hosts=None,
+        max_body_bytes=DEFAULT_MAX_BODY_BYTES,
     )
 
 

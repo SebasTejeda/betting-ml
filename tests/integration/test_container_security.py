@@ -8,9 +8,11 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from fastapi.testclient import TestClient
 
 from betting_ml.adapters.argon2_hasher import Argon2Hasher
 from betting_ml.adapters.memory_rate_limiter import MemoryRateLimiter
+from betting_ml.api.main import create_app
 from betting_ml.application.throttle import LoginThrottle, TooManyAttemptsError
 from betting_ml.config import Settings
 from betting_ml.container import ApiServices, Container
@@ -78,3 +80,23 @@ def test_the_container_login_locks_after_the_limit(tmp_path: Path) -> None:
             auth.login("wrong password", client="203.0.113.7")
     with pytest.raises(TooManyAttemptsError):
         auth.login("x" * 16, client="203.0.113.7")
+
+
+def test_the_real_services_turn_every_middleware_control_on(tmp_path: Path) -> None:
+    """Spec 003, T021: the functional tests use stubs, so this goes through create_app with
+    the Container's own services. A renamed field must not switch a control off."""
+    services = _services(tmp_path, rate_limit_per_minute=2, max_body_bytes=64)
+    config = Settings(_env_file=None, app_password_hash=ARGON2_HASH)
+    client = TestClient(create_app(services, config), base_url="http://localhost")
+    assert client.get("/health", headers={"Host": "evil.example"}).status_code == 400
+    login = client.post("/api/v1/auth/login", content=b"x" * 100)
+    assert login.status_code == 413
+    codes = [client.get("/health").status_code for _ in range(3)]
+    assert 429 not in codes[:2] and codes[2] == 429
+
+
+def test_the_api_key_stays_out_of_the_services_repr(tmp_path: Path) -> None:
+    """Spec 003, T021: a traceback or a debug print of the services must not leak the key."""
+    services = _services(tmp_path)
+    assert services.app_api_key == "k" * 40
+    assert "k" * 40 not in repr(services)

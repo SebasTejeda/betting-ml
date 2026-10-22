@@ -155,7 +155,7 @@ Reglas de ejecución:
 
 ## Fase 6 — Cierre
 
-- [ ] **T021** 🔍 Auditoría final de seguridad
+- [x] **T021** 🔍 Auditoría final de seguridad
   - Revisión completa con `security-audit` sobre la rama y `ml-reviewer` sobre la arquitectura.
   - Corregir altos y críticos; registrar los aceptados en `decisions.md`.
   - Commit: `fix(security): final audit findings` o `docs: final security audit`

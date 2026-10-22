@@ -7,6 +7,7 @@ from collections.abc import Callable
 from typing import TYPE_CHECKING, Protocol
 
 from fastapi import Depends, Request
+from starlette.types import Scope
 
 from betting_ml.api.errors import ApiError
 from betting_ml.application.authenticate import Authenticate
@@ -98,6 +99,15 @@ class ServicesApi(Protocol):
     @property
     def secure_cookies(self) -> bool:
         """Secure attribute on the session cookie (APP_ENV=prod)."""
+
+
+def scope_services(scope: Scope) -> ServicesApi | None:
+    """The services seen by a raw ASGI middleware; None only before the app is wired.
+
+    Typed on purpose: a renamed field must fail mypy or raise, never switch a control off.
+    """
+    services: ServicesApi | None = scope["app"].state.container
+    return services
 
 
 def get_services(request: Request) -> ServicesApi:

@@ -162,16 +162,23 @@ class SqlIntegrity(SqlAuditLog):
                 f"foreign_key_check: {table} rowid {rowid} -> {parent}"
                 for table, rowid, parent, _ in session.execute(text("PRAGMA foreign_key_check"))
             ]
-            triggers = {
-                name
-                for (name,) in session.execute(
-                    text("SELECT name FROM sqlite_master WHERE type = 'trigger'")
+            triggers: dict[str, str] = {
+                name: sql
+                for name, sql in session.execute(
+                    text("SELECT name, sql FROM sqlite_master WHERE type = 'trigger'")
                 )
             }
+            for name, ddl in APPEND_ONLY_TRIGGERS.items():
+                if name not in triggers:
+                    problems.append(
+                        f"falta el trigger {name}: audit_log ya no es de solo inserción"
+                    )
+                elif _words(triggers[name]) != _words(ddl):  # same name, other body
+                    problems.append(f"el trigger {name} no es el original: revisa su definición")
             problems += [
-                f"falta el trigger {name}: audit_log ya no es de solo inserción"
-                for name in APPEND_ONLY_TRIGGERS
-                if name not in triggers
+                f"trigger inesperado {name}: puede cambiar datos sin pasar por la auditoría"
+                for name in sorted(triggers)
+                if name not in APPEND_ONLY_TRIGGERS
             ]
             return problems
 
@@ -180,3 +187,7 @@ class SqlIntegrity(SqlAuditLog):
         with self.sessions() as session:
             rows = session.execute(text(f"SELECT * FROM {table}")).mappings()  # noqa: S608
             return {str(row[column]): dict(row) for row in rows}
+
+
+def _words(sql: str) -> str:
+    return " ".join(sql.split())

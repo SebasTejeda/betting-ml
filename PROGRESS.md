@@ -244,4 +244,15 @@ Spec activa: [`specs/003-security-hardening/`](specs/003-security-hardening/). T
   - Job docker de CI con arranque --read-only (pendiente del primer push).
   - docs/deploy.md con .env de prod, copias, restauración y rotación de claves.
   - 929 tests backend (cobertura 99 %), 59 frontend.
+- 2026-10-22 · T021 · Auditoría final de seguridad (skill security-audit, perfil quick, 14 agentes) y revisión de arquitectura (ml-reviewer: APROBADO CON OBSERVACIONES).
+  - 0 confirmados (sin sandbox no se ejecuta código), 2 needs_validation y 1 rechazado.
+  - Corregido:
+    - la red edge con IPv6 y FORWARDED_ALLOW_IPS con las dos direcciones de Caddy (evita que todos los clientes IPv6 compartan un bloqueo);
+    - presupuesto global de 100 LOGIN_FAILED auditados por hora;
+    - middlewares tipados con ServicesApi y test de punta a punta con el Container real (M1);
+    - API key fuera del repr (M2);
+    - verify-integrity compara el SQL de los triggers y rechaza los ajenos;
+    - los importes de ajustes enormes dan 422 en lugar de 500.
+  - 8 mutaciones detectadas. reports/SECURITY_AUDIT_003.md.
+  - 938 tests backend (cobertura 99 %), 59 frontend.
 

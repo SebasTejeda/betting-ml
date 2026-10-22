@@ -4,6 +4,10 @@ Login: each attempt is counted *before* checking the password, so parallel guess
 past the limit, and a success clears the count. One attempt over ``max_attempts`` in a minute
 locks the client for 1, 5 and then 15 minutes (progressive); while locked, not even the right
 password is checked. The lockout level is remembered for ``memory`` (24 h).
+
+Failed logins are anonymous input written to an insert-only table, so at most
+``audited_failures`` per hour *in total* reach the audit log; every failure still reaches the
+security log (LOGIN_FAILED) and counts for the lockout (T021).
 """
 
 from __future__ import annotations
@@ -18,6 +22,7 @@ from betting_ml.domain.ports import RateLimiter
 MINUTE = timedelta(minutes=1)
 HOUR = timedelta(hours=1)
 LOCKOUTS = (timedelta(minutes=1), timedelta(minutes=5), timedelta(minutes=15))
+AUDITED_FAILURES_PER_HOUR = 100
 
 
 class TooManyAttemptsError(Exception):
@@ -66,11 +71,13 @@ class LoginThrottle:
         max_attempts: int,
         lockouts: tuple[timedelta, ...] = LOCKOUTS,
         memory: timedelta = timedelta(hours=24),
+        audited_failures: int = AUDITED_FAILURES_PER_HOUR,
     ) -> None:
         self.limiter = limiter
         self.max_attempts = max_attempts
         self.lockouts = lockouts
         self.memory = memory
+        self.audited_failures = audited_failures
         self._mutex = threading.Lock()
 
     def begin(self, client: str) -> None:
@@ -87,6 +94,10 @@ class LoginThrottle:
             self.limiter.lock(f"login-lock:{client}", duration)
             self.limiter.reset(f"login-attempts:{client}")
         raise TooManyAttemptsError(duration.total_seconds())
+
+    def audit_failure(self) -> bool:
+        """Whether this failed attempt goes to the audit log (global hourly budget)."""
+        return self.limiter.hit("login-failures-audited", self.audited_failures, HOUR) is None
 
     def succeeded(self, client: str) -> None:
         with self._mutex:

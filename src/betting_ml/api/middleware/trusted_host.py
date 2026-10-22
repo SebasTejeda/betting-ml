@@ -7,11 +7,10 @@ off, like the other limits in the functional tests.
 
 from __future__ import annotations
 
-from typing import Any
-
 from starlette.datastructures import Headers
 from starlette.types import ASGIApp, Receive, Scope, Send
 
+from betting_ml.api.dependencies import scope_services
 from betting_ml.api.errors import error_response
 
 
@@ -20,8 +19,8 @@ class TrustedHostMiddleware:
         self.app = app
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        services: Any = getattr(scope["app"].state, "container", None)
-        allowed: list[str] | None = getattr(services, "allowed_hosts", None)
+        services = scope_services(scope)
+        allowed = services.allowed_hosts if services is not None else None
         if scope["type"] != "http" or allowed is None or _host(scope) in allowed:
             await self.app(scope, receive, send)
             return

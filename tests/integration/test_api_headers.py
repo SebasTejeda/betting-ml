@@ -13,7 +13,7 @@ from fastapi.testclient import TestClient
 
 from betting_ml.api.main import create_app
 from betting_ml.api.middleware.security_headers import CONTENT_SECURITY_POLICY
-from betting_ml.config import Settings
+from betting_ml.config import DEFAULT_MAX_BODY_BYTES, Settings
 
 KEY = "machine-key-for-header-tests-0123456789"
 ME = "/api/v1/auth/me"
@@ -40,7 +40,10 @@ def _services(**extra: Any) -> Any:
         journal=None,
         auth=None,
         secure_cookies=False,
-        **extra,
+        **(
+            {"rate_limits": None, "allowed_hosts": None, "max_body_bytes": DEFAULT_MAX_BODY_BYTES}
+            | extra
+        ),  # controls off unless the test turns them on (T021)
     )
 
 

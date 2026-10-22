@@ -11,8 +11,8 @@ services:
     env_file: ../.env # APP_ENV=prod and the secrets; never baked into the image
     environment:
       APP_ENV: prod
-      # Only Caddy's X-Forwarded-For is believed (its fixed address on the edge network).
-      FORWARDED_ALLOW_IPS: 172.30.0.2
+      # Only Caddy's X-Forwarded-For is believed (its fixed addresses on the edge network).
+      FORWARDED_ALLOW_IPS: "172.30.0.2,fd00:30::2"
     read_only: true # only the volumes below and /tmp are writable
     tmpfs:
       - /tmp:size=64m,mode=1777
@@ -25,6 +25,7 @@ services:
     networks:
       edge:
         ipv4_address: 172.30.0.3
+        ipv6_address: fd00:30::3
     # no "ports": the API is not published, Caddy is the only way in
 
   caddy:
@@ -51,12 +52,17 @@ services:
     networks:
       edge:
         ipv4_address: 172.30.0.2
+        ipv6_address: fd00:30::2
 
 networks:
   edge:
+    # IPv6 too: with an AAAA record, an IPv4-only network would make Docker relay every IPv6
+    # client from the bridge gateway, so all of them would share one login lockout (T021).
+    enable_ipv6: true
     ipam:
       config:
         - subnet: 172.30.0.0/24
+        - subnet: fd00:30::/64
 
 volumes:
   caddy_data:

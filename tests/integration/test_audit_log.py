@@ -465,3 +465,25 @@ def test_a_missing_append_only_trigger_is_reported(sessions: sessionmaker[Sessio
     assert "falta el trigger audit_log_no_delete: audit_log ya no es de solo inserción" in (
         _verify(sessions)
     )
+
+
+def test_a_replaced_append_only_trigger_is_reported(sessions: sessionmaker[Session]) -> None:
+    """Spec 003, T021: same name, harmless body; checking only the name would accept it."""
+    _with_history(sessions)
+    _sql(sessions, "DROP TRIGGER audit_log_no_delete")
+    _sql(
+        sessions,
+        "CREATE TRIGGER audit_log_no_delete BEFORE DELETE ON audit_log BEGIN SELECT 1; END",
+    )
+    assert "el trigger audit_log_no_delete no es el original: revisa su definición" in (
+        _verify(sessions)
+    )
+
+
+def test_an_unexpected_trigger_is_reported(sessions: sessionmaker[Session]) -> None:
+    """Spec 003, T021: an extra trigger could change rows without an audit event."""
+    _with_history(sessions)
+    _sql(sessions, "CREATE TRIGGER sneaky AFTER INSERT ON bets BEGIN SELECT 1; END")
+    assert "trigger inesperado sneaky: puede cambiar datos sin pasar por la auditoría" in (
+        _verify(sessions)
+    )

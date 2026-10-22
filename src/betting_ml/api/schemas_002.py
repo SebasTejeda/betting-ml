@@ -257,9 +257,9 @@ class SummaryOut(BaseModel):
 
 
 class SettingsIO(StrictInput):
-    bankroll_initial: Money = Field(ge=0)
+    bankroll_initial: Money = Field(ge=0, max_digits=12, decimal_places=2)  # NUMERIC(12,2)
     currency: Currency = "PEN"
-    monthly_loss_limit: Money = Field(ge=0)
+    monthly_loss_limit: Money = Field(ge=0, max_digits=12, decimal_places=2)  # NUMERIC(12,2)
     max_stake_pct: float = Field(gt=0, le=1)
     kelly_fraction: float = Field(gt=0, le=1)
     min_edge: float = Field(ge=0, le=1)

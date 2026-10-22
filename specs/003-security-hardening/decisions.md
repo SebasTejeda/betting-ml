@@ -481,3 +481,58 @@ No corregido (riesgo aceptado, con su alcance real):
   - Mutaciones, ambas detectadas por un test: `proxy_headers` siempre activo; `prod` aceptando `*`.
 - Riesgo aceptado: la IP fija de Caddy en la red `edge` depende de que nadie más se conecte a esa red. Solo la usan los dos servicios del compose.
 
+## 2026-10-22 — T021: auditoría final de seguridad y revisión de arquitectura
+- Contexto: cierre de la spec 003. Se hicieron dos revisiones independientes:
+  - **Auditoría con la skill `security-audit`.** Perfil `quick`, 14 agentes: reconocimiento, 6 cazadores, un crítico y 3 verificadores. Se revisaron 13 unidades del ledger y el crítico añadió 2.
+  - **Revisión de arquitectura del `ml-reviewer`.** Veredicto: APROBADO CON OBSERVACIONES.
+  - El informe completo está en `reports/SECURITY_AUDIT_003.md`. Los artefactos (ledger, `findings.json`) quedan fuera del repositorio, en `~/security-audit-skill/betting-ml/run-1/`.
+- **Limitación del método.** Este equipo (Windows, sin Docker ni WSL) no puede aplicar el sandbox que exige la skill, así que los agentes no ejecutaron código del proyecto. Sin ejecución, ningún candidato puede quedar `confirmed`: hay **0 confirmados**, 2 en `needs_validation` y 1 rechazado. Las correcciones de abajo sí se verificaron con la suite del proyecto, como el resto de tareas.
+- Decisión: se corrige todo lo que tiene una traza concreta y un arreglo pequeño, aunque ninguno sea alto ni crítico.
+  - **IPv6 y bloqueo compartido** (needs_validation, disponibilidad).
+    - La red `edge` pasa a tener IPv6 (ULA `fd00:30::/64`), con direcciones fijas para Caddy y la API, y `FORWARDED_ALLOW_IPS` incluye `fd00:30::2`.
+    - Con Docker ≥ 27 (`ip6tables` activo de serie), cada cliente IPv6 conserva su dirección. Sin IPv6 en la red, docker-proxy los reenviaría todos desde la pasarela, y bastarían seis contraseñas erróneas por IPv6 para bloquear al dueño.
+    - Se elige esto frente a publicar solo en IPv4 porque mantiene el AAAA que pide la guía.
+    - La guía añade cómo comprobarlo en los logs. La prueba real queda en el job `docker` y en el despliegue: aquí no hay Docker.
+  - **Logins fallidos y auditoría** (needs_validation, crecimiento de disco).
+    - Entran en `audit_log` como mucho **100 por hora en total** (`LoginThrottle.audit_failure`, contador global `login-failures-audited`).
+    - Todos siguen en el log de seguridad (`LOGIN_FAILED`) y cuentan para el bloqueo por cliente.
+    - Se descarta un presupuesto global de *intentos*: un anónimo podría agotarlo y dejar sin login al dueño. Aquí lo que se limita es la escritura, no el acceso.
+    - Durante un ataque masivo, la auditoría guarda una muestra y el log de seguridad lo guarda todo.
+  - **M1 del ml-reviewer.**
+    - `rate_limit`, `trusted_host` y `body_limit` leían el contenedor con `getattr(..., None)` sobre `Any`: un campo renombrado en `ApiServices` apagaba el control sin que nada fallara.
+    - Ahora usan `scope_services()`, tipado con `ServicesApi`. En `main.py`, `ApiServices` se asigna a una variable `ServicesApi`, así que mypy comprueba que cumple el protocolo. Un atributo ausente lanza un error en vez de desactivar el control.
+    - Los stubs de los tests funcionales declaran `rate_limits=None` y `allowed_hosts=None` a propósito.
+    - Hay un test nuevo de punta a punta con los servicios reales del `Container`: Host ajeno → 400, cuerpo grande → 413, petición N+1 → 429.
+  - **M2 del ml-reviewer.** `ApiServices.app_api_key` usa `field(repr=False)`.
+  - **Importes de ajustes.** `bankroll_initial` y `monthly_loss_limit` admiten como máximo 12 dígitos y 2 decimales (`NUMERIC(12,2)`, igual que `stake`). Un valor enorme como `1e30` daba un 500 (`InvalidOperation`) y ahora da un 422. El patrón de `frontend/src/api/openapi.json` se ha regenerado; los tipos TS no cambian.
+  - **Triggers de auditoría.** `pragma_problems` compara el SQL de `audit_log_no_update`/`audit_log_no_delete` (sin tener en cuenta los espacios) y señala cualquier trigger que no sea uno de ellos. Antes, un trigger con el mismo nombre y sin `RAISE`, en una copia restaurada, habría pasado la verificación.
+- Rechazado: la apuesta *real* registrada sobre un partido ya jugado, con cuotas infladas, que «anulaba» la pérdida mensual.
+  - Con el 403 activo, `create` lo rechaza antes de mirar el partido.
+  - Registrar después del inicio con aviso es el contrato de la spec 002.
+  - Las cuotas son autodeclaradas por diseño (apuestas hechas en casas externas), así que lo mismo se logra antes del inicio.
+  - Solo afecta al propio dueño. **Nota de producto pendiente:** marcar cuotas muy por encima de la referencia y decidir si las apuestas registradas después del inicio cuentan para el límite.
+- **Aceptado (endurecimiento sin frontera cruzada o fuera de alcance), con su motivo:**
+  - **El límite de login es por IP o /64, sin presupuesto global.** Lo pide la spec, y un presupuesto global permitiría bloquear al dueño.
+  - **La cookie no usa el prefijo `__Host-`.** El dominio es propio, sin subdominios de terceros.
+  - **`APP_ENV` es `dev` por defecto y la imagen escucha en `0.0.0.0`.** El compose fuerza `prod` y la guía lo dice. Cambiar el valor por defecto rompería `make serve` y el job de CI.
+  - **El limitador en memoria expulsa por orden de inserción.** Hacen falta más de 10 000 identidades, y con eso el límite por cliente ya no sirve.
+  - **`/health` recarga el modelo mientras el servicio está degradado.** Lo frena el límite global, y el operador ve ese estado.
+  - **`admin/refresh` y `odds/refresh` no impiden ejecuciones simultáneas.** Solo el dueño puede lanzarlos.
+  - **`joblib_registry.path()` no valida la versión.** `production.json` es de solo lectura en prod y tiene el mismo dueño que el modelo.
+  - **Robustez ante datos upstream malformados.** `fixtures._odds` acepta `inf`, `Credits.from_headers` no captura `OverflowError` y `TextFormatter` (dev) no escapa saltos de línea.
+  - **`MODEL_NOT_AVAILABLE` muestra la ruta de `models/`.** Solo la ven usuarios autenticados.
+  - **Hooks de pre-commit fijados por etiqueta, y `libgomp1` sin versión fija.**
+  - **Bajas del ml-reviewer:**
+    - el dinero de la auditoría se guarda como `REAL` de SQLite (decisión de la spec 002);
+    - los eventos de login están repartidos entre capas;
+    - varios puertos usan `Any`;
+    - `maintenance.py` hace E/S de archivos;
+    - `errors.py` importa un adaptador;
+    - ningún test compara el `openapi.json` versionado;
+    - la latencia, medida en 4,4 ms en `/health`, cumple el objetivo de < 5 ms.
+- **Cobertura aplazada por el crítico** (perfil quick):
+  - la liquidación desde los resultados de football-data (`settle_bets.py`);
+  - los límites de tamaño de las descargas upstream (`adapters/http.py` no limita bytes).
+
+  Son las primeras unidades de una futura auditoría `standard`.
+

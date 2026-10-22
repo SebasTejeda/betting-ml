@@ -86,7 +86,8 @@ def create_app(services: ServicesApi | None = None, config: Settings | None = No
 
             configure_logging(get_settings())  # after uvicorn's own setup: takes it over
             ensure_secure(get_settings())  # before loading anything (spec 003, US3)
-            app.state.container = Container().api_services()
+            built: ServicesApi = Container().api_services()  # mypy: ApiServices fits the API
+            app.state.container = built
         try:  # warm-up: load models and Elo state once
             app.state.container.predictor.state()
         except ModelNotVerifiedError as exc:

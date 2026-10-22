@@ -13,6 +13,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from betting_ml.api.main import create_app
+from betting_ml.config import DEFAULT_MAX_BODY_BYTES
 
 KEY = "machine-key-for-strict-tests-0123456789"
 AUTH = {"X-API-Key": KEY}
@@ -46,6 +47,9 @@ def _app() -> Any:
             purge=lambda: 0
         ),  # login enabled: its body is validated before any use
         secure_cookies=False,
+        rate_limits=None,  # controls off on purpose: the stub has to say so (T021)
+        allowed_hosts=None,
+        max_body_bytes=DEFAULT_MAX_BODY_BYTES,
     )
     app = create_app(services)  # type: ignore[arg-type]
 
@@ -148,6 +152,9 @@ def test_bet_fields_are_checked(client: TestClient, field: str, value: Any) -> N
         ("currency", "PEN1"),
         ("max_stake_pct", 1.5),
         ("bankroll_initial", -1),
+        ("bankroll_initial", 1e30),  # T021: was an unhandled InvalidOperation (500)
+        ("monthly_loss_limit", "1e30"),
+        ("monthly_loss_limit", "10.001"),
     ],
 )
 def test_settings_fields_are_checked(client: TestClient, field: str, value: Any) -> None:

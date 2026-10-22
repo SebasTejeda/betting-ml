@@ -11,11 +11,12 @@ Guía para publicar betting-ml en un servidor propio con TLS. Es parte de la spe
 Internet ──443/80──► Caddy (TLS automático, HSTS, cabeceras, log sin credenciales)
                        ├── /api/*, /health ──► api:8000  (uvicorn, sin puertos publicados)
                        └── resto           ──► frontend/dist (estático, index.html para las rutas)
-                     red "edge" 172.30.0.0/24: Caddy 172.30.0.2, API 172.30.0.3
+                     red "edge" 172.30.0.0/24 + fd00:30::/64: Caddy .2, API .3
 ```
 
 - **Un solo origen.** El frontend y la API comparten dominio. La cookie de sesión sigue siendo `SameSite=Strict` y CORS no interviene.
-- **La API solo es accesible a través de Caddy.** Solo cree `X-Forwarded-For` cuando viene de la IP de Caddy (`FORWARDED_ALLOW_IPS`, la fija el compose), así que el bloqueo del login ve la IP real del cliente y nadie puede elegir otra.
+- **La API solo es accesible a través de Caddy.** Solo cree `X-Forwarded-For` cuando viene de una dirección de Caddy (`FORWARDED_ALLOW_IPS`, la fija el compose), así que el bloqueo del login ve la IP real del cliente y nadie puede elegir otra.
+- **IPv4 e IPv6.** La red `edge` tiene también IPv6. Si solo fuese IPv4 y el dominio tuviese AAAA, Docker reenviaría cada cliente IPv6 desde la pasarela del bridge. Todos compartirían entonces un mismo bloqueo de login, y cualquiera podría bloquear al dueño.
 - **Dos contenedores con raíz de solo lectura.**
   - **API:** el único volumen escribible es `data/` (base SQLite, copias y cachés). `models/` y `reports/` se montan de solo lectura, y el código pertenece a `root`, no al usuario `app` (uid 10001) con el que corre.
   - **Caddy:** escribe solo en sus volúmenes de certificados.
@@ -24,8 +25,8 @@ Internet ──443/80──► Caddy (TLS automático, HSTS, cabeceras, log sin 
 
 ## 2. Requisitos
 
-- Servidor Linux con Docker Engine y el plugin `docker compose` v2.
-- Un dominio (por ejemplo `apuestas.example.com`) con registros A/AAAA hacia el servidor.
+- Servidor Linux con Docker Engine **27 o posterior** (trae `ip6tables` activado de serie) y el plugin `docker compose` v2.
+- Un dominio (por ejemplo `apuestas.example.com`) con registros A/AAAA hacia el servidor. Pon el AAAA solo si el servidor tiene IPv6 pública.
 - Los puertos 80 y 443 abiertos: Caddy obtiene y renueva el certificado solo.
 - Para generar datos, modelos y el frontend: `uv` y Node 24. Puede hacerse en otra máquina y copiar el resultado.
 
@@ -61,7 +62,7 @@ Crea `.env` en la raíz a partir de `.env.example` y protégelo con `chmod 600 .
 | `SESSION_SECRET` | ≥ 32 caracteres, **distinto** de `APP_API_KEY`. |
 | `ALLOWED_HOSTS` | El dominio: `apuestas.example.com`. Sin `*`. |
 | `CORS_ORIGINS` | `https://apuestas.example.com` (mismo origen; nunca `*`). |
-| `FORWARDED_ALLOW_IPS` | No hace falta: lo fija el compose (`172.30.0.2`). Nunca `*`. |
+| `FORWARDED_ALLOW_IPS` | No hace falta: lo fija el compose (`172.30.0.2,fd00:30::2`, las direcciones de Caddy). Nunca `*`. |
 | `ODDS_API_KEY` | La clave de The Odds API (opcional). |
 | `ODDS_AUTO_REFRESH` | `true` si quieres el refresco programado de cuotas. |
 | `LOG_FORMAT` | Vacío (JSON en `prod`). |
@@ -97,7 +98,7 @@ Después, entra con la contraseña desde el navegador.
 | Raíz de solo lectura, `tmpfs` en `/tmp` | Un fallo en la API no puede modificar el código ni dejar nada fuera de `data/`. |
 | `cap_drop: ALL`, `no-new-privileges`, uid 10001 | Sin privilegios del kernel ni escalada (Caddy solo conserva `NET_BIND_SERVICE`). |
 | API sin `ports` | Solo se llega a ella a través de Caddy. |
-| `FORWARDED_ALLOW_IPS` = IP de Caddy | El límite de intentos de login usa la IP real del cliente. |
+| `FORWARDED_ALLOW_IPS` = direcciones de Caddy, red con IPv6 | El límite de intentos de login usa la IP real del cliente, también por IPv6. |
 | TLS automático, HSTS | Cookies `Secure` y nada en claro. |
 | Cabeceras de Caddy | La misma CSP que la API y que `vite preview` (`frontend/security-headers.ts`). |
 | `admin off` y log filtrado de Caddy | No hay API de administración. El log de acceso no lleva `X-Api-Key`, `X-CSRF-Token` ni claves en la query; Caddy ya oculta `Cookie` y `Authorization`. |
@@ -119,6 +120,16 @@ Eventos de seguridad:
 - `INTEGRITY_CHECK_FAILED` y `MODEL_INTEGRITY_FAILED`.
 
 Un `X-Request-ID` de una respuesta lleva a todas las líneas de esa petición.
+
+**`LOGIN_FAILED` y auditoría.** Cada intento fallido aparece en el log de seguridad. En la auditoría (`audit_log`, de solo inserción) entran como mucho 100 por hora en total: son intentos anónimos y no deben hacer crecer sin límite una tabla que no se puede podar.
+
+Para comprobar que IPv6 conserva la IP del cliente:
+
+```bash
+docker compose -f deploy/compose.yaml logs api | jq -r 'select(.client) | .client' | sort | uniq -c
+```
+
+Si aparece `172.30.0.1` (la pasarela), tu Docker no está aplicando `ip6tables`: actualízalo o quita el registro AAAA.
 
 ## 7. Copias de seguridad y restauración
 

@@ -75,7 +75,7 @@ class Authenticate:
             raise LoginDisabledError()
         self.throttle.begin(client)  # before Argon2: a locked client costs no CPU
         if not self.hasher.verify(self.password_hash, password):
-            if self.audit_log is not None:
+            if self.audit_log is not None and self.throttle.audit_failure():  # bounded growth
                 failed = AuditInfo("anonymous", "LOGIN_FAILED", {"client": client})
                 self.audit_log.append(failed, "session")
             raise InvalidCredentialsError()

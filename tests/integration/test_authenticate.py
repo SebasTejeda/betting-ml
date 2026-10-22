@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
+from types import SimpleNamespace
 
 import pytest
 
@@ -15,7 +16,8 @@ from betting_ml.application.authenticate import (
     InvalidCredentialsError,
     LoginDisabledError,
 )
-from betting_ml.application.throttle import LoginThrottle
+from betting_ml.application.throttle import AUDITED_FAILURES_PER_HOUR, LoginThrottle
+from betting_ml.domain.audit import AuditInfo
 
 PASSWORD = "correct horse battery staple"
 HASHER = Argon2Hasher(time_cost=1, memory_cost=1024, parallelism=1)  # cheap for tests
@@ -210,3 +212,22 @@ def test_a_saturated_hasher_fails_fast_instead_of_queueing() -> None:
     assert hasher.verify(HASH, PASSWORD) is True
     assert hasher.verify(HASH, "wrong") is False  # the slot is released after each check
     assert hasher.verify(HASH, PASSWORD) is True
+
+
+def test_failed_logins_reach_the_audit_log_within_a_global_budget(store, clock) -> None:  # type: ignore[no-untyped-def]
+    """Spec 003, T021: anonymous failures must not grow the insert-only audit log without
+    bound, whatever the number of client addresses; the lockout still counts every attempt."""
+    audited: list[AuditInfo] = []
+    log = SimpleNamespace(append=lambda info, entity: audited.append(info))
+    throttle = LoginThrottle(MemoryRateLimiter(), max_attempts=1000, audited_failures=2)
+    auth = _auth(store, clock, throttle=throttle, audit_log=log)
+    for client in ("198.51.100.1", "198.51.100.2", "2001:db8:1::/64", "2001:db8:2::/64"):
+        with pytest.raises(InvalidCredentialsError):
+            auth.login("wrong", client=client)
+    assert [info.detail for info in audited] == [
+        {"client": "198.51.100.1"},
+        {"client": "198.51.100.2"},
+    ]
+    assert LoginThrottle(MemoryRateLimiter(), max_attempts=5).audited_failures == (
+        AUDITED_FAILURES_PER_HOUR
+    )

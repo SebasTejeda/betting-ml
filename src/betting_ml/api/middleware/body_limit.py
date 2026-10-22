@@ -6,11 +6,10 @@ counted while it is read and cut as soon as it goes over.
 
 from __future__ import annotations
 
-from typing import Any
-
 from fastapi import HTTPException
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
+from betting_ml.api.dependencies import scope_services
 from betting_ml.api.errors import error_response
 from betting_ml.config import DEFAULT_MAX_BODY_BYTES
 
@@ -62,8 +61,8 @@ class BodyLimitMiddleware:
 
 
 def _limit(scope: Scope) -> int:
-    services: Any = getattr(scope["app"].state, "container", None)
-    return int(getattr(services, "max_body_bytes", DEFAULT_MAX_BODY_BYTES))
+    services = scope_services(scope)
+    return services.max_body_bytes if services is not None else DEFAULT_MAX_BODY_BYTES
 
 
 def _content_length(scope: Scope) -> int | None:

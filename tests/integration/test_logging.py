@@ -27,7 +27,7 @@ from betting_ml.api.main import create_app
 from betting_ml.application.authenticate import Authenticate
 from betting_ml.application.maintenance import IntegrityReport, VerifyIntegrity
 from betting_ml.application.throttle import LoginThrottle
-from betting_ml.config import Settings
+from betting_ml.config import DEFAULT_MAX_BODY_BYTES, Settings
 from betting_ml.logging_config import REDACTED, Redactor, configure_logging
 
 PASSWORD = "owner-password-for-log-tests"
@@ -83,6 +83,9 @@ def _client() -> TestClient:
         journal=None,
         auth=auth,
         secure_cookies=False,
+        rate_limits=None,  # controls off on purpose: the stub has to say so (T021)
+        allowed_hosts=None,
+        max_body_bytes=DEFAULT_MAX_BODY_BYTES,
     )
     return TestClient(create_app(services))
 

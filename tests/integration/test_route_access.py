@@ -22,6 +22,7 @@ from betting_ml.api.main import create_app
 from betting_ml.api.security import Access, api_routes, client_ip, route_access
 from betting_ml.application.authenticate import Authenticate
 from betting_ml.application.throttle import LoginThrottle
+from betting_ml.config import DEFAULT_MAX_BODY_BYTES
 
 KEY = "route-access-test-key-0123456789abcdef"
 WRITE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
@@ -48,6 +49,8 @@ def _app(key: str = KEY) -> Any:
     services.journal = None
     services.auth = auth
     services.secure_cookies = False
+    services.rate_limits = services.allowed_hosts = None  # controls off on purpose (T021)
+    services.max_body_bytes = DEFAULT_MAX_BODY_BYTES
     return create_app(services)  # type: ignore[arg-type]
 
 

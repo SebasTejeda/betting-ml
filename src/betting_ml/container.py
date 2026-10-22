@@ -6,7 +6,7 @@ import json
 import logging
 import secrets
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import timedelta
 from functools import cached_property
 from pathlib import Path
@@ -106,7 +106,8 @@ class ApiServices:
     tracking: TrackPredictions
     leagues: LeaguesFile
     read_experiments: Callable[[], pd.DataFrame]
-    app_api_key: str  # the single machine key; ADMIN_API_KEY is only a settings alias
+    # the single machine key (ADMIN_API_KEY is only a settings alias); never in repr/tracebacks
+    app_api_key: str = field(repr=False)
     refresher: RefreshData
     journal: JournalServices | None = None
     auth: Authenticate | None = None
