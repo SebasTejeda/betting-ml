@@ -242,8 +242,9 @@ def test_migration_keeps_valid_data(tmp_path: Path) -> None:
     engine = make_engine(url)
     with engine.connect() as connection:
         after = connection.execute(sa.text("SELECT * FROM bets ORDER BY id")).all()
-        assert [row[:-1] for row in after] == before  # + version, appended by 0006
-        assert [row[-1] for row in after] == [1, 1]
+        # + version (0006), then market, selection and line (0009)
+        assert [row[:-4] for row in after] == before
+        assert [tuple(row[-4:]) for row in after] == [(1, "h2h", None, None)] * 2
         assert connection.execute(sa.text("SELECT currency FROM settings")).scalar() == "PEN"
     assert _revision(engine) != "0004"
     with pytest.raises(IntegrityError), engine.begin() as connection:

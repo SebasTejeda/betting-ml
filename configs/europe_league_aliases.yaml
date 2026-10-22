@@ -1,0 +1,67 @@
+# Nombre canónico de clubes que NO son de nuestras 5 ligas (spec 003, T006, checkpoint europeo).
+# openfootball cambia el nombre de un mismo club entre temporadas ("PSV Eindhoven" → "PSV",
+# "SL Benfica" → "Sport Lisboa e Benfica", "Celtic FC" → "Celtic") y el Elo propio lo trataría
+# como un club nuevo. Se aplica a los archivos de liga de openfootball/europe y a los nombres de
+# Champions/Europa League antes de calcular el Elo.
+# Formato:
+#   <país>:
+#     <nombre en openfootball>: <nombre canónico>
+# Un test exige que, tras aplicar estos alias, ninguna liga del catálogo cambie más de 5 clubes
+# entre temporadas consecutivas (ascensos + descensos).
+NED:
+  PSV: PSV Eindhoven
+  Feyenoord Rotterdam: Feyenoord
+  AZ: AZ Alkmaar
+  "FC Twente '65": FC Twente
+  NEC: NEC Nijmegen
+  sc Heerenveen: SC Heerenveen
+  SBV Vitesse: Vitesse
+  Willem II Tilburg: Willem II
+  SC Cambuur-Leeuwarden: SC Cambuur
+POR:
+  Sport Lisboa e Benfica: SL Benfica
+  Sporting Clube de Portugal: Sporting CP
+  Sporting Clube de Braga: Sporting Braga
+  Boavista FC: Boavista
+  GD Estoril Praia: GD Estoril
+  Gil Vicente FC: Gil Vicente
+SCO:
+  Aberdeen: Aberdeen FC
+  Celtic: Celtic FC
+  Dundee: Dundee FC
+  Falkirk: Falkirk FC
+  Hibernian: Hibernian FC
+  Kilmarnock: Kilmarnock FC
+  Motherwell: Motherwell FC
+  Rangers: Rangers FC
+  Saint Johnstone FC: St. Johnstone FC
+  St. Mirren: St. Mirren FC
+SUI:
+  FC Basel: FC Basel 1893
+  FC Sankt Gallen: FC St. Gallen
+  Grasshoppers: Grasshopper Club Zürich
+  Lugano: FC Lugano
+  Young Boys: BSC Young Boys
+GRE:
+  AEK: AEK Athen
+  Aris Thessaloniki: Aris Saloniki
+  Kifisia: AE Kifisias
+  OFI: OFI Heraklion
+  PAOK: PAOK Saloniki
+  Volos: Volos NFC
+  PAE Olympiakos SFP: Olympiakos Piraeus
+TUR:
+  Atiker Konyaspor: Konyaspor
+  Aytemiz Alanyaspor: Alanyaspor
+  Gazişehir Gaziantep FK: Gaziantep FK
+  Gençlerbirligi: Gençlerbirliği
+  Kasimpasa: Kasımpaşa SK
+  Galatasaray SK: Galatasaray
+# Países sin liga en el catálogo: solo partidos europeos con dos nombres.
+AUT:
+  RB Salzburg: FC Red Bull Salzburg
+  Sturm Graz: SK Sturm Graz
+CZE:
+  Slavia Praha: SK Slavia Praha
+SRB:
+  Crvena Zvezda: FK Crvena Zvezda

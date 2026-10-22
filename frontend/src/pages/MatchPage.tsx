@@ -7,6 +7,7 @@ import {
   SearchX,
   Table2,
   TriangleAlert,
+  Sparkles,
 } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 import {
@@ -38,7 +39,7 @@ import {
   TableRow,
 } from "../components/ui/table";
 import { kickoff, odds, pct } from "../lib/format";
-import { calculatorLink } from "../lib/links";
+import { analysisLink, calculatorLink } from "../lib/links";
 import { cn } from "../lib/utils";
 
 const OUTCOME_COLOR = {
@@ -150,6 +151,13 @@ function Scoreboard({ match }: { match: ComparatorDetail }) {
           <span className="text-xs text-muted-foreground">Visita</span>
         </div>
       </div>
+      <Link
+        to={analysisLink(match.home_team, match.away_team, match.match_id)}
+        className="mx-auto inline-flex items-center gap-1 text-sm font-medium text-primary underline-offset-2 hover:underline"
+      >
+        <Sparkles aria-hidden className="size-4" />
+        Analizar el partido (mercados, forma y lo más probable)
+      </Link>
       {match.warning && (
         <p className="flex items-center justify-center gap-1 text-sm text-experimental">
           <TriangleAlert aria-hidden className="size-4" />

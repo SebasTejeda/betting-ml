@@ -38,6 +38,122 @@ def data(verbose: bool = False) -> None:
     )
 
 
+@app.command("data-europe")
+def data_europe(verbose: bool = False) -> None:
+    """Champions/Europa League y ligas (openfootball) + Elo propio entre ligas (spec 003)."""
+    from betting_ml.container import Container
+
+    _setup_logging(verbose)
+    container = Container()
+    elo = container.build_club_elo().run()
+    typer.echo(
+        f"club_elo: matches={len(elo.matches)} clubs={elo.history['key'].nunique()} "
+        f"last={elo.matches['date'].max().date()}"
+    )
+    result = container.build_europe().run()
+    typer.echo(
+        f"europe_matches={len(result.matches)} europe_holdout={len(result.holdout)} "
+        f"rating_coverage={result.rating_coverage:.2%} snapshots={result.snapshots}"
+    )
+
+
+@app.command()
+def analyze(
+    home: str,
+    away: str,
+    day: str = typer.Option(None, "--date", help="Fecha del partido (YYYY-MM-DD); hoy por defecto"),
+    competition: str = typer.Option(None, help="Liga (E0, SP1…) o UCL/UEL"),
+) -> None:
+    """Análisis de un partido por consola (spec 003): mercados, lo más probable y forma."""
+    import sys
+    from datetime import date as _date
+
+    from betting_ml.container import Container
+
+    reconfigure = getattr(sys.stdout, "reconfigure", None)
+    if reconfigure is not None:  # Windows consoles/pipes default to cp1252
+        reconfigure(encoding="utf-8")
+    analysis = Container().analyze_match.analyze(
+        home, away, _date.fromisoformat(day) if day else None, competition
+    )
+    m = analysis.match
+    eg = m["expected_goals"]
+    typer.echo(
+        f"{m['home_team']} vs {m['away_team']} · {m['competition']} · {m['date']} · "
+        f"goles esperados {eg['home']:.2f} - {eg['away']:.2f} ({m['model']})"
+    )
+    for warning in m["warnings"]:
+        typer.echo(f"  ! {warning}")
+    if analysis.best_options_note:
+        typer.echo(f"Mejores opciones: {analysis.best_options_note}")
+    typer.echo("Lo más probable:")
+    for item in analysis.most_likely:
+        typer.echo(f"  - {item['label']}: {item['price_comment']} [{item['confidence']}]")
+        for reason in item["reasons"]:
+            typer.echo(f"      · {reason['text']}")
+    for side in ("home", "away"):
+        form = analysis.form[side]
+        typer.echo(f"Forma {form['team']}: {form['summary']['streak']}")
+
+
+@app.command("validate-cross-league")
+def validate_cross_league(
+    final: bool = typer.Option(False, "--final", help="Test europeo 2025-26, UNA sola vez (lock)"),
+    verbose: bool = False,
+) -> None:
+    """Ajuste entre ligas walk-forward y calibración europea (spec 003, T006)."""
+    from betting_ml.container import Container
+
+    _setup_logging(verbose)
+    if final:
+        evaluation = Container().validate_cross_league_final().run_final()
+        for name, metrics in evaluation.metrics.items():
+            typer.echo(
+                f"{name}: ll_1x2={metrics['log_loss_1x2']:.4f} ll_ou25={metrics['log_loss_ou25']:.4f}"
+            )
+        typer.echo(f"test={evaluation.n_test} · niveles publicados: {evaluation.levels}")
+        return
+    result = Container().validate_cross_league().run()
+    for name, metrics in result.mean.items():
+        typer.echo(
+            f"{name}: ll_1x2={metrics['log_loss_1x2']:.4f} ll_ou25={metrics['log_loss_ou25']:.4f} "
+            f"brier={metrics['brier_1x2']:.4f}"
+        )
+    typer.echo(
+        f"elegido: {result.chosen} · niveles: {[(c.group, c.confidence) for c in result.calibration]}"
+    )
+
+
+@app.command("validate-markets")
+def validate_markets(
+    final: bool = typer.Option(False, "--final", help="Test 2025-26, UNA sola vez (lock)"),
+    verbose: bool = False,
+) -> None:
+    """Calibración de los mercados derivados y backtest Más/Menos 2.5 en F1–F3 (spec 003)."""
+    from betting_ml.container import Container
+
+    _setup_logging(verbose)
+    if final:
+        evaluation = Container().validate_markets_final().run_final()
+        counts = {
+            lvl: list(evaluation.levels.values()).count(lvl) for lvl in ("alta", "media", "baja")
+        }
+        typer.echo(f"nivel spec 003: {evaluation.spec_level} · publicados: {counts}")
+        typer.echo(f"informe: {evaluation.report_path}")
+        return
+    result = Container().validate_markets().run()
+    for cal in result.calibration:
+        worst_ece = max(s["ece"] for s in cal.by_selection.values())
+        slot, sel = max(cal.by_selection.items(), key=lambda kv: abs(kv[1]["rel_bias"]))
+        typer.echo(
+            f"{cal.group:<24} {cal.confidence:<5} max_ece={worst_ece:.4f} "
+            f"mayor_sesgo={slot} {sel['rel_bias']:+.1%} (z {sel['rel_bias_z']:+.1f}) "
+            f"ll={cal.model['log_loss']:.4f} (base {cal.baseline['log_loss']:.4f})"
+        )
+    for scenario, data in result.ou_backtest["scenarios"].items():
+        typer.echo(f"ou25 {scenario}: umbral={data['chosen_threshold']}")
+
+
 @app.command()
 def exp(exp_id: str, verbose: bool = False, skip_existing: bool = False) -> None:
     """Corre un experimento de configs/experiments/{ID}_*.yaml en F1–F3."""

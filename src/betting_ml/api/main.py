@@ -20,6 +20,7 @@ from betting_ml.api.middleware.security_headers import SecurityHeadersMiddleware
 from betting_ml.api.middleware.trusted_host import TrustedHostMiddleware
 from betting_ml.api.routers import (
     admin,
+    analysis,
     auth,
     backtest,
     bets,
@@ -64,6 +65,8 @@ ROUTERS = (
     settings.reads,
     settings.writes,
     backtest.router,
+    analysis.reads,
+    analysis.writes,
 )
 
 

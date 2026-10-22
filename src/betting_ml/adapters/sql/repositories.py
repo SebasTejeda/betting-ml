@@ -248,7 +248,7 @@ class SqlBetRepository:
             "home_team": bet.home_team,
             "away_team": bet.away_team,
             "kickoff_utc": bet.kickoff_utc,
-            "outcome": bet.outcome.value,
+            "outcome": bet.outcome.value if bet.outcome is not None else None,
             "bookmaker": bet.bookmaker,
             "odds": bet.odds,
             "stake": bet.stake,
@@ -265,6 +265,9 @@ class SqlBetRepository:
             "settled_at": bet.settled_at,
             "result_source": bet.result_source,
             "no_reference": bet.no_reference,
+            "market": bet.market,
+            "selection": bet.selection,
+            "line": bet.line,
         }
 
     @staticmethod
@@ -273,7 +276,7 @@ class SqlBetRepository:
             id=row.id,
             match_id=row.match_id,
             league=row.league,
-            outcome=Outcome(row.outcome),
+            outcome=Outcome(row.outcome) if row.outcome else None,
             bookmaker=row.bookmaker,
             odds=Decimal(row.odds),
             stake=Decimal(row.stake),
@@ -295,6 +298,9 @@ class SqlBetRepository:
             result_source=row.result_source,
             no_reference=bool(row.no_reference),
             version=row.version,
+            market=row.market or "h2h",
+            selection=row.selection,
+            line=row.line,
         )
 
     def add(self, bet: Bet, audit: AuditInfo = SYSTEM) -> Bet:

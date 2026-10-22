@@ -1,6 +1,6 @@
 # betting-ml
 
-Modelo de machine learning que estima las probabilidades 1X2 (local / empate / visita) de los partidos de las 5 grandes ligas europeas, las compara con las cuotas del mercado y las sirve con una API REST (la spec 001 buscaba *value bets*; no encontró ventaja). La spec 002 le suma un **comparador de mejor cuota** con Pinnacle como referencia, una calculadora para casas peruanas, un **diario de apuestas con límites de juego responsable** y un frontend web. Construido con **Spec-Driven Development** (especificaciones en [`specs/`](specs/), bitácora en [`PROGRESS.md`](PROGRESS.md), decisiones en [`decisions.md`](specs/001-prediction-model/decisions.md)).
+Modelo de machine learning que estima las probabilidades 1X2 (local / empate / visita) de los partidos de las 5 grandes ligas europeas, las compara con las cuotas del mercado y las sirve con una API REST (la spec 001 buscaba *value bets*; no encontró ventaja). La spec 002 le suma un **comparador de mejor cuota** con Pinnacle como referencia, una calculadora para casas peruanas, un **diario de apuestas con límites de juego responsable** y un frontend web. La spec 004 agrega el **análisis de un partido**: probabilidades de muchos mercados (goles, ambos marcan, goles de cada equipo, doble oportunidad…), lo más probable con su precio honesto y la forma reciente de los dos equipos; la spec 003 lo endurece todo (login, auditoría, copias). Construido con **Spec-Driven Development** (especificaciones en [`specs/`](specs/), bitácora en [`PROGRESS.md`](PROGRESS.md), decisiones en [`decisions.md`](specs/001-prediction-model/decisions.md)).
 
 > **Juego responsable.** Proyecto educativo. Apostar implica riesgo de pérdida. Este modelo **no** muestra ventaja frente al mercado: no lo uses para apostar dinero real.
 
@@ -160,6 +160,55 @@ La app pide **iniciar sesión** con la contraseña del dueño (su hash Argon2id 
 
 > **Juego responsable.** Apuesta solo lo que puedas perder. Esta app no encontró una ventaja que permita ganar apostando: su valor es ahorrar margen eligiendo la mejor cuota y **medir** con honestidad. Los límites mensuales existen para que no persigas pérdidas. Si sientes que pierdes el control, pide ayuda.
 
+## Spec 004 — Análisis de partido con mercados
+
+Especificación en [`specs/004-match-analysis/`](specs/004-match-analysis/) (escrita como "spec 003" en la rama `Sebastian`) y decisiones en [`decisions.md`](specs/004-match-analysis/decisions.md). Informes: [`REPORT_003_markets.md`](reports/REPORT_003_markets.md) (ligas) y [`REPORT_003_europe.md`](reports/REPORT_003_europe.md) (partidos entre ligas).
+
+**Qué hace.** Eliges dos equipos (por ejemplo, Real Madrid y RB Leipzig) y la página **Análisis** muestra:
+
+- **Goles esperados** de cada equipo (λ) y, a partir de ellos, la probabilidad de cada resultado exacto. Con esa "matriz de marcadores" se calculan todos los mercados: 1X2, doble oportunidad, empate no apuesta, Más/Menos 0.5–4.5, ambos marcan, goles de cada equipo, hándicap europeo y los 5 marcadores más probables.
+- Para cada selección: probabilidad, **cuota justa** (1/p), mejor cuota disponible, EV y nivel de confianza.
+- **Lo más probable**, con un comentario honesto del precio ("Muy probable (82 %), pero la cuota 1.15 paga menos de lo justo (1.22): EV −5.6 %. No conviene.") y razones basadas en datos ("El modelo espera 2.1 goles de Real Madrid…").
+- La **forma reciente** (últimos 6 partidos, promedios de goles y xG, % de partidos con más de 2.5 goles, ambos marcan, racha) y los enfrentamientos directos, que tienen poco poder predictivo.
+
+**Cómo se calcula.** Dos equipos de la misma liga usan Dixon-Coles sobre xG (el mejor modelo de goles de la spec 001). Los partidos entre ligas (Champions, Europa League) usan un **Elo propio entre ligas** sobre resultados de openfootball, porque ClubElo estuvo caído, con un desplazamiento de fuerza por liga estimado con los partidos europeos. Todo usa solo información anterior al partido.
+
+**Cómo leer el nivel de confianza.** Mide si las probabilidades de ese mercado acertaron en el pasado (calibración), no si conviene apostar:
+
+| Nivel | Qué significa |
+|---|---|
+| **Alta** | Calibración muy buena (ECE < 0.02), sesgo menor al 5 %, mejor que la frecuencia histórica y al menos 400 casos |
+| **Media** | Calibración aceptable o muestra insuficiente para certificar más |
+| **Baja** | Calibración mala o un sesgo grande y significativo: **solo información**, nunca se destaca |
+
+Resultado actual: en ligas, **0 alta, 9 media y 9 baja**. Los mercados de muchos goles (Más/Menos 1.5–4.5, hándicaps, marcador exacto) salen `baja` porque el modelo espera más goles de los que hay. En partidos entre ligas, 1X2 y Más/Menos 2.5 salen `baja`: ese análisis es solo información.
+
+**Por qué "lo más probable" no es "lo mejor".** Que algo sea probable no significa que la cuota lo pague bien: las casas ya lo saben y pagan menos de lo justo. Una apuesta solo tiene valor si la cuota es mayor que la cuota justa, y aun así hay que medirlo. El backtest de Más/Menos 2.5 **no encontró valor**: las selecciones que el modelo veía con "valor" tuvieron un CLV de −5.7 % en la prueba 2025-26, igual que apostar a ciegas. Por eso la sección **"Mejores opciones" está desactivada** (decisión del dueño) y todo lo que se registre desde el análisis va **en papel por defecto**, con la etiqueta EXPERIMENTAL — solo papel.
+
+**Cuotas por evento.** El botón "Actualizar cuotas de este partido" baja de The Odds API los mercados adicionales del partido. Muestra antes el costo (mercados × regiones: unos 12 créditos con `eu,uk`) y guarda la respuesta 30 minutos, así que un segundo refresco no gasta créditos. Sin `ODDS_API_KEY` el análisis usa las cuotas 1X2 del comparador o solo cuotas justas.
+
+**Evidencia por mercado.** Mis apuestas tiene un panel con el CLV de cada mercado, **separando** el CLV contra Pinnacle del CLV contra el cierre promedio del mercado (una referencia más débil, la única que hay en 2026-27 para Más/Menos 2.5), y el progreso hacia 100 apuestas en papel con CLV positivo. Solo con esa evidencia un mercado deja de ser experimental (cambio manual en `configs/markets.yaml`).
+
+### Comandos (spec 004)
+
+| make | sin make | Qué hace |
+|---|---|---|
+| `make data-europe` | `uv run betting-ml data-europe` | Descarga ligas y Champions/Europa League de openfootball, calcula el Elo propio entre ligas y arma el dataset europeo |
+| `make analyze HOME="Real Madrid" AWAY="Barcelona"` | `uv run betting-ml analyze "Real Madrid" "Barcelona" --date 2026-10-26` | Análisis por consola (`--competition UCL` para partidos europeos) |
+| `make validate-markets` | `uv run betting-ml validate-markets` | Calibración de los mercados y backtest de Más/Menos 2.5 en validación |
+| `make validate-markets-final` | `uv run betting-ml validate-markets --final` | Prueba única en 2025-26 (ya hecha: el lock impide repetirla) |
+| `make validate-cross-league` | `uv run betting-ml validate-cross-league` | Validación walk-forward del ajuste entre ligas (`--final`: prueba europea única, ya hecha) |
+
+Antes del análisis hacen falta los datos: `uv run betting-ml data` (ligas) y `uv run betting-ml data-europe` (Europa y Elo).
+
+### Cómo usar la página Análisis
+
+- Como el resto de la app, la página exige iniciar sesión. Desde **Hoy** o **Partido**, pulsa **Analizar**; o entra a **Análisis** (`/analysis`), escribe el local y la visita (el autocompletado sugiere nombres) y, si quieres, la fecha y la competición. Si hay un partido próximo entre los dos, se usa solo.
+- Arriba verás los goles esperados y los avisos (partido entre ligas, cuotas viejas, forma desactualizada). Léelos antes que nada.
+- **Lo más probable**: cada tarjeta dice la probabilidad, si la cuota la paga bien o mal y por qué. "Registrar en papel" la anota en el diario.
+- **Mercados**: abre cada grupo; puedes ordenar por EV. Lo marcado como "Solo información" no está suficientemente calibrado.
+- Para registrar una selección sin cuota, escribe la cuota que te ofrece tu casa.
+
 ## Seguridad (spec 003)
 
 Especificación en [`specs/003-security-hardening/`](specs/003-security-hardening/). El modelo de amenazas, los controles y lo que queda fuera están en [`SECURITY.md`](SECURITY.md).
@@ -197,5 +246,10 @@ Despliegue en producción (Docker, Caddy con TLS, copias externas, rotación de 
 
 - Spec 002: la señal de valor no tiene evidencia (ver arriba). Las cuotas de Betsson y Coolbet que llegan de The Odds API (región eu) pueden no coincidir con las de su web peruana. Las casas peruanas se ingresan a mano.
 - Spec 002: el CLV de 2026-27 sale casi siempre del último snapshot de Pinnacle antes del inicio, no de su cierre real, porque football-data ya no publica Pinnacle.
+- Spec 004: ningún mercado llegó a confianza alta en la prueba 2025-26, y no hay evidencia de valor en Más/Menos 2.5. El modelo de goles sobreestima los partidos con muchos goles (se ajusta sobre xG); recalibrarlo queda como experimento futuro.
+- Spec 004: el Elo entre ligas es propio (ClubElo estuvo caído) y cubre 11 países; los clubes de otros países no tienen análisis entre ligas (`503 RATINGS_UNAVAILABLE`). openfootball va con semanas de retraso en las ligas medianas y aún no tiene la Champions 2026-27, así que la forma de esos clubes puede estar atrasada (la app lo avisa).
+- Spec 004: las cuotas por evento se implementaron con el formato documentado de The Odds API y un fixture sintético; falta verificarlas con una respuesta real (decisions.md).
+- Spec 004: las apuestas de partidos europeos no se liquidan solas (football-data solo trae ligas): hay que liquidarlas a mano. Solo 1X2 y Más/Menos 2.5 de liga tienen CLV.
+- Spec 004: córners y tarjetas (US7, opcional) quedaron pospuestos.
 
 Más detalle en [`reports/REPORT.md`](reports/REPORT.md) §9.

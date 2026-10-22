@@ -27,7 +27,10 @@ def day_end(day: dt.date | None) -> dt.datetime | None:
 def new_bet(body: BetIn) -> NewBet:
     return NewBet(
         match_id=body.match_id,
-        outcome=OUTCOME_BY_NAME[body.outcome],
+        outcome=None if body.outcome is None else OUTCOME_BY_NAME[body.outcome],
+        market=body.market,
+        selection=body.selection,
+        line=body.line,
         bookmaker=body.bookmaker,
         odds=body.odds,
         stake=body.stake,
@@ -46,7 +49,10 @@ def bet_out(bet: Bet) -> BetOut:
         home_team=bet.home_team,
         away_team=bet.away_team,
         kickoff=bet.kickoff_utc,
-        outcome=bet.outcome.label,  # type: ignore[arg-type]
+        outcome=bet.outcome.label if bet.outcome is not None else None,  # type: ignore[arg-type]
+        market=bet.market,
+        selection=bet.selection,
+        line=bet.line,
         bookmaker=bet.bookmaker,
         odds=float(bet.odds),
         stake=bet.stake,
@@ -83,6 +89,7 @@ def summary_out(s: Summary) -> SummaryOut:
         },  # type: ignore[arg-type]
         by_league=s.by_league,
         by_bookmaker=s.by_bookmaker,
+        by_market=s.by_market,  # type: ignore[arg-type]
         month={
             "loss_limit": s.month_limit,
             "current_loss": s.month_loss,

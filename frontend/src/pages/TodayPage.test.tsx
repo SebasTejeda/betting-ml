@@ -106,3 +106,14 @@ test("the accessible filter can be turned off", async () => {
   await userEvent.click(screen.getByLabelText("Solo casas accesibles desde Perú"));
   await waitFor(() => expect(seen).toContain("false"));
 });
+
+test("each match links to its analysis", async () => {
+  base();
+  server.use(http.get(`${API}/comparator`, () => HttpResponse.json(comparator)));
+  renderApp("/");
+  const links = await screen.findAllByRole("link", { name: /Analizar\s*Arsenal – Chelsea/ });
+  expect(links[0]).toHaveAttribute(
+    "href",
+    "/analysis?home=Arsenal&away=Chelsea&match=E0-2026-10-10-arsenal-chelsea",
+  );
+});

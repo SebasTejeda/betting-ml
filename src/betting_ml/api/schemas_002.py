@@ -7,7 +7,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, Field, PlainSerializer
+from pydantic import BaseModel, Field, PlainSerializer, model_validator
 
 from betting_ml.api.validation import (
     MAX_ID,
@@ -23,6 +23,24 @@ Money = Annotated[
     PlainSerializer(lambda v: float(round(v, 2)), return_type=float, when_used="json"),
 ]
 OutcomeName = Literal["home", "draw", "away"]
+MarketName = Literal[
+    "h2h",
+    "double_chance",
+    "draw_no_bet",
+    "totals",
+    "btts",
+    "team_totals",
+    "european_handicap",
+    "correct_score",
+]
+# the closed selection names of domain.markets.SELECTIONS, or a correct score such as "2-1"
+SelectionName = Annotated[
+    str,
+    Field(
+        pattern=r"^(home|draw|away|1X|X2|12|over|under|yes|no|home_over|home_under|away_over"
+        r"|away_under|[0-9]{1,2}-[0-9]{1,2})$"
+    ),
+]
 
 
 class Triple(BaseModel):
@@ -157,7 +175,12 @@ class CalculatorOut(BaseModel):
 
 class BetIn(StrictInput):
     match_id: MatchId
-    outcome: OutcomeName
+    outcome: OutcomeName | None = None  # 1X2 bets (spec 002)
+    # Spec 004 (Sebastian): any market of the catalog; 1X2 by default (then ``outcome`` is
+    # required). The use case checks the combination with ``validate_selection``.
+    market: MarketName = "h2h"
+    selection: SelectionName | None = None
+    line: float | None = Field(default=None, ge=-10, le=10)
     bookmaker: BookmakerKey
     odds: Decimal = Field(gt=1, max_digits=8, decimal_places=3)
     stake: Decimal = Field(gt=0, max_digits=12, decimal_places=2)
@@ -165,6 +188,20 @@ class BetIn(StrictInput):
     from_experimental_signal: bool = False
     note: Note | None = None
     confirm: bool = False
+
+    @model_validator(mode="after")
+    def _market_fields(self) -> BetIn:
+        """1X2 bets name their ``outcome``; every other market names a ``selection``."""
+        if self.market == "h2h":
+            if self.outcome is None:
+                raise ValueError("una apuesta 1X2 necesita `outcome` (home, draw o away)")
+            if self.selection is not None or self.line is not None:
+                raise ValueError("en 1X2 se usa `outcome`; `selection` y `line` deben ir vacíos")
+        elif self.outcome is not None:
+            raise ValueError("`outcome` solo se usa en 1X2; en otros mercados va `selection`")
+        elif self.selection is None:
+            raise ValueError("este mercado necesita `selection`")
+        return self
 
 
 class BetPatch(StrictInput):
@@ -181,7 +218,10 @@ class BetOut(BaseModel):
     home_team: str
     away_team: str
     kickoff: datetime | None
-    outcome: OutcomeName
+    outcome: OutcomeName | None
+    market: MarketName = "h2h"
+    selection: str | None = None
+    line: float | None = None
     bookmaker: str
     odds: float
     stake: Money
@@ -239,6 +279,25 @@ class SignalProgressOut(BaseModel):
     evidence_met: bool
 
 
+class MarketSummaryOut(BaseModel):
+    """Spec 003 US6: one market of the journal."""
+
+    market: MarketName
+    bets: int
+    settled: int
+    roi: float | None
+    clv_mean_pinnacle: float | None
+    clv_n_pinnacle: int
+    clv_mean_market_average: float | None
+    clv_n_market_average: int
+    clv_mean_other: float | None
+    clv_n_other: int
+    paper_with_clv: int
+    paper_clv_mean: float | None
+    evidence_target: int
+    evidence_met: bool
+
+
 class SummaryOut(BaseModel):
     bets: int
     settled: int
@@ -250,6 +309,7 @@ class SummaryOut(BaseModel):
     bankroll: BankrollOut
     by_league: list[dict[str, Any]]
     by_bookmaker: list[dict[str, Any]]
+    by_market: list[MarketSummaryOut] = []
     month: MonthOut
     experimental_signal: SignalProgressOut
     best_odds_uplift_mean: float | None

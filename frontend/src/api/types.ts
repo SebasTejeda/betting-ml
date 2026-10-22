@@ -27,3 +27,37 @@ export const OUTCOME_LABEL: Record<Outcome, string> = {
   draw: "Empate",
   away: "Visita",
 };
+
+// --- spec 003: match analysis
+export type TeamHit = S["TeamOut"];
+export type Fixture = S["FixtureOut"];
+export type Analysis = S["AnalysisOut"];
+export type AnalysisMatch = S["AnalysisMatchOut"];
+export type AdviceItem = S["AdviceItemOut"];
+export type Reason = S["ReasonOut"];
+export type BetMarket = S["BetIn"]["market"];
+export type MarketGroup = S["MarketOut"];
+export type MarketSelection = S["SelectionOut"];
+export type TeamForm = S["TeamFormOut"];
+export type FormMatch = S["FormMatchOut"];
+export type EventOddsEstimate = S["EstimateOut"];
+export type EventOddsRefresh = S["EventRefreshOut"];
+export type MarketSummary = S["MarketSummaryOut"];
+export type Confidence = "alta" | "media" | "baja";
+
+export const CONFIDENCE_LABEL: Record<Confidence, string> = {
+  alta: "Confianza alta",
+  media: "Confianza media",
+  baja: "Solo información",
+};
+
+export const MARKET_LABEL: Record<string, string> = {
+  h2h: "1X2",
+  double_chance: "Doble oportunidad",
+  draw_no_bet: "Empate no apuesta",
+  totals: "Más/Menos goles",
+  btts: "Ambos marcan",
+  team_totals: "Goles de cada equipo",
+  european_handicap: "Hándicap europeo",
+  correct_score: "Marcador exacto",
+};

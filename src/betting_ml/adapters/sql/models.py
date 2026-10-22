@@ -139,7 +139,7 @@ class BetRow(Base):
     home_team: Mapped[str] = mapped_column(String(60), default="")
     away_team: Mapped[str] = mapped_column(String(60), default="")
     kickoff_utc: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    outcome: Mapped[str] = mapped_column(String(1))
+    outcome: Mapped[str | None] = mapped_column(String(1), nullable=True)
     bookmaker: Mapped[str] = mapped_column(String(40))
     odds: Mapped[Decimal] = mapped_column(ODDS)
     stake: Mapped[Decimal] = mapped_column(MONEY)
@@ -159,6 +159,9 @@ class BetRow(Base):
     result_source: Mapped[str | None] = mapped_column(String(10), nullable=True)
     no_reference: Mapped[bool] = mapped_column(Boolean, default=False)
     version: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
+    market: Mapped[str] = mapped_column(String(30), default="h2h", server_default="h2h")
+    selection: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    line: Mapped[float | None] = mapped_column(Numeric(5, 2, asdecimal=False), nullable=True)
 
 
 class SettingsRow(Base):

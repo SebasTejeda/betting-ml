@@ -30,7 +30,7 @@ def test_collection_covers_every_endpoint() -> None:
         for path, ops in create_app().openapi()["paths"].items()
         for method in ops
     }
-    assert len(routes) >= 24  # 10 of spec 001 + 14 of spec 002
+    assert len(routes) >= 30  # 10 of spec 001 + 14 of spec 002 + 6 of spec 003
     assert routes <= covered
     assert all(r["event"] and r["event"][0]["listen"] == "test" for r in requests)
     statuses = " ".join(" ".join(r["event"][0]["script"]["exec"]) for r in requests)

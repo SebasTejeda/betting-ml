@@ -293,6 +293,8 @@ def test_migration_seals_a_baseline_of_existing_data(tmp_path: Path) -> None:
         ("migration", "BASELINE", "1"),
         ("migration", "BASELINE", "2"),
         ("migration", "BASELINE", "1"),
+        ("migration", "SCHEMA_MIGRATED", "1"),  # 0009 added market/selection/line (spec 004)
+        ("migration", "SCHEMA_MIGRATED", "2"),
     ]
     assert _verify(sessions) == []
     bets = SqlBetRepository(sessions)
@@ -444,7 +446,8 @@ def test_downgrade_of_0007_never_drops_audit_events(tmp_path: Path) -> None:
     problems = _verify(sessions)
     assert problems
     sessions.kw["bind"].dispose()
-    with pytest.raises(RuntimeError, match="Downgrade de 0007 abortado"):
+    # 0009 refuses first (sealing its schema change would hide the edit), 0007 never runs
+    with pytest.raises(RuntimeError, match="downgrade 0009 abortado"):
         command.downgrade(_alembic_config(url), "0006")
     sessions = session_factory(prepare(url))
     assert _verify(sessions) == problems  # …and still reported: nothing was dropped
@@ -487,3 +490,82 @@ def test_an_unexpected_trigger_is_reported(sessions: sessionmaker[Session]) -> N
     assert "trigger inesperado sneaky: puede cambiar datos sin pasar por la auditoría" in (
         _verify(sessions)
     )
+
+
+# ------------------------------------------------------------------ migration 0009 (spec 004)
+def _audited_at_0008(tmp_path: Path) -> tuple[str, sessionmaker[Session]]:
+    """A database at 0008 with two bets and their audit events, written as the app did."""
+    url = f"sqlite:///{(tmp_path / 'app.db').as_posix()}"
+    upgrade(url, "0006")
+    engine = make_engine(url)
+    with engine.begin() as connection:
+        for note in ("a", "b"):
+            connection.execute(
+                sa.text(
+                    "INSERT INTO bets (created_at, match_id, league, home_team, away_team,"
+                    " outcome, bookmaker, odds, stake, kind, status, from_experimental_signal,"
+                    " warnings, no_reference, note) VALUES ('2026-10-09 00:00:00.000000',"
+                    " 'E0-2026-10-10-a-b', 'E0', '', '', 'A', 'betsson', 4.4, 10, 'paper',"
+                    " 'pendiente', 0, '', 0, :note)"
+                ),
+                {"note": note},
+            )
+    engine.dispose()
+    upgrade(url, "0008")  # 0007 seals their baseline
+    return url, session_factory(make_engine(url))
+
+
+def test_0009_records_the_new_columns_and_the_chain_still_verifies(tmp_path: Path) -> None:
+    url, sessions = _audited_at_0008(tmp_path)
+    sessions.kw["bind"].dispose()
+    upgrade(url)
+    sessions = session_factory(make_engine(url))
+    assert _actions(sessions)[-2:] == [
+        ("migration", "SCHEMA_MIGRATED", "1"),
+        ("migration", "SCHEMA_MIGRATED", "2"),
+    ]
+    last = SqlAuditLog(sessions).records()[-1].fields()
+    assert "market" not in last["before"] and last["after"]["market"] == "h2h"
+    assert last["before"]["note"] == last["after"]["note"] == "b"  # nothing else changed
+    assert _verify(sessions) == []
+
+
+def test_0009_never_seals_a_bet_changed_outside_the_application(tmp_path: Path) -> None:
+    """Spec 004, I01: sealing the new row of a tampered bet would launder the change."""
+    url, sessions = _audited_at_0008(tmp_path)
+    _sql(sessions, "UPDATE bets SET stake = 1 WHERE id = 2")
+    problems = _verify(sessions)
+    assert problems
+    sessions.kw["bind"].dispose()
+    with pytest.raises(RuntimeError, match=r"upgrade 0009 abortado.*bet 2"):
+        upgrade(url)
+    sessions = session_factory(make_engine(url))
+    columns = {c["name"] for c in sa.inspect(sessions.kw["bind"]).get_columns("bets")}
+    assert "market" not in columns  # nothing was changed…
+    assert all(action != "SCHEMA_MIGRATED" for _, action, _ in _actions(sessions))
+    assert _verify(sessions) == problems  # …and the edit is still reported
+
+
+def test_0009_never_extends_a_broken_chain(tmp_path: Path) -> None:
+    url, sessions = _audited_at_0008(tmp_path)
+    _sql(sessions, "DROP TRIGGER audit_log_no_update")
+    _sql(
+        sessions, "UPDATE audit_log SET payload = replace(payload, '\"b\"', '\"z\"') WHERE seq = 2"
+    )
+    sessions.kw["bind"].dispose()
+    with pytest.raises(RuntimeError, match=r"upgrade 0009 abortado.*seq 2"):
+        upgrade(url)
+
+
+def test_0009_downgrade_keeps_bets_of_other_markets(tmp_path: Path) -> None:
+    """The old schema cannot hold them: the downgrade refuses instead of dropping columns."""
+    url = f"sqlite:///{(tmp_path / 'app.db').as_posix()}"
+    sessions = session_factory(prepare(url))
+    bets = SqlBetRepository(sessions)
+    bets.add(replace(_bet(), outcome=None, market="totals", selection="over", line=2.5))
+    sessions.kw["bind"].dispose()
+    with pytest.raises(RuntimeError, match="downgrade 0009 abortado: 1 apuestas"):
+        command.downgrade(_alembic_config(url), "0008")
+    sessions = session_factory(make_engine(url))
+    assert SqlBetRepository(sessions).get(1).selection == "over"  # type: ignore[union-attr]
+    assert _verify(sessions) == []

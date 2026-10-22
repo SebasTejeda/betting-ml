@@ -279,3 +279,39 @@ class DatabaseFiles(Protocol):
     def has_audit(self, path: Path) -> bool: ...
 
     def integrity_source(self, path: Path) -> IntegritySource: ...
+
+
+# --- spec 004 (match analysis, from the Sebastian branch)
+
+
+@runtime_checkable
+class RatingsSource(Protocol):
+    """Club strength ratings by date that compare clubs across leagues (e.g. ClubElo)."""
+
+    def ratings_on(self, day: date) -> pd.DataFrame: ...
+
+    def ratings_before(self, match_date: date) -> pd.DataFrame: ...
+
+
+@runtime_checkable
+class InternationalResultsSource(Protocol):
+    """Historical results of European club competitions (e.g. openfootball)."""
+
+    def fetch_season(self, competition: str, season: str) -> pd.DataFrame: ...
+
+    def fetch_league(self, folder: str, file: str, country: str, season: str) -> pd.DataFrame: ...
+
+
+@runtime_checkable
+class EuropeTeamNames(Protocol):
+    """Resolves clubs of European competitions and their ClubElo names."""
+
+    def from_openfootball(self, name: str, country: str) -> Any: ...
+
+    def unknown_openfootball(self, frame: pd.DataFrame) -> Exception | None: ...
+
+    def clubelo_name(self, team: Any, ratings: pd.DataFrame) -> str | None: ...
+
+    def unify_foreign(self, name: str, country: str, league_names: set[str]) -> str: ...
+
+    def canonical_foreign(self, name: str, country: str) -> str: ...

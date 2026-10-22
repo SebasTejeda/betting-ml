@@ -74,3 +74,11 @@ Nada de `train_test_split` aleatorio ni `KFold` mezclado. La validación es *wal
 3. Los datos de dinero y de límites tienen restricciones en la base, control de concurrencia y una auditoría de solo inserción.
 4. Todo control de seguridad tiene tests negativos, y el CI de seguridad (dependencias y secretos) debe estar en verde antes de cada commit a la rama principal.
 5. En producción, la aplicación no arranca con una configuración insegura.
+
+## XIII. Consejos honestos
+
+1. Todo consejo muestra su probabilidad, su precio y su porqué con datos verificables (cada número es trazable en la evidencia del análisis).
+2. Nunca usa lenguaje de certeza ("segura", "fija", "garantizada", "no falla" o similares).
+3. Una apuesta probable pero mal pagada se presenta como tal: probabilidad alta no es lo mismo que valor.
+
+_Enmienda agregada por la spec de análisis de partido (2026-10-21, rama `Sebastian`, allí numerada XII y spec 003); renumerada XIII y spec 004 al integrarse (2026-10-22)._

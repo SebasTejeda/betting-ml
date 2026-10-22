@@ -2202,6 +2202,489 @@
           }
         }
       ]
+    },
+    {
+      "name": "Spec 004 — Análisis de partido",
+      "description": "Análisis de un partido: mercados derivados, lo más probable con su precio, forma y cuotas por evento. 'Mejores opciones' está desactivada hasta tener evidencia (decisions.md).",
+      "item": [
+        {
+          "name": "Equipos y partido",
+          "item": [
+            {
+              "name": "GET buscar equipos (madr)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status 200\", function () { pm.response.to.have.status(200); });",
+                      "pm.test(\"rating propio\", function () { pm.expect(pm.response.json()[0].rating_source).to.eql(\"elo_propio\"); });"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "X-API-Key",
+                    "value": "{{appApiKey}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/teams/search?q=madr",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "teams",
+                    "search"
+                  ],
+                  "query": [
+                    {
+                      "key": "q",
+                      "value": "madr"
+                    }
+                  ]
+                },
+                "description": ""
+              }
+            },
+            {
+              "name": "GET próximo partido entre dos equipos",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status 200\", function () { pm.response.to.have.status(200); });",
+                      "pm.test(\"found es booleano\", function () { pm.expect(pm.response.json().found).to.be.a(\"boolean\"); });",
+                      "if (pm.response.json().found) { pm.collectionVariables.set(\"matchId\", pm.response.json().match_id); }"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "X-API-Key",
+                    "value": "{{appApiKey}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/analysis/fixture?home=Real Madrid&away=Barcelona",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "analysis",
+                    "fixture"
+                  ],
+                  "query": [
+                    {
+                      "key": "home",
+                      "value": "Real Madrid"
+                    },
+                    {
+                      "key": "away",
+                      "value": "Barcelona"
+                    }
+                  ]
+                },
+                "description": ""
+              }
+            }
+          ]
+        },
+        {
+          "name": "Análisis",
+          "item": [
+            {
+              "name": "GET análisis de liga (Real Madrid – Barcelona)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status 200\", function () { pm.response.to.have.status(200); });",
+                      "var j = pm.response.json();",
+                      "pm.test(\"sin mejores opciones (desactivada)\", function () { pm.expect(j.best_options).to.eql([]); pm.expect(j.best_options_note).to.be.a(\"string\"); });",
+                      "pm.test(\"lo más probable con comentario de precio\", function () { j.most_likely.forEach(function (i) { pm.expect(i.price_comment).to.be.a(\"string\"); }); });",
+                      "pm.test(\"sin lenguaje de certeza\", function () { pm.expect(JSON.stringify(j).toLowerCase()).to.not.match(/ segura| fija |garantizad|no falla/); });"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "X-API-Key",
+                    "value": "{{appApiKey}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/analysis?home=Real Madrid&away=Barcelona&date={{date}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "analysis"
+                  ],
+                  "query": [
+                    {
+                      "key": "home",
+                      "value": "Real Madrid"
+                    },
+                    {
+                      "key": "away",
+                      "value": "Barcelona"
+                    },
+                    {
+                      "key": "date",
+                      "value": "{{date}}"
+                    }
+                  ]
+                },
+                "description": ""
+              }
+            },
+            {
+              "name": "GET análisis entre ligas (Real Madrid – RB Leipzig)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"200 o 503\", function () { pm.expect(pm.response.code).to.be.oneOf([200, 503]); });",
+                      "if (pm.response.code === 200) { pm.test(\"entre ligas\", function () { pm.expect(pm.response.json().match.cross_league).to.be.true; }); }"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "X-API-Key",
+                    "value": "{{appApiKey}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/analysis?home=Real Madrid&away=RB Leipzig&competition=UCL&date={{date}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "analysis"
+                  ],
+                  "query": [
+                    {
+                      "key": "home",
+                      "value": "Real Madrid"
+                    },
+                    {
+                      "key": "away",
+                      "value": "RB Leipzig"
+                    },
+                    {
+                      "key": "competition",
+                      "value": "UCL"
+                    },
+                    {
+                      "key": "date",
+                      "value": "{{date}}"
+                    }
+                  ]
+                },
+                "description": ""
+              }
+            },
+            {
+              "name": "GET análisis — equipo inexistente (404)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status 404\", function () { pm.response.to.have.status(404); });",
+                      "pm.test(\"código TEAM_NOT_FOUND\", function () { pm.expect(pm.response.json().error.code).to.eql(\"TEAM_NOT_FOUND\"); });"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "X-API-Key",
+                    "value": "{{appApiKey}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/analysis?home=Equipo Inventado&away=Barcelona",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "analysis"
+                  ],
+                  "query": [
+                    {
+                      "key": "home",
+                      "value": "Equipo Inventado"
+                    },
+                    {
+                      "key": "away",
+                      "value": "Barcelona"
+                    }
+                  ]
+                },
+                "description": ""
+              }
+            },
+            {
+              "name": "GET análisis — mismo equipo (422)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status 422\", function () { pm.response.to.have.status(422); });",
+                      "pm.test(\"código SAME_TEAM\", function () { pm.expect(pm.response.json().error.code).to.eql(\"SAME_TEAM\"); });"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "X-API-Key",
+                    "value": "{{appApiKey}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/analysis?home=Getafe&away=Getafe",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "analysis"
+                  ],
+                  "query": [
+                    {
+                      "key": "home",
+                      "value": "Getafe"
+                    },
+                    {
+                      "key": "away",
+                      "value": "Getafe"
+                    }
+                  ]
+                },
+                "description": ""
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cuotas por evento",
+          "item": [
+            {
+              "name": "GET costo estimado de refrescar el evento",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status 200\", function () { pm.response.to.have.status(200); });",
+                      "pm.test(\"créditos estimados\", function () { pm.expect(pm.response.json().estimated_credits).to.be.above(0); });"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "X-API-Key",
+                    "value": "{{appApiKey}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/analysis/{{matchId}}/odds/estimate",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "analysis",
+                    "{{matchId}}",
+                    "odds",
+                    "estimate"
+                  ]
+                },
+                "description": ""
+              }
+            },
+            {
+              "name": "POST refrescar cuotas del evento (≈12 créditos)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"200, 401, 404, 429 o 503\", function () { pm.expect(pm.response.code).to.be.oneOf([200, 401, 404, 429, 503]); });"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "X-API-Key",
+                    "value": "{{appApiKey}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/analysis/{{matchId}}/odds/refresh?home=Real Madrid&away=RB Leipzig",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "analysis",
+                    "{{matchId}}",
+                    "odds",
+                    "refresh"
+                  ],
+                  "query": [
+                    {
+                      "key": "home",
+                      "value": "Real Madrid"
+                    },
+                    {
+                      "key": "away",
+                      "value": "RB Leipzig"
+                    }
+                  ]
+                },
+                "description": "CONSUME CRÉDITOS de The Odds API (mercados × regiones). La spec 003 permite como máximo 3 llamadas con coste. Requiere matchId del partido."
+              }
+            },
+            {
+              "name": "POST refrescar sin clave (401)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"sin credenciales: 401 y no gasta créditos\", function () { pm.response.to.have.status(401); });"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/analysis/{{matchId}}/odds/refresh?home=Real Madrid&away=RB Leipzig",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "analysis",
+                    "{{matchId}}",
+                    "odds",
+                    "refresh"
+                  ],
+                  "query": [
+                    {
+                      "key": "home",
+                      "value": "Real Madrid"
+                    },
+                    {
+                      "key": "away",
+                      "value": "RB Leipzig"
+                    }
+                  ]
+                },
+                "description": ""
+              }
+            }
+          ]
+        },
+        {
+          "name": "Calibración",
+          "item": [
+            {
+              "name": "GET calibración de mercados",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status 200\", function () { pm.response.to.have.status(200); });",
+                      "pm.test(\"niveles de ligas\", function () { pm.expect(pm.response.json().leagues.levels).to.be.an(\"object\"); });"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "X-API-Key",
+                    "value": "{{appApiKey}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/markets/calibration",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "markets",
+                    "calibration"
+                  ]
+                },
+                "description": ""
+              }
+            }
+          ]
+        }
+      ]
     }
   ]
 }

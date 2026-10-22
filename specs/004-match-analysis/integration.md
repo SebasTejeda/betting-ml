@@ -64,7 +64,7 @@ Una a la vez: implementar, tests (incluidos los negativos), `lint` y `test` en v
 
 - [x] **I00** Este plan, aprobado por el dueño.
   - Commit: `docs(004): integration plan for the match analysis branch`
-- [ ] **I01** Fusión de `origin/Sebastian` con todo en verde.
+- [x] **I01** Fusión de `origin/Sebastian` con todo en verde.
   - Se resuelven los 18 conflictos conservando las dos partes: los routers por recurso de `Daniel` con los cambios de su `journal.py`, `ServicesApi` tipado con sus servicios nuevos, y la configuración con los dos bloques.
   - Se renombran la spec y la enmienda, y la migración pasa a `0009`.
   - Sus rutas se protegen con la autenticación que ya existe, así que `test_route_access` cubre todas.

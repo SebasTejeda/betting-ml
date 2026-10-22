@@ -2,7 +2,7 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 
-import { bet, settings, summary } from "../test/fixtures";
+import { bet, marketSummary, settings, summary } from "../test/fixtures";
 import { API, renderApp } from "../test/render";
 import { server } from "../test/server";
 
@@ -167,4 +167,33 @@ test("a bet changed elsewhere (409) is reloaded and the owner is told", async ()
   await userEvent.click(within(row).getByRole("button", { name: "Guardar" }));
   expect(await screen.findByRole("alert")).toHaveTextContent("La apuesta cambió");
   await waitFor(() => expect(listCalls).toBeGreaterThan(1));
+});
+
+test("evidence per market separates the CLV against Pinnacle from the closing average", async () => {
+  server.use(
+    http.get(`${API}/settings`, () => HttpResponse.json(settings)),
+    http.get(`${API}/bets/summary`, () =>
+      HttpResponse.json({ ...summary, by_market: [marketSummary] }),
+    ),
+    http.get(`${API}/bets`, () => HttpResponse.json({ items: [], total: 0, page: 1, size: 20 })),
+  );
+  renderApp("/bets");
+  const panel = (await screen.findByRole("heading", { name: "Evidencia por mercado" })).closest(
+    "[data-slot=card]",
+  ) as HTMLElement;
+  const row = within(panel).getByText("Más/Menos goles").closest("tr") as HTMLElement;
+  expect(within(row).getByText("12 (10)")).toBeInTheDocument();
+  expect(within(row).getByText("n=0")).toBeInTheDocument();
+  expect(within(row).getByText("+1.20 %")).toBeInTheDocument();
+  expect(within(row).getByText("9/100")).toBeInTheDocument();
+  expect(within(panel).getByText(/referencia más débil que Pinnacle/)).toBeInTheDocument();
+  expect(within(panel).getByText(/no se liquidan solas/)).toBeInTheDocument();
+});
+
+test("bets on other markets show their selection", async () => {
+  base([
+    bet({ id: 3, kickoff: FUTURE, outcome: null, market: "totals", selection: "over", line: 2.5 }),
+  ]);
+  renderApp("/bets");
+  expect(await screen.findByText(/Más\/Menos goles · over 2.5/)).toBeInTheDocument();
 });

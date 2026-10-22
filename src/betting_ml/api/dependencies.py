@@ -4,17 +4,21 @@ only through these protocols, built from application types (never adapters)."""
 from __future__ import annotations
 
 from collections.abc import Callable
+from datetime import datetime
 from typing import TYPE_CHECKING, Protocol
 
 from fastapi import Depends, Request
 from starlette.types import Scope
 
 from betting_ml.api.errors import ApiError
+from betting_ml.application.analyze_match import AnalyzeMatch, PriceKey
 from betting_ml.application.authenticate import Authenticate
 from betting_ml.application.compare_matches import CompareMatches, EvaluateManualOdds
+from betting_ml.application.event_odds import EventOddsService
 from betting_ml.application.manage_bets import ManageBets
 from betting_ml.application.predict_matches import PredictMatches
 from betting_ml.application.read_backtest import ReadBacktestReport
+from betting_ml.application.read_calibration import ReadMarketCalibration
 from betting_ml.application.refresh_odds import RefreshOdds
 from betting_ml.application.settle_bets import SettleBets
 from betting_ml.application.throttle import RateLimits
@@ -56,6 +60,24 @@ class JournalApi(Protocol):
     def read_backtest(self) -> ReadBacktestReport: ...
 
 
+class AnalysisApi(Protocol):
+    """Spec-004 match analysis (container.AnalysisServices), built on first use."""
+
+    @property
+    def analyze(self) -> Callable[[], AnalyzeMatch]: ...
+
+    @property
+    def event_odds(self) -> Callable[[], EventOddsService]: ...
+
+    @property
+    def event_odds_prices(
+        self,
+    ) -> Callable[[str], tuple[dict[PriceKey, tuple[float, str]], datetime | None]]: ...
+
+    @property
+    def calibration(self) -> ReadMarketCalibration: ...
+
+
 class ServicesApi(Protocol):
     """Everything the API uses (container.ApiServices)."""
 
@@ -80,6 +102,9 @@ class ServicesApi(Protocol):
 
     @property
     def journal(self) -> JournalApi | None: ...
+
+    @property
+    def analysis(self) -> AnalysisApi | None: ...
 
     @property
     def auth(self) -> Authenticate | None:
@@ -119,3 +144,9 @@ def get_journal(services: ServicesApi = Depends(get_services)) -> JournalApi:
     if services.journal is None:
         raise ApiError(503, "SERVICE_NOT_AVAILABLE", "Servicios de la spec 002 no configurados")
     return services.journal
+
+
+def get_analysis(services: ServicesApi = Depends(get_services)) -> AnalysisApi:
+    if services.analysis is None:
+        raise ApiError(503, "SERVICE_NOT_AVAILABLE", "Servicios de análisis no configurados")
+    return services.analysis
