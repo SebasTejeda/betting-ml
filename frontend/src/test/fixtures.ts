@@ -147,6 +147,7 @@ export function bet(overrides: Partial<Bet> = {}): Bet {
     settled_at: null,
     result_source: null,
     sin_referencia: false,
+    version: 1,
     warnings: [],
     ...overrides,
   };
@@ -183,5 +184,6 @@ export const settings: Settings = {
   max_stake_pct: 0.02,
   kelly_fraction: 0.25,
   min_edge: 0.02,
+  version: 3,
   monthly_loss_limit_in_force: 100,
 };

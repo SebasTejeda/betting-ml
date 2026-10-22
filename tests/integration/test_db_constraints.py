@@ -223,7 +223,7 @@ def test_migrated_schema_has_the_same_checks_as_the_models(tmp_path: Path) -> No
     Base.metadata.create_all(memory)
     migrated = _checks(make_engine(url))
     assert migrated == _checks(memory)
-    assert sum(len(c) for c in migrated.values()) == 28
+    assert sum(len(c) for c in migrated.values()) == 30
 
 
 def test_migration_keeps_valid_data(tmp_path: Path) -> None:
@@ -240,7 +240,9 @@ def test_migration_keeps_valid_data(tmp_path: Path) -> None:
     upgrade(url)
     engine = make_engine(url)
     with engine.connect() as connection:
-        assert connection.execute(sa.text("SELECT * FROM bets ORDER BY id")).all() == before
+        after = connection.execute(sa.text("SELECT * FROM bets ORDER BY id")).all()
+        assert [row[:-1] for row in after] == before  # + version, appended by 0006
+        assert [row[-1] for row in after] == [1, 1]
         assert connection.execute(sa.text("SELECT currency FROM settings")).scalar() == "PEN"
     assert _revision(engine) != "0004"
     with pytest.raises(IntegrityError), engine.begin() as connection:
@@ -293,7 +295,7 @@ def test_downgrade_removes_the_checks_and_keeps_the_data(tmp_path: Path) -> None
     with engine.begin() as connection:
         _insert(connection, "bets", BET)
     engine.dispose()
-    command.downgrade(_alembic_config(url), "0004")
+    command.downgrade(_alembic_config(url), "0004")  # through 0006 and 0005
     engine = make_engine(url)
     assert all(not checks for checks in _checks(engine).values())
     with engine.connect() as connection:

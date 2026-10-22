@@ -17,7 +17,13 @@ import pandas as pd
 
 from betting_ml.domain.clv import bet_clv
 from betting_ml.domain.entities import OUTCOMES, OddsTriple, Outcome, make_match_id
-from betting_ml.domain.journal import Bet, BetFilters, BetStatus, QuoteSource
+from betting_ml.domain.journal import (
+    Bet,
+    BetFilters,
+    BetStatus,
+    QuoteSource,
+    VersionConflictError,
+)
 from betting_ml.domain.odds import exchange_net_odds
 from betting_ml.domain.ports import (
     BetRepository,
@@ -112,6 +118,16 @@ class SettleBets:
                 return OddsTriple(*(float(v) for v in values)), FOOTBALL_DATA_PSC
         return self._api_closing(bet)
 
+    def _save(self, bet: Bet) -> bool:
+        """Conditional save: a bet changed by someone else since it was read (a manual
+        settlement, another run) is left alone, so it is never settled twice."""
+        try:
+            self.bets.update(bet)
+        except VersionConflictError:
+            logger.info("bet %s changed while settling: skipped", bet.id)
+            return False
+        return True
+
     def run(self) -> SettleResult:
         pending = self.bets.all(BetFilters(status=BetStatus.PENDING))
         now = self.clock()
@@ -135,10 +151,9 @@ class SettleBets:
                 fixed = replace(
                     fixed, note=((bet.note or "") + " [corregida con el resultado oficial]").strip()
                 )
-                self.bets.update(fixed)
-                corrected += 1
+                corrected += self._save(fixed)
             elif bet.result_source != "official":  # the manual result was right: confirm it
-                self.bets.update(replace(bet, result_source="official"))
+                self._save(replace(bet, result_source="official"))
         missing_clv = [
             b for b in self.bets.all() if b.status is not BetStatus.PENDING and b.clv is None
         ]
@@ -152,18 +167,17 @@ class SettleBets:
                 updated = replace(
                     updated, clv=bet_clv(float(bet.odds), bet.outcome, closing), clv_source=source
                 )
-                clv_count += 1
-            self.bets.update(updated)
-            settled += 1
+            if self._save(updated):
+                settled += 1
+                clv_count += closing is not None
         for bet in missing_clv:  # manually settled bets: add the CLV when possible
             closing, source = self._closing(bet, results.get(bet.match_id))
             if closing is not None:
-                self.bets.update(
+                clv_count += self._save(
                     replace(
                         bet, clv=bet_clv(float(bet.odds), bet.outcome, closing), clv_source=source
                     )
                 )
-                clv_count += 1
         return SettleResult(settled, clv_count, len(pending) - settled, corrected)
 
 

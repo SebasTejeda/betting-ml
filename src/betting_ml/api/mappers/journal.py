@@ -62,6 +62,7 @@ def bet_out(bet: Bet) -> BetOut:
         sin_referencia=bet.no_reference,
         profit=bet.profit,
         settled_at=bet.settled_at,
+        version=bet.version,
         warnings=list(bet.warnings),
     )
 
@@ -106,6 +107,7 @@ def bankroll_settings(body: SettingsIO) -> BankrollSettings:
         max_stake_pct=body.max_stake_pct,
         kelly_fraction=body.kelly_fraction,
         min_edge=body.min_edge,
+        version=body.version,
     )
 
 
@@ -118,4 +120,5 @@ def settings_out(settings: BankrollSettings, limit_in_force: Decimal) -> Setting
         kelly_fraction=settings.kelly_fraction,
         min_edge=settings.min_edge,
         monthly_loss_limit_in_force=limit_in_force,
+        version=settings.version,
     )

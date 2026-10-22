@@ -1,3 +1,4 @@
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
@@ -160,10 +161,10 @@ def test_settings_repository(sessions: sessionmaker[Session]) -> None:
     assert repo.get() == BankrollSettings()
     new = BankrollSettings(bankroll_initial=Decimal("800.00"), monthly_loss_limit=Decimal("120.00"))
     change = SettingsChange(T0, "monthly_loss_limit", "100.00", "120.00", "2026-11")
-    repo.save(new, [change])
-    assert repo.get() == new
+    saved = repo.save(new, [change])
+    assert saved == replace(new, version=1) == repo.get()
     assert repo.get().max_stake == Decimal("16.00")
-    repo.save(new)
+    assert repo.save(saved).version == 2
     assert repo.history() == [change]
     assert repo.history("bankroll_initial") == []
     with pytest.raises(ValueError):

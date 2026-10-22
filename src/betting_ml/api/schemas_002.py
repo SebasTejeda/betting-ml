@@ -9,7 +9,14 @@ from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, Field, PlainSerializer
 
-from betting_ml.api.validation import BookmakerKey, Currency, MatchId, Note, StrictInput
+from betting_ml.api.validation import (
+    MAX_ID,
+    BookmakerKey,
+    Currency,
+    MatchId,
+    Note,
+    StrictInput,
+)
 
 Money = Annotated[
     Decimal,
@@ -161,6 +168,7 @@ class BetIn(StrictInput):
 
 
 class BetPatch(StrictInput):
+    version: int = Field(ge=1, le=MAX_ID, description="La versión que se editó (409 si es vieja)")
     note: Note | None = None
     status: Literal["pendiente", "ganada", "perdida", "nula"] | None = None
 
@@ -188,6 +196,7 @@ class BetOut(BaseModel):
     profit: Money | None
     settled_at: datetime | None
     result_source: Literal["manual", "official"] | None = None
+    version: int
     sin_referencia: bool = False
     warnings: list[str]
 
@@ -254,6 +263,9 @@ class SettingsIO(StrictInput):
     max_stake_pct: float = Field(gt=0, le=1)
     kelly_fraction: float = Field(gt=0, le=1)
     min_edge: float = Field(ge=0, le=1)
+    version: int = Field(
+        ge=0, le=MAX_ID, description="La versión que se editó; 0 si nunca se guardaron"
+    )
 
 
 class SettingsOut(SettingsIO):

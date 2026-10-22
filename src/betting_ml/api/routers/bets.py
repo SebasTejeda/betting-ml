@@ -84,7 +84,7 @@ def summary(
 @writes.patch("/bets/{bet_id}", response_model=BetOut)
 def patch_bet(bet_id: BetId, body: BetPatch, journal: JournalApi = Depends(get_journal)) -> BetOut:
     status = None if body.status is None else BetStatus(body.status)
-    return bet_out(journal.bets.update(bet_id, note=body.note, status=status))
+    return bet_out(journal.bets.update(bet_id, note=body.note, status=status, version=body.version))
 
 
 @writes.delete("/bets/{bet_id}", status_code=204)

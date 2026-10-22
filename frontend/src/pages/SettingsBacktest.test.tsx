@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 
@@ -107,6 +107,7 @@ test("settings are saved as fractions and a raised limit applies next month", as
     kelly_fraction: 0.25,
     min_edge: 0.02,
     currency: "PEN",
+    version: 3,
   });
   expect(
     screen.getByText(/el nuevo límite de .* aplica desde el mes siguiente/),
@@ -181,4 +182,46 @@ test("a CSRF token rotated by another tab is refreshed, so the retry is saved", 
   expect(await screen.findByText("Ajustes guardados.")).toBeInTheDocument();
   expect(sent).toEqual(["stale-token", "rotated-token"]);
   expect(screen.queryByRole("form", { name: "Iniciar sesión" })).not.toBeInTheDocument();
+});
+
+test("settings saved elsewhere (409): the form reloads them and the retry sends the new version", async () => {
+  let reads = 0;
+  const sent: Record<string, unknown>[] = [];
+  server.use(
+    http.get(`${API}/settings`, () => {
+      reads += 1;
+      return HttpResponse.json(
+        reads === 1 ? settings : { ...settings, monthly_loss_limit: 120, version: 4 },
+      );
+    }),
+    http.put(`${API}/settings`, async ({ request }) => {
+      const body = (await request.json()) as Record<string, unknown>;
+      sent.push(body);
+      return body.version === 4
+        ? HttpResponse.json({ ...settings, ...body, version: 5 })
+        : HttpResponse.json(
+            {
+              error: {
+                code: "VERSION_CONFLICT",
+                message:
+                  "Los ajustes cambiaron mientras los editabas: se recargaron los datos actuales.",
+                details: { current_version: 4 },
+              },
+            },
+            { status: 409 },
+          );
+    }),
+  );
+  renderApp("/settings");
+  const limit = await screen.findByLabelText(/Límite de pérdida mensual/);
+  await userEvent.clear(limit);
+  await userEvent.type(limit, "90");
+  await userEvent.click(screen.getByRole("button", { name: "Guardar" }));
+  expect(await screen.findByRole("alert")).toHaveTextContent("Los ajustes cambiaron");
+  await waitFor(() => expect(limit).toHaveValue("120.00")); // the values saved elsewhere
+  await userEvent.clear(limit);
+  await userEvent.type(limit, "90");
+  await userEvent.click(screen.getByRole("button", { name: "Guardar" }));
+  expect(await screen.findByText("Ajustes guardados.")).toBeInTheDocument();
+  expect(sent.map((b) => b.version)).toEqual([3, 4]);
 });

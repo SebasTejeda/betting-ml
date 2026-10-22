@@ -8,6 +8,7 @@ from datetime import UTC, datetime
 from decimal import Decimal
 
 from sqlalchemy import delete, func, or_, select, update
+from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.orm import Session, sessionmaker
 
 from betting_ml.adapters.sql.models import (
@@ -31,6 +32,7 @@ from betting_ml.domain.journal import (
     OddsSnapshot,
     QuoteSource,
     SettingsChange,
+    VersionConflictError,
 )
 from betting_ml.domain.security import Session as OwnerSession
 
@@ -203,32 +205,33 @@ class SqlBetRepository:
         self.sessions = sessions
 
     @staticmethod
-    def _to_row(bet: Bet, row: BetRow | None = None) -> BetRow:
-        row = row or BetRow()
-        row.created_at = bet.created_at
-        row.match_id = bet.match_id
-        row.league = bet.league
-        row.home_team = bet.home_team
-        row.away_team = bet.away_team
-        row.kickoff_utc = bet.kickoff_utc
-        row.outcome = bet.outcome.value
-        row.bookmaker = bet.bookmaker
-        row.odds = bet.odds
-        row.stake = bet.stake
-        row.kind = bet.kind.value
-        row.status = bet.status.value
-        row.note = bet.note
-        row.from_experimental_signal = bet.from_experimental_signal
-        row.fair_probability = bet.fair_probability
-        row.ev = bet.ev
-        row.warnings = "\n".join(bet.warnings)
-        row.clv = bet.clv
-        row.clv_source = bet.clv_source
-        row.profit = bet.profit
-        row.settled_at = bet.settled_at
-        row.result_source = bet.result_source
-        row.no_reference = bet.no_reference
-        return row
+    def _values(bet: Bet) -> dict[str, object]:
+        """Column values of a bet, without its id and version (the repository owns both)."""
+        return {
+            "created_at": bet.created_at,
+            "match_id": bet.match_id,
+            "league": bet.league,
+            "home_team": bet.home_team,
+            "away_team": bet.away_team,
+            "kickoff_utc": bet.kickoff_utc,
+            "outcome": bet.outcome.value,
+            "bookmaker": bet.bookmaker,
+            "odds": bet.odds,
+            "stake": bet.stake,
+            "kind": bet.kind.value,
+            "status": bet.status.value,
+            "note": bet.note,
+            "from_experimental_signal": bet.from_experimental_signal,
+            "fair_probability": bet.fair_probability,
+            "ev": bet.ev,
+            "warnings": "\n".join(bet.warnings),
+            "clv": bet.clv,
+            "clv_source": bet.clv_source,
+            "profit": bet.profit,
+            "settled_at": bet.settled_at,
+            "result_source": bet.result_source,
+            "no_reference": bet.no_reference,
+        }
 
     @staticmethod
     def _to_bet(row: BetRow) -> Bet:
@@ -257,14 +260,15 @@ class SqlBetRepository:
             settled_at=_utc(row.settled_at),
             result_source=row.result_source,
             no_reference=bool(row.no_reference),
+            version=row.version,
         )
 
     def add(self, bet: Bet) -> Bet:
         with self.sessions.begin() as session:
-            row = self._to_row(bet)
+            row = BetRow(**self._values(bet), version=1)
             session.add(row)
             session.flush()
-            return replace(bet, id=row.id)
+            return replace(bet, id=row.id, version=1)
 
     def get(self, bet_id: int) -> Bet | None:
         with self.sessions() as session:
@@ -272,14 +276,22 @@ class SqlBetRepository:
             return None if row is None else self._to_bet(row)
 
     def update(self, bet: Bet) -> Bet:
+        """Save a change only if nobody saved another since ``bet.version`` was read: one
+        conditional UPDATE, atomic in SQLite, so two writers can never both win."""
         if bet.id is None:
             raise ValueError("bet without id")
         with self.sessions.begin() as session:
-            row = session.get(BetRow, bet.id)
-            if row is None:
-                raise KeyError(bet.id)
-            self._to_row(bet, row)
-        return bet
+            saved = session.execute(
+                update(BetRow)
+                .where(BetRow.id == bet.id, BetRow.version == bet.version)
+                .values(**self._values(bet), version=bet.version + 1)
+            )
+            if saved.rowcount == 0:  # type: ignore[attr-defined]
+                current = session.scalar(select(BetRow.version).where(BetRow.id == bet.id))
+                if current is None:
+                    raise KeyError(bet.id)
+                raise VersionConflictError("bet", current)
+        return replace(bet, version=bet.version + 1)
 
     def delete(self, bet_id: int) -> bool:
         with self.sessions.begin() as session:
@@ -336,18 +348,39 @@ class SqlSettingsRepository:
                 max_stake_pct=float(row.max_stake_pct),
                 kelly_fraction=float(row.kelly_fraction),
                 min_edge=float(row.min_edge),
+                version=row.version,
             )
 
-    def save(self, settings: BankrollSettings, changes: Sequence[SettingsChange] = ()) -> None:
+    def save(
+        self, settings: BankrollSettings, changes: Sequence[SettingsChange] = ()
+    ) -> BankrollSettings:
+        """Save the settings read at ``settings.version`` (0 = the defaults, never saved) and
+        their history in one transaction; a newer saved version raises VersionConflictError."""
+        values = {
+            "bankroll_initial": settings.bankroll_initial,
+            "currency": settings.currency,
+            "monthly_loss_limit": settings.monthly_loss_limit,
+            "max_stake_pct": settings.max_stake_pct,
+            "kelly_fraction": settings.kelly_fraction,
+            "min_edge": settings.min_edge,
+        }
+        new_version = settings.version + 1
         with self.sessions.begin() as session:
-            row = session.get(SettingsRow, 1) or SettingsRow(id=1)
-            row.bankroll_initial = settings.bankroll_initial
-            row.currency = settings.currency
-            row.monthly_loss_limit = settings.monthly_loss_limit
-            row.max_stake_pct = settings.max_stake_pct
-            row.kelly_fraction = settings.kelly_fraction
-            row.min_edge = settings.min_edge
-            session.merge(row)
+            if settings.version == 0:
+                statement = (
+                    sqlite_insert(SettingsRow)
+                    .values(id=1, version=1, **values)
+                    .on_conflict_do_nothing(index_elements=["id"])
+                )
+            else:
+                statement = (
+                    update(SettingsRow)  # type: ignore[assignment]
+                    .where(SettingsRow.id == 1, SettingsRow.version == settings.version)
+                    .values(**values, version=new_version)
+                )
+            if session.execute(statement).rowcount == 0:  # type: ignore[attr-defined]
+                current = session.scalar(select(SettingsRow.version).where(SettingsRow.id == 1))
+                raise VersionConflictError("settings", current or 0)
             for change in changes:
                 session.add(
                     SettingsHistoryRow(
@@ -358,6 +391,7 @@ class SqlSettingsRepository:
                         effective_from=change.effective_from,
                     )
                 )
+        return replace(settings, version=new_version)
 
     def history(self, field: str | None = None) -> list[SettingsChange]:
         with self.sessions() as session:

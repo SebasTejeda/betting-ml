@@ -315,7 +315,11 @@ def test_bets_crud_and_limits(ctx) -> None:  # type: ignore[no-untyped-def]
     assert client.get("/api/v1/bets", params={"from": "2030-01-01"}).json()["total"] == 0
     # patch / delete: settling needs the match to have started, deleting needs the opposite
     _error(
-        client.patch(f"/api/v1/bets/{bet['id']}", json={"status": "perdida"}, headers=AUTH),
+        client.patch(
+            f"/api/v1/bets/{bet['id']}",
+            json={"status": "perdida", "version": bet["version"]},
+            headers=AUTH,
+        ),
         409,
         "MATCH_NOT_STARTED",
     )
@@ -327,25 +331,38 @@ def test_bets_crud_and_limits(ctx) -> None:  # type: ignore[no-untyped-def]
         "MATCH_ALREADY_STARTED",
     )
     patched = client.patch(
-        f"/api/v1/bets/{bet['id']}", json={"status": "perdida", "note": "mala"}, headers=AUTH
+        f"/api/v1/bets/{bet['id']}",
+        json={"status": "perdida", "note": "mala", "version": bet["version"]},
+        headers=AUTH,
     ).json()
+    assert patched["version"] == bet["version"] + 1
     assert (
         patched["status"] == "perdida" and patched["profit"] == -5.0 and patched["note"] == "mala"
     )
     _error(client.delete(f"/api/v1/bets/{bet['id']}", headers=AUTH), 409, "BET_NOT_PENDING")
     _error(
-        client.patch(f"/api/v1/bets/{bet['id']}", json={"status": "pendiente"}, headers=AUTH),
+        client.patch(
+            f"/api/v1/bets/{bet['id']}",
+            json={"status": "pendiente", "version": patched["version"]},
+            headers=AUTH,
+        ),
         409,
         "BET_NOT_PENDING",
     )
     _error(
-        client.patch(f"/api/v1/bets/{bet['id']}", json={"status": "ganada"}, headers=AUTH),
+        client.patch(
+            f"/api/v1/bets/{bet['id']}",
+            json={"status": "ganada", "version": patched["version"]},
+            headers=AUTH,
+        ),
         409,
         "BET_NOT_PENDING",
     )
     _error(client.delete("/api/v1/bets/9999", headers=AUTH), 404, "BET_NOT_FOUND")
     _error(
-        client.patch("/api/v1/bets/9999", json={"note": "x"}, headers=AUTH), 404, "BET_NOT_FOUND"
+        client.patch("/api/v1/bets/9999", json={"note": "x", "version": 1}, headers=AUTH),
+        404,
+        "BET_NOT_FOUND",
     )
 
 
@@ -361,7 +378,9 @@ def test_monthly_limit_403_but_paper_allowed(ctx) -> None:  # type: ignore[no-un
     clock.now = AFTER_KICKOFF
     for bet in bets:
         response = client.patch(
-            f"/api/v1/bets/{bet['id']}", json={"status": "perdida"}, headers=AUTH
+            f"/api/v1/bets/{bet['id']}",
+            json={"status": "perdida", "version": bet["version"]},
+            headers=AUTH,
         )
         assert response.status_code == 200, response.text
     error = _error(
@@ -420,8 +439,11 @@ def test_settle_settings_and_backtest(ctx) -> None:  # type: ignore[no-untyped-d
     assert (
         updated["monthly_loss_limit"] == 150.0 and updated["monthly_loss_limit_in_force"] == 100.0
     )
+    assert updated["version"] == new["version"] + 1
     lowered = client.put(
-        "/api/v1/settings", json={**new, "monthly_loss_limit": 80}, headers=AUTH
+        "/api/v1/settings",
+        json={**new, "monthly_loss_limit": 80, "version": updated["version"]},
+        headers=AUTH,
     ).json()
     assert lowered["monthly_loss_limit_in_force"] == 80.0
     _error(
@@ -481,7 +503,9 @@ def test_settle_corrects_a_wrong_manual_result(ctx) -> None:  # type: ignore[no-
     match_id = _match_id(client)
     bet = client.post("/api/v1/bets", json=_bet(match_id, stake=10), headers=AUTH).json()
     clock.now = AFTER_KICKOFF
-    wrong = client.patch(f"/api/v1/bets/{bet['id']}", json={"status": "perdida"}, headers=AUTH)
+    wrong = client.patch(
+        f"/api/v1/bets/{bet['id']}", json={"status": "perdida", "version": 1}, headers=AUTH
+    )
     assert wrong.status_code == 200
     assert client.get("/api/v1/bets/summary").json()["month"]["current_loss"] == 10.0
     results.frame = pd.DataFrame(
@@ -588,8 +612,12 @@ def test_manual_win_does_not_lift_the_403_until_confirmed(ctx) -> None:  # type:
     ]
     clock.now = AFTER_KICKOFF
     for bet in bets[:9]:
-        client.patch(f"/api/v1/bets/{bet['id']}", json={"status": "perdida"}, headers=AUTH)
-    won = client.patch(f"/api/v1/bets/{bets[9]['id']}", json={"status": "ganada"}, headers=AUTH)
+        client.patch(
+            f"/api/v1/bets/{bet['id']}", json={"status": "perdida", "version": 1}, headers=AUTH
+        )
+    won = client.patch(
+        f"/api/v1/bets/{bets[9]['id']}", json={"status": "ganada", "version": 1}, headers=AUTH
+    )
     assert won.json()["result_source"] == "manual"
     new = _bet(match_id, stake=1, confirm=True)
     _error(client.post("/api/v1/bets", json=new, headers=AUTH), 403, "MONTHLY_LIMIT_REACHED")
@@ -611,3 +639,43 @@ def test_manual_win_does_not_lift_the_403_until_confirmed(ctx) -> None:  # type:
     assert client.post("/api/v1/bets", json=new, headers=AUTH).status_code == 201
     items = client.get("/api/v1/bets", params={"kind": "real", "size": 50}).json()["items"]
     assert {b["result_source"] for b in items if b["status"] == "ganada"} == {"official"}
+
+
+def test_stale_versions_answer_409_and_change_nothing(ctx) -> None:  # type: ignore[no-untyped-def]
+    """Spec 003, T014: two edits from the same version, the second gets VERSION_CONFLICT."""
+    client, _, clock, *_ = ctx
+    bet = client.post("/api/v1/bets", json=_bet(_match_id(client), stake=5), headers=AUTH).json()
+    assert bet["version"] == 1
+    url = f"/api/v1/bets/{bet['id']}"
+    first = client.patch(url, json={"note": "primera", "version": 1}, headers=AUTH).json()
+    assert first["version"] == 2
+    error = _error(
+        client.patch(url, json={"note": "segunda", "version": 1}, headers=AUTH),
+        409,
+        "VERSION_CONFLICT",
+    )
+    assert error["details"] == {"current_version": 2}
+    clock.now = AFTER_KICKOFF
+    _error(
+        client.patch(url, json={"status": "ganada", "version": 1}, headers=AUTH),
+        409,
+        "VERSION_CONFLICT",
+    )
+    stored = client.get("/api/v1/bets").json()["items"][0]
+    assert (stored["note"], stored["status"], stored["version"]) == ("primera", "pendiente", 2)
+    _error(client.patch(url, json={"note": "sin versión"}, headers=AUTH), 422, "VALIDATION_ERROR")
+
+    settings = client.get("/api/v1/settings").json()
+    assert settings["version"] == 0  # defaults, never saved
+    body = {k: v for k, v in settings.items() if k != "monthly_loss_limit_in_force"}
+    saved = client.put("/api/v1/settings", json={**body, "min_edge": 0.03}, headers=AUTH).json()
+    assert saved["version"] == 1
+    error = _error(
+        client.put("/api/v1/settings", json={**body, "min_edge": 0.05}, headers=AUTH),
+        409,
+        "VERSION_CONFLICT",
+    )
+    assert error["details"] == {"current_version": 1}
+    assert client.get("/api/v1/settings").json()["min_edge"] == 0.03
+    without = {k: v for k, v in body.items() if k != "version"}
+    _error(client.put("/api/v1/settings", json=without, headers=AUTH), 422, "VALIDATION_ERROR")

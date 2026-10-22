@@ -53,6 +53,15 @@ class OddsSnapshot:
     id: int | None = None
 
 
+class VersionConflictError(Exception):
+    """Optimistic concurrency (spec 003, US5): someone saved the record after it was read."""
+
+    def __init__(self, entity: str, current_version: int) -> None:
+        super().__init__(f"{entity}: version {current_version} is newer than the one edited")
+        self.entity = entity
+        self.current_version = current_version
+
+
 @dataclass(frozen=True)
 class Bet:
     match_id: str
@@ -82,6 +91,7 @@ class Bet:
     # it counts for every limit but is left out of the value signal.
     no_reference: bool = False
     id: int | None = None
+    version: int = 1  # bumped by every saved change (optimistic concurrency)
 
     def __post_init__(self) -> None:
         if self.odds <= 1:
@@ -132,6 +142,7 @@ class BankrollSettings:
     max_stake_pct: float = 0.02
     kelly_fraction: float = 0.25
     min_edge: float = 0.02
+    version: int = 0  # 0 = never saved (defaults); every save bumps it
 
     def __post_init__(self) -> None:
         if self.bankroll_initial < 0 or self.monthly_loss_limit < 0:

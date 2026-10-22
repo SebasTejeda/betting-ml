@@ -75,7 +75,7 @@ test("settle by hand only after kick-off; delete only before", async () => {
     "ganada",
   );
   await userEvent.click(within(started).getByRole("button", { name: "Guardar" }));
-  await waitFor(() => expect(patch).toEqual({ status: "ganada" }));
+  await waitFor(() => expect(patch).toEqual({ status: "ganada", version: 1 }));
   await userEvent.click(within(upcoming).getByRole("button", { name: "Borrar apuesta 2" }));
   await waitFor(() => expect(deleted).toBe(true));
 });
@@ -135,4 +135,36 @@ test("empty journal", async () => {
   base([]);
   renderApp("/bets");
   expect(await screen.findByText("No hay apuestas con estos filtros.")).toBeInTheDocument();
+});
+
+test("a bet changed elsewhere (409) is reloaded and the owner is told", async () => {
+  let listCalls = 0;
+  server.use(
+    http.get(`${API}/settings`, () => HttpResponse.json(settings)),
+    http.get(`${API}/bets/summary`, () => HttpResponse.json(summary)),
+    http.get(`${API}/bets`, () => {
+      listCalls += 1;
+      const items = [bet({ id: 1, kickoff: PAST, version: listCalls === 1 ? 1 : 2 })];
+      return HttpResponse.json({ items, total: 1, page: 1, size: 20 });
+    }),
+    http.patch(`${API}/bets/1`, () =>
+      HttpResponse.json(
+        {
+          error: {
+            code: "VERSION_CONFLICT",
+            message: "La apuesta cambió mientras los editabas: se recargaron los datos actuales.",
+            details: { current_version: 2 },
+          },
+        },
+        { status: 409 },
+      ),
+    ),
+  );
+  renderApp("/bets");
+  const table = await screen.findByRole("table");
+  const row = within(table).getAllByRole("row")[1]!;
+  await userEvent.selectOptions(within(row).getByLabelText(/Resultado de la apuesta 1/), "perdida");
+  await userEvent.click(within(row).getByRole("button", { name: "Guardar" }));
+  expect(await screen.findByRole("alert")).toHaveTextContent("La apuesta cambió");
+  await waitFor(() => expect(listCalls).toBeGreaterThan(1));
 });

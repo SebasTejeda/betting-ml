@@ -136,15 +136,15 @@ def test_experimental_signal_real_bet_needs_confirmation(env) -> None:  # type: 
 def test_settings_raise_next_month_lower_now(env) -> None:  # type: ignore[no-untyped-def]
     use_case, clock = env
     assert use_case.current_limit() == D("100.00")
-    use_case.update_settings(BankrollSettings(monthly_loss_limit=D("150.00")))
+    use_case.update_settings(BankrollSettings(monthly_loss_limit=D("150.00")))  # version 0
     assert use_case.get_settings().monthly_loss_limit == D("150.00")
     assert use_case.current_limit() == D("100.00")  # still October
     clock.now = datetime(2026, 11, 2, tzinfo=UTC)
     assert use_case.current_limit() == D("150.00")
-    use_case.update_settings(BankrollSettings(monthly_loss_limit=D("60.00")))
+    use_case.update_settings(BankrollSettings(monthly_loss_limit=D("60.00"), version=1))
     assert use_case.current_limit() == D("60.00")  # lowering applies at once
     use_case.update_settings(
-        BankrollSettings(monthly_loss_limit=D("60.00"), bankroll_initial=D("800.00"))
+        BankrollSettings(monthly_loss_limit=D("60.00"), bankroll_initial=D("800.00"), version=2)
     )
     history = use_case.settings_repo.history()
     assert [c.field for c in history] == [

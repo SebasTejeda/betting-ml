@@ -19,6 +19,7 @@ from betting_ml.domain.journal import (
     BetStatus,
     QuoteSource,
     SettingsChange,
+    VersionConflictError,
 )
 from betting_ml.domain.limits import (
     LimitChange,
@@ -143,8 +144,11 @@ class ManageBets:
 
     def update_settings(self, new: BankrollSettings) -> BankrollSettings:
         """Lowering the monthly limit applies now; raising it applies from next month (compared
-        with the limit currently in force). Every change is kept in the history."""
+        with the limit currently in force). Every change is kept in the history. ``new.version``
+        is the version that was edited: if another save came first, VersionConflictError."""
         old = self.settings_repo.get()
+        if new.version != old.version:
+            raise VersionConflictError("settings", old.version)
         now = self.clock()
         in_force = self.current_limit(now)
         changes = []
@@ -164,8 +168,8 @@ class ManageBets:
             if name == "monthly_loss_limit":
                 effective = effective_from_for(in_force, after, now)
             changes.append(SettingsChange(now, name, str(before), str(after), effective))
-        self.settings_repo.save(new, changes)
-        return new
+        saved: BankrollSettings = self.settings_repo.save(new, changes)
+        return saved
 
     # ------------------------------------------------------------------ bets
     def _match_info(self, match_id: str) -> dict[str, Any]:
@@ -285,8 +289,17 @@ class ManageBets:
             raise BetNotFoundError(bet_id)
         return bet
 
-    def update(self, bet_id: int, note: str | None = None, status: BetStatus | None = None) -> Bet:
+    def update(
+        self,
+        bet_id: int,
+        note: str | None = None,
+        status: BetStatus | None = None,
+        version: int | None = None,
+    ) -> Bet:
+        """``version`` is the one the client edited; the save itself is conditional too."""
         bet = self.get(bet_id)
+        if version is not None and version != bet.version:
+            raise VersionConflictError("bet", bet.version)
         if note is not None:
             bet = replace(bet, note=note)
         if status is not None and status is not bet.status:

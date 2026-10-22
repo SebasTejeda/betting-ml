@@ -530,6 +530,8 @@ export interface components {
             settled_at: string | null;
             /** Result Source */
             result_source?: ("manual" | "official") | null;
+            /** Version */
+            version: number;
             /**
              * Sin Referencia
              * @default false
@@ -551,6 +553,11 @@ export interface components {
         };
         /** BetPatch */
         BetPatch: {
+            /**
+             * Version
+             * @description La versión que se editó (409 si es vieja)
+             */
+            version: number;
             /** Note */
             note?: string | null;
             /** Status */
@@ -991,6 +998,11 @@ export interface components {
             kelly_fraction: number;
             /** Min Edge */
             min_edge: number;
+            /**
+             * Version
+             * @description La versión que se editó; 0 si nunca se guardaron
+             */
+            version: number;
         };
         /** SettingsOut */
         SettingsOut: {
@@ -1009,6 +1021,11 @@ export interface components {
             kelly_fraction: number;
             /** Min Edge */
             min_edge: number;
+            /**
+             * Version
+             * @description La versión que se editó; 0 si nunca se guardaron
+             */
+            version: number;
             /** Monthly Loss Limit In Force */
             monthly_loss_limit_in_force: number;
         };

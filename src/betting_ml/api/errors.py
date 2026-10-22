@@ -35,6 +35,7 @@ from betting_ml.application.predict_matches import (
 from betting_ml.application.read_backtest import BacktestReportNotFoundError
 from betting_ml.application.refresh_odds import OddsBudgetLowError
 from betting_ml.application.throttle import RateLimitedError, TooManyAttemptsError
+from betting_ml.domain.journal import VersionConflictError
 from betting_ml.domain.security import PasswordCheckBusyError
 
 
@@ -141,6 +142,16 @@ def register_error_handlers(app: FastAPI) -> None:
             "hint": "Repite la petición con confirm: true",
         }
         return error_response(409, code, " ".join(exc.check.messages), details)
+
+    @app.exception_handler(VersionConflictError)
+    async def _version_conflict(_: Request, exc: VersionConflictError) -> JSONResponse:
+        what = "Los ajustes cambiaron" if exc.entity == "settings" else "La apuesta cambió"
+        return error_response(
+            409,
+            "VERSION_CONFLICT",
+            f"{what} mientras los editabas: se recargaron los datos actuales.",
+            {"current_version": exc.current_version},
+        )
 
     @app.exception_handler(BetNotFoundError)
     async def _bet_missing(_: Request, exc: BetNotFoundError) -> JSONResponse:

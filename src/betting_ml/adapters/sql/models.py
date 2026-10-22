@@ -127,6 +127,7 @@ class BetRow(Base):
         # EV and CLV are odds × probability − 1: from −1 up to odds − 1
         CheckConstraint("ev IS NULL OR ev BETWEEN -1 AND 1000", name="ck_bets_ev"),
         CheckConstraint("clv IS NULL OR clv BETWEEN -1 AND 1000", name="ck_bets_clv"),
+        CheckConstraint("version >= 1", name="ck_bets_version"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -155,6 +156,7 @@ class BetRow(Base):
     settled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     result_source: Mapped[str | None] = mapped_column(String(10), nullable=True)
     no_reference: Mapped[bool] = mapped_column(Boolean, default=False)
+    version: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
 
 
 class SettingsRow(Base):
@@ -174,6 +176,7 @@ class SettingsRow(Base):
             "kelly_fraction > 0 AND kelly_fraction <= 1", name="ck_settings_kelly_fraction"
         ),
         CheckConstraint("min_edge >= 0 AND min_edge <= 1", name="ck_settings_min_edge"),
+        CheckConstraint("version >= 1", name="ck_settings_version"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -183,6 +186,7 @@ class SettingsRow(Base):
     max_stake_pct: Mapped[float] = mapped_column(Numeric(6, 4, asdecimal=False))
     kelly_fraction: Mapped[float] = mapped_column(Numeric(6, 4, asdecimal=False))
     min_edge: Mapped[float] = mapped_column(Numeric(6, 4, asdecimal=False))
+    version: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
 
 
 class SettingsHistoryRow(Base):

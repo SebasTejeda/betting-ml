@@ -32,6 +32,14 @@
     {
       "key": "betId",
       "value": ""
+    },
+    {
+      "key": "betVersion",
+      "value": "1"
+    },
+    {
+      "key": "settingsVersion",
+      "value": "0"
     }
   ],
   "item": [
@@ -1290,7 +1298,8 @@
                     "type": "text/javascript",
                     "exec": [
                       "pm.test(\"status 201\", function () { pm.response.to.have.status(201); });",
-                      "pm.collectionVariables.set(\"betId\", pm.response.json().id);"
+                      "pm.collectionVariables.set(\"betId\", pm.response.json().id);",
+                      "pm.collectionVariables.set(\"betVersion\", pm.response.json().version);"
                     ]
                   }
                 }
@@ -1522,7 +1531,8 @@
                   "script": {
                     "type": "text/javascript",
                     "exec": [
-                      "pm.test(\"status 200\", function () { pm.response.to.have.status(200); });"
+                      "pm.test(\"status 200\", function () { pm.response.to.have.status(200); });",
+                      "pm.collectionVariables.set(\"betVersion\", pm.response.json().version);"
                     ]
                   }
                 }
@@ -1554,7 +1564,57 @@
                 "description": "",
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"note\": \"desde Postman\"\n}",
+                  "raw": "{\n  \"note\": \"desde Postman\",\n  \"version\": {{betVersion}}\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "name": "PATCH versión vieja (409)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status 409\", function () { pm.response.to.have.status(409); });",
+                      "pm.test(\"conflicto de versión\", function () { pm.expect(pm.response.json().error.code).to.eql(\"VERSION_CONFLICT\"); });"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "X-API-Key",
+                    "value": "{{appApiKey}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/bets/{{betId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "bets",
+                    "{{betId}}"
+                  ]
+                },
+                "description": "",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"note\": \"edición vieja\",\n  \"version\": 1\n}",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -1754,7 +1814,8 @@
                   "script": {
                     "type": "text/javascript",
                     "exec": [
-                      "pm.test(\"status 200\", function () { pm.response.to.have.status(200); });"
+                      "pm.test(\"status 200\", function () { pm.response.to.have.status(200); });",
+                      "pm.collectionVariables.set(\"settingsVersion\", pm.response.json().version);"
                     ]
                   }
                 }
@@ -1789,7 +1850,8 @@
                   "script": {
                     "type": "text/javascript",
                     "exec": [
-                      "pm.test(\"status 200\", function () { pm.response.to.have.status(200); });"
+                      "pm.test(\"status 200\", function () { pm.response.to.have.status(200); });",
+                      "pm.collectionVariables.set(\"settingsVersion\", pm.response.json().version);"
                     ]
                   }
                 }
@@ -1820,7 +1882,7 @@
                 "description": "",
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"bankroll_initial\": 500.0,\n  \"currency\": \"PEN\",\n  \"monthly_loss_limit\": 100.0,\n  \"max_stake_pct\": 0.02,\n  \"kelly_fraction\": 0.25,\n  \"min_edge\": 0.02\n}",
+                  "raw": "{\n  \"bankroll_initial\": 500.0,\n  \"currency\": \"PEN\",\n  \"monthly_loss_limit\": 100.0,\n  \"max_stake_pct\": 0.02,\n  \"kelly_fraction\": 0.25,\n  \"min_edge\": 0.02,\n  \"version\": {{settingsVersion}}\n}",
                   "options": {
                     "raw": {
                       "language": "json"

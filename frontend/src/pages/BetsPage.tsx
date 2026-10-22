@@ -461,7 +461,9 @@ function BetsTable({
               bet={bet}
               currency={currency}
               busy={update.isPending || remove.isPending}
-              onSettle={(status) => update.mutate({ id: bet.id, patch: { status } })}
+              onSettle={(status) =>
+                update.mutate({ id: bet.id, patch: { status, version: bet.version } })
+              }
               onDelete={() => remove.mutate(bet.id)}
             />
           ))}

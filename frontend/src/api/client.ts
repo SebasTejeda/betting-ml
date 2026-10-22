@@ -18,6 +18,11 @@ export class ApiError extends Error {
   }
 }
 
+/** Someone saved the record after it was read (409): reload it before editing again. */
+export function isVersionConflict(error: unknown): boolean {
+  return error instanceof ApiError && error.code === "VERSION_CONFLICT";
+}
+
 const WRITE_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
 const LOGIN_PATH = "/api/v1/auth/login";

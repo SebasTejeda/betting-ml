@@ -189,3 +189,11 @@ Spec activa: [`specs/003-security-hardening/`](specs/003-security-hardening/). T
   - The Odds API descarta y cuenta las cuotas inválidas.
   - 46 tests nuevos (INSERT directo imposible → IntegrityError, migración con datos válidos e inválidos, esquema migrado = modelos, PRAGMA).
   - 580 tests backend en verde (cobertura 98.8 %)
+- 2026-10-22 · T014 · Concurrencia optimista en apuestas y ajustes.
+  - Columna `version` (migración 0006).
+  - Toda escritura es un UPDATE condicional atómico; PATCH /bets/{id} y PUT /settings exigen version.
+  - 409 VERSION_CONFLICT con current_version.
+  - Liquidación: una apuesta cambiada entre la lectura y la escritura se salta y nunca se liquida dos veces (probado con una carrera determinista y con dos ejecuciones en paralelo).
+  - Frontend: envía version; ante un 409 recarga y avisa (el formulario de ajustes se recarga).
+  - Postman con variables de versión y una petición 409.
+  - 587 tests backend (cobertura 98.8 %) y 59 frontend en verde

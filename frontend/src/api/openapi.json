@@ -2177,6 +2177,10 @@
             ],
             "title": "Result Source"
           },
+          "version": {
+            "type": "integer",
+            "title": "Version"
+          },
           "sin_referencia": {
             "type": "boolean",
             "title": "Sin Referencia",
@@ -2213,6 +2217,7 @@
           "clv_source",
           "profit",
           "settled_at",
+          "version",
           "warnings"
         ],
         "title": "BetOut"
@@ -2250,6 +2255,13 @@
       },
       "BetPatch": {
         "properties": {
+          "version": {
+            "type": "integer",
+            "maximum": 2147483647.0,
+            "minimum": 1.0,
+            "title": "Version",
+            "description": "La versión que se editó (409 si es vieja)"
+          },
           "note": {
             "anyOf": [
               {
@@ -2283,6 +2295,9 @@
         },
         "additionalProperties": false,
         "type": "object",
+        "required": [
+          "version"
+        ],
         "title": "BetPatch"
       },
       "BetStatus": {
@@ -3704,6 +3719,13 @@
             "maximum": 1.0,
             "minimum": 0.0,
             "title": "Min Edge"
+          },
+          "version": {
+            "type": "integer",
+            "maximum": 2147483647.0,
+            "minimum": 0.0,
+            "title": "Version",
+            "description": "La versión que se editó; 0 si nunca se guardaron"
           }
         },
         "additionalProperties": false,
@@ -3713,7 +3735,8 @@
           "monthly_loss_limit",
           "max_stake_pct",
           "kelly_fraction",
-          "min_edge"
+          "min_edge",
+          "version"
         ],
         "title": "SettingsIO"
       },
@@ -3753,6 +3776,13 @@
             "minimum": 0.0,
             "title": "Min Edge"
           },
+          "version": {
+            "type": "integer",
+            "maximum": 2147483647.0,
+            "minimum": 0.0,
+            "title": "Version",
+            "description": "La versión que se editó; 0 si nunca se guardaron"
+          },
           "monthly_loss_limit_in_force": {
             "type": "number",
             "title": "Monthly Loss Limit In Force"
@@ -3766,6 +3796,7 @@
           "max_stake_pct",
           "kelly_fraction",
           "min_edge",
+          "version",
           "monthly_loss_limit_in_force"
         ],
         "title": "SettingsOut"

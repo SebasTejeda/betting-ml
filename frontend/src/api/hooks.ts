@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { api, unwrap } from "./client";
+import { api, isVersionConflict, unwrap } from "./client";
 import type { BetIn, BetPatch, CalculatorIn, SettingsIn } from "./types";
 
 export const keys = {
@@ -181,6 +181,9 @@ export function useSaveSettings() {
     onSuccess: (data) => {
       client.setQueryData(keys.settings, data);
       void client.invalidateQueries({ queryKey: ["bets"] });
+    },
+    onError: (error) => {
+      if (isVersionConflict(error)) void client.invalidateQueries({ queryKey: keys.settings });
     },
   });
 }

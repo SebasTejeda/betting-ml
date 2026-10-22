@@ -107,7 +107,7 @@ Reglas de ejecución:
   - Tests: `INSERT` directo con datos imposibles → `IntegrityError`; migración sobre una base con datos válidos e inválidos.
   - Commit: `feat(db): check constraints and robust sqlite pragmas`
 
-- [ ] **T014** Concurrencia optimista (US5)
+- [x] **T014** Concurrencia optimista (US5)
   - Columna `version` en apuestas y ajustes (migración 0006); `PATCH /bets/{id}` y `PUT /settings` con `version`; `409 VERSION_CONFLICT`.
   - Liquidación con `BEGIN IMMEDIATE`: una apuesta no se liquida dos veces.
   - Frontend: envía `version` y ante 409 recarga y avisa.

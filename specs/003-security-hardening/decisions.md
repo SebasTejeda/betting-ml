@@ -181,3 +181,25 @@ Formato:
   - Con WAL, la base son tres archivos (`app.db`, `-wal`, `-shm`). La copia de seguridad de T016 debe usar la API de *backup* de SQLite y no copiar el archivo.
   - Mutaciones comprobadas. Sin una restricción en 0005 fallan 3 tests; sin la validación previa, 1; sin WAL, 2.
   - Quitar `busy_timeout` no rompe nada porque `sqlite3` ya usa 5 s por defecto. Un test comprueba que `check_pragmas` detecta un timeout distinto.
+
+## 2026-10-22 — T014: UPDATE condicional en lugar de `BEGIN IMMEDIATE`
+- Contexto: el plan pedía que la liquidación usara `BEGIN IMMEDIATE` para no liquidar dos veces una apuesta.
+- Decisión:
+  - Toda escritura de una apuesta o de los ajustes es **un solo UPDATE condicional**: `... SET ..., version = version + 1 WHERE id = ? AND version = ?`. En SQLite cada sentencia es atómica y toma el bloqueo de escritura. De dos escritores con la misma versión, solo uno cambia la fila; el otro recibe `VersionConflictError`.
+  - Esto da la garantía de `BEGIN IMMEDIATE` (ninguna apuesta se liquida dos veces) **sin cambiar el modo de transacción de todo el motor**. Con pysqlite, `BEGIN IMMEDIATE` obliga a desactivar su gestión de transacciones y afectaría a todas las escrituras.
+  - La liquidación automática (`SettleBets`) guarda cada apuesta así. Si una apuesta cambió desde que la leyó (una liquidación manual u otra ejecución), la deja como está, la registra en el log y no la cuenta. La siguiente ejecución la reconcilia con el resultado oficial.
+  - El caso de uso también compara la versión enviada con la leída, para responder 409 antes de validar el estado. El UPDATE condicional sigue siendo la garantía real frente a carreras.
+  - Los ajustes por defecto, nunca guardados, tienen `version = 0`. El primer guardado es un `INSERT ... ON CONFLICT DO NOTHING`: de dos primeros guardados, solo uno gana. Un guardado perdedor no escribe historial (misma transacción).
+  - El 409 lleva `details.current_version`.
+  - Frontend:
+    - Envía la `version` que leyó.
+    - Ante un 409 en una apuesta, recarga la lista y muestra el aviso.
+    - Ante un 409 en los ajustes, recarga el formulario con los valores guardados en otro lugar, nunca los sobrescribe a ciegas, y avisa. El siguiente guardado lleva la versión nueva.
+  - Postman guarda la versión en variables de la colección y añade una petición con versión vieja (409).
+- Impacto:
+  - Migración 0006: columna `version` (las filas existentes empiezan en 1) con `CHECK version >= 1`. El *batch mode* conserva las restricciones de 0005; el test de esquema migrado = modelos lo comprueba (30 CHECK).
+  - Mutaciones comprobadas:
+    - UPDATE de apuestas sin la condición de versión: fallan 3 tests.
+    - Ajustes sin la condición: falla 1.
+    - Liquidación que no captura el conflicto: fallan 2.
+    - Formulario que no se recarga tras el 409: falla 1.
