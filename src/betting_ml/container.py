@@ -13,6 +13,7 @@ import pandas as pd
 from sqlalchemy.orm import Session, sessionmaker
 
 from betting_ml.adapters.clubelo import ClubEloSource
+from betting_ml.adapters.elo_snapshots import EloSnapshotSource
 from betting_ml.adapters.europe_names import EuropeTeamResolver
 from betting_ml.adapters.experiment_store import FileExperimentStore
 from betting_ml.adapters.fixtures import FootballDataFixtures
@@ -33,6 +34,7 @@ from betting_ml.adapters.the_odds_api import MappedOdds, TheOddsApiClient, map_e
 from betting_ml.adapters.tracking_store import ParquetTrackingStore
 from betting_ml.adapters.understat import UnderstatSource
 from betting_ml.application.backtest_pinnacle import BacktestPinnacle
+from betting_ml.application.build_club_elo import BuildClubElo
 from betting_ml.application.build_dataset import BuildDataset
 from betting_ml.application.build_europe import BuildEuropeDataset
 from betting_ml.application.catalog import RefreshData
@@ -56,6 +58,7 @@ from betting_ml.config import (
     get_settings,
     load_bookmakers,
     load_data_overrides,
+    load_elo_leagues,
     load_europe_aliases,
     load_features,
     load_leagues,
@@ -163,11 +166,30 @@ class Container:
             self.team_names, load_europe_aliases(self.settings.configs_dir / "europe_aliases.yaml")
         )
 
+    def build_club_elo(self) -> BuildClubElo:
+        """Own cross-league Elo; reads every played league match (ratings use only the past)."""
+        seasons = [
+            *self.leagues.seasons.train,
+            self.leagues.seasons.holdout,
+            self.leagues.seasons.current,
+        ]
+        return BuildClubElo(
+            repository=ParquetMatchRepository(self.settings.processed_path, allow_holdout=True),
+            results=self.openfootball,
+            names=self.europe_names,
+            catalog=load_elo_leagues(self.settings.configs_dir / "elo_leagues.yaml"),
+            seasons=seasons,
+        )
+
+    @cached_property
+    def club_ratings(self) -> EloSnapshotSource:
+        return EloSnapshotSource(self.repository)
+
     def build_europe(self) -> BuildEuropeDataset:
         return BuildEuropeDataset(
             leagues=self.leagues,
             results=self.openfootball,
-            ratings=self.clubelo,
+            ratings=self.club_ratings,
             names=self.europe_names,
             repository=self.repository,
             report_path=self.settings.reports_path / "europe_data_quality.md",

@@ -398,3 +398,87 @@ def test_helpers() -> None:
     assert "GER" in strength and strength["GER"] == pytest.approx(
         (1849.5 + 1810.2) / 2
     )  # level 2 excluded
+
+
+# --- domestic league files (own Elo, T006)
+
+LEAGUE_V = """= Netherlands Eredivisie 2019/20
+# Matches    4
+
+▪ Matchday 1
+  Fri Aug 9 2019
+    20:00  FC Groningen            v NAC Breda                4-1 (3-0)
+  Sat Aug 10
+           Telstar 1963            v FC Twente '65            1-1
+  Sat Feb 29
+           AFC Ajax                v PSV                      2-0 (1-0)
+  Sun Jul 26
+           AZ                      v SBV Excelsior
+"""
+
+LEAGUE_INFIX = """= Scotland | Premiership 2026/27
+# Matches  3
+
+▪ 1st Phase - 1
+Fri Jul 31 2026
+  20:00   Dundee United  1-1 (1-0)  Rangers
+                  (Lachlan Rose 38'; Thelo AASGAARD 56')
+Sat Aug 1
+  15:00   Falkirk  0-2 (0-1)  St. Mirren
+                  (Killian PHILLIPS 11', 87')
+  17:30   Aberdeen   v   Heart of Midlothian
+"""
+
+
+def test_parse_league_file_with_v() -> None:
+    df = parse_txt(LEAGUE_V, "nl1", "2019-20", country="NED")
+    assert len(df) == 3  # the unplayed match is skipped
+    assert set(df["home_country"]) == {"NED"} and set(df["away_country"]) == {"NED"}
+    assert df.iloc[1][["home_team", "away_team"]].tolist() == ["Telstar 1963", "FC Twente '65"]
+    assert df.iloc[2]["date"] == pd.Timestamp("2020-02-29")  # leap day, year from the season
+
+
+def test_parse_league_file_with_score_between_teams() -> None:
+    df = parse_txt(LEAGUE_INFIX, "sco1", "2026-27", country="SCO")
+    assert df[["home_team", "away_team", "home_goals", "away_goals"]].values.tolist() == [
+        ["Dundee United", "Rangers", 1, 1],
+        ["Falkirk", "St. Mirren", 0, 2],
+    ]
+    assert df.iloc[1]["date"] == pd.Timestamp("2026-08-01")
+
+
+def test_dates_without_year_follow_the_previous_date() -> None:
+    """UCL files go back in time (group by group) and 2019-20 ran into August 2020."""
+    content = """# Matches 5
+▪ Group A
+  Tue Sep 17 2019
+    18:45  A FC (ENG)  v  B FC (ESP)  1-0
+  Wed Dec 11
+    21:00  B FC (ESP)  v  A FC (ENG)  0-0
+▪ Group B
+  Tue Sep 17
+    21:00  C FC (ITA)  v  D FC (FRA)  2-2
+▪ Round of 16
+  Wed Mar 11
+    21:00  D FC (FRA)  v  B FC (ESP)  0-1
+▪ Final
+  Sun Aug 23
+    21:00  A FC (ENG)  v  C FC (ITA)  1-0
+"""
+    df = parse_txt(content, "UCL", "2019-20")
+    assert df["date"].dt.date.astype(str).tolist() == [
+        "2019-09-17",
+        "2019-12-11",
+        "2019-09-17",
+        "2020-03-11",
+        "2020-08-23",
+    ]
+
+
+def test_fetch_league_downloads_from_openfootball_europe(tmp_path: Path) -> None:
+    http, session = _http([_Response(LEAGUE_V.encode()), _Response(b"404: Not Found", 404)])
+    source = OpenFootballSource(tmp_path, http=http)
+    df = source.fetch_league("netherlands", "nl1", "NED", "2019-20")
+    assert len(df) == 3
+    assert session.calls[0].endswith("/europe/master/netherlands/2019-20_nl1.txt")
+    assert source.fetch_league("netherlands", "nl1", "NED", "2015-16").empty

@@ -110,3 +110,19 @@ class EuropeTeamResolver:
                 and (normalize_club(club) in key or key in normalize_club(club))
             ]
         return matches[0] if len(matches) == 1 else None
+
+    def unify_foreign(self, name: str, country: str, league_names: set[str]) -> str:
+        """Name of a foreign club in its domestic league file (openfootball/europe), so that its
+        European and league matches share one Elo rating. Exact normalized match first, then a
+        unique containment match; otherwise the European name is kept."""
+        key = normalize_club(name)
+        exact = [n for n in league_names if normalize_club(n) == key]
+        if len(exact) == 1:
+            return exact[0]
+        partial = [
+            n
+            for n in league_names
+            if len(normalize_club(n)) >= 4
+            and (normalize_club(n) in key or key in normalize_club(n))
+        ]
+        return partial[0] if len(partial) == 1 else name

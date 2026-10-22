@@ -1,6 +1,7 @@
 """Use case: European competitions dataset (spec 003, T003 · `betting-ml data-europe`).
 
-UCL/UEL results from openfootball joined with ClubElo ratings taken *before* each match
+UCL/UEL results from openfootball joined with club ratings taken *before* each match (own
+cross-league Elo by default; ClubElo's adapter is kept)
 (weekly snapshot, see `domain.ratings.snapshot_date`), plus the mean level-1 rating of each
 club's league on that snapshot (input of the cross-league adjustment, T006). Writes
 `europe_matches` (train seasons) and `europe_holdout` (2025-26, protected like the league
@@ -187,8 +188,8 @@ class BuildEuropeDataset:
             "",
             f"- Partidos: **{len(both)}** (entrenamiento {len(result.matches)}, "
             f"holdout 2025-26 {len(result.holdout)}).",
-            f"- Con rating ClubElo de ambos equipos: **{result.rating_coverage:.2%}**.",
-            f"- Instantáneas semanales de ClubElo usadas: {result.snapshots}.",
+            f"- Con rating de ambos equipos (Elo propio entre ligas): **{result.rating_coverage:.2%}**.",
+            f"- Instantáneas semanales del rating usadas: {result.snapshots}.",
             "- Resultado a los 90 minutos (las prórrogas no cuentan para los mercados): "
             f"{int(both['extra_time'].sum())} partidos con prórroga.",
             "",
@@ -199,14 +200,15 @@ class BuildEuropeDataset:
         ]
         for r in table.itertuples(index=False):
             lines.append(f"| {r.season} | {r.competition} | {r.partidos} | {r.con_ratings} |")
-        lines += ["", "## Clubes extranjeros sin rating ClubElo", ""]
+        lines += ["", "## Clubes extranjeros sin rating en al menos un partido", ""]
         if result.unmatched_foreign:
             for country, names in sorted(result.unmatched_foreign.items()):
                 lines.append(f"- {country}: {', '.join(sorted(names))}")
             lines += [
                 "",
-                "Sus partidos quedan sin rating y se excluyen del ajuste entre ligas. "
-                "Para incluirlos, agrega el nombre de ClubElo en `configs/europe_aliases.yaml`.",
+                "Sin rating en su primer partido registrado (el Elo aún no los conocía) o con "
+                "nombres distintos entre temporadas; esos partidos se excluyen del ajuste entre "
+                "ligas.",
             ]
         else:
             lines.append("- Ninguno.")

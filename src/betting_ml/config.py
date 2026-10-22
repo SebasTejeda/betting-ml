@@ -353,6 +353,19 @@ def load_europe_aliases(path: Path | None = None) -> dict[str, dict[str, str]]:
     }
 
 
+def load_elo_leagues(path: Path | None = None) -> dict[str, Any]:
+    """configs/elo_leagues.yaml: leagues of the own cross-league Elo (spec 003, T006)."""
+    content = _read_yaml(path or CONFIGS_DIR / "elo_leagues.yaml")
+    if not isinstance(content.get("domestic"), dict) or not isinstance(
+        content.get("openfootball"), list
+    ):
+        raise ValueError("elo_leagues.yaml needs `domestic` (league → country) and `openfootball`")
+    for entry in content["openfootball"]:
+        if set(entry) != {"country", "folder", "file"}:
+            raise ValueError(f"bad elo_leagues entry: {entry}")
+    return content
+
+
 def load_data_overrides(path: Path | None = None) -> DataOverrides:
     target = path or CONFIGS_DIR / "data_overrides.yaml"
     if not target.exists():

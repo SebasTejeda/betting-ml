@@ -39,11 +39,17 @@ def data(verbose: bool = False) -> None:
 
 @app.command("data-europe")
 def data_europe(verbose: bool = False) -> None:
-    """Descarga Champions/Europa League (openfootball) y ratings ClubElo (spec 003)."""
+    """Champions/Europa League y ligas (openfootball) + Elo propio entre ligas (spec 003)."""
     from betting_ml.container import Container
 
     _setup_logging(verbose)
-    result = Container().build_europe().run()
+    container = Container()
+    elo = container.build_club_elo().run()
+    typer.echo(
+        f"club_elo: matches={len(elo.matches)} clubs={elo.history['key'].nunique()} "
+        f"last={elo.matches['date'].max().date()}"
+    )
+    result = container.build_europe().run()
     typer.echo(
         f"europe_matches={len(result.matches)} europe_holdout={len(result.holdout)} "
         f"rating_coverage={result.rating_coverage:.2%} snapshots={result.snapshots}"

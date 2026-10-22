@@ -11,7 +11,9 @@ The repo (public domain) publishes one Football.TXT file per competition and sea
         21:00  Arsenal FC (ENG)        v FC Porto (POR)           4-2 pen. 1-0 a.e.t. (1-0, 1-0)
 
 Dates may omit the year (inferred from the season), times are local (CET/CEST) and the team's
-country comes in parentheses. Markets settle on 90 minutes, so after extra time the 90-minute
+country comes in parentheses. Domestic league files of `openfootball/europe`
+(``{country}/{season}_{code}.txt``, own-Elo source of T006) use the same format without the
+country, which is then given by the file. Markets settle on 90 minutes, so after extra time the 90-minute
 score (first pair inside the parentheses) is used. Matches without a score are not played yet.
 """
 
@@ -34,6 +36,9 @@ BASE_URL = (
     "https://raw.githubusercontent.com/openfootball/champions-league/master/{season}/{file}.txt"
 )
 COMPETITION_FILES = {"UCL": "cl", "UEL": "el"}
+LEAGUE_URL = (
+    "https://raw.githubusercontent.com/openfootball/europe/master/{folder}/{season}_{file}.txt"
+)
 COLUMNS = [
     "competition",
     "season",
@@ -55,12 +60,25 @@ _MONTHS = {
     )
 }
 _DATE = re.compile(
-    r"^\s+(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)\s+([A-Z][a-z]{2})\s+(\d{1,2})(?:\s+(\d{4}))?\s*$"
+    r"^\s*(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)\s+([A-Z][a-z]{2})\s+(\d{1,2})(?:\s+(\d{4}))?\s*$"
 )
 _MATCH = re.compile(
     r"^\s+(?:\d{1,2}[:.]\d{2}\s+)?"
     r"(?P<home>\S.*?)\s+\((?P<hc>[A-Z]{3})\)\s+v\s+(?P<away>\S.*?)\s+\((?P<ac>[A-Z]{3})\)"
     r"(?:\s+(?P<score>\S.*?))?\s*$"
+)
+# Domestic league files: no country after the names; the score starts with "N-N".
+_LEAGUE_MATCH = re.compile(
+    r"^\s+(?:\d{1,2}[:.]\d{2}\s+)?"
+    r"(?P<home>\S.*?)\s+v\s+(?P<away>\S.*?)"
+    r"(?:\s+(?P<score>\d+-\d+(?:\s.*)?))?\s*$"
+)
+# Newer league files put the score between the teams ("Falkirk  0-2 (0-1)  St. Mirren") and
+# list the scorers on the next lines, in parentheses.
+_INFIX_MATCH = re.compile(
+    r"^\s+(?:\d{1,2}[:.]\d{2}\s+)?(?P<home>[^\s(].*?)\s+"
+    r"(?P<score>\d+-\d+(?:\s+pen\.\s+\d+-\d+)?(?:\s+a\.e\.t\.)?(?:\s+\([^)]*\))?)"
+    r"\s+(?P<away>\S.*?)\s*$"
 )
 _PAIR = re.compile(r"(\d+)-(\d+)")
 
@@ -72,6 +90,19 @@ class OpenFootballFormatError(ValueError):
 def _season_year(season: str, month: int) -> int:
     start = int(season[:4])
     return start if month >= 7 else start + 1
+
+
+def _valid_dates(years: tuple[int, ...], month: int, day: int) -> list[date]:
+    """Dates that exist (29 February only in leap years)."""
+    out = []
+    for year in years:
+        try:
+            out.append(date(year, month, day))
+        except ValueError:
+            continue
+    if not out:
+        raise OpenFootballFormatError(f"impossible date {day}/{month} in {years}")
+    return out
 
 
 def parse_score(text: str) -> tuple[int, int, bool] | None:
@@ -92,7 +123,12 @@ def parse_score(text: str) -> tuple[int, int, bool] | None:
     return int(pair.group(1)), int(pair.group(2)), False
 
 
-def parse_txt(content: str, competition: str, season: str) -> pd.DataFrame:
+def parse_txt(
+    content: str, competition: str, season: str, country: str | None = None
+) -> pd.DataFrame:
+    """Played matches of a Football.TXT file. ``country`` is given for domestic league files
+    (no country after the team names); European files carry it per team."""
+    pattern = _MATCH if country is None else _LEAGUE_MATCH
     rows: list[dict[str, object]] = []
     stage = ""
     current: date | None = None
@@ -105,10 +141,28 @@ def parse_txt(content: str, competition: str, season: str) -> pd.DataFrame:
             continue
         if (m := _DATE.match(line)) is not None:
             month = _MONTHS[m.group(1)]
-            year = int(m.group(3)) if m.group(3) else _season_year(season, month)
-            current = date(year, month, int(m.group(2)))
+            day = int(m.group(2))
+            if m.group(3):
+                current = date(int(m.group(3)), month, day)
+            elif current is None:
+                current = date(_season_year(season, month), month, day)
+            else:
+                # Of the season's two years, the one closest to the previous date: files go back
+                # in time (UCL groups) and a season can run past June (2019-20, pandemic).
+                start = int(season[:4])
+                previous = current
+                current = min(
+                    _valid_dates((start, start + 1), month, day),
+                    key=lambda c: abs((c - previous).days),
+                )
             continue
-        if (m := _MATCH.match(line)) is None or " v " not in line:
+        if " v " in line:
+            m = pattern.match(line)
+        elif country is not None and not line.lstrip().startswith("("):
+            m = _INFIX_MATCH.match(line)
+        else:
+            m = None
+        if m is None:
             continue
         if current is None:
             raise OpenFootballFormatError(f"match before any date line: {line!r}")
@@ -122,9 +176,9 @@ def parse_txt(content: str, competition: str, season: str) -> pd.DataFrame:
                 "date": pd.Timestamp(current),
                 "stage": stage,
                 "home_team": m.group("home").strip(),
-                "home_country": m.group("hc"),
+                "home_country": country or m.group("hc"),
                 "away_team": m.group("away").strip(),
-                "away_country": m.group("ac"),
+                "away_country": country or m.group("ac"),
                 "home_goals": score[0],
                 "away_goals": score[1],
                 "extra_time": score[2],
@@ -160,16 +214,36 @@ class OpenFootballSource:
 
     def download(self, competition: str, season: str, force: bool = False) -> Path | None:
         """Path of the cached file, or ``None`` if the repo has no file for that season."""
-        path = self.raw_path(competition, season)
+        url = self.base_url.format(season=season, file=COMPETITION_FILES[competition])
+        return self._download(url, self.raw_path(competition, season), season, force)
+
+    def league_path(self, folder: str, file: str, season: str) -> Path:
+        return self.raw_dir / "europe" / folder / f"{season}_{file}.txt"
+
+    def fetch_league(self, folder: str, file: str, country: str, season: str) -> pd.DataFrame:
+        """Played matches of a domestic league of `openfootball/europe` (empty if missing)."""
+        url = LEAGUE_URL.format(folder=folder, season=season, file=file)
+        path = self._download(url, self.league_path(folder, file, season), season, force=False)
+        if path is None:
+            return pd.DataFrame(columns=COLUMNS)
+        content = path.read_text(encoding="utf-8")
+        frame = parse_txt(content, file, season, country=country)
+        expected = declared_matches(content)
+        if expected is not None and len(frame) > expected:
+            raise OpenFootballFormatError(
+                f"{file} {season}: parsed {len(frame)} matches but the header declares {expected}"
+            )
+        return frame
+
+    def _download(self, url: str, path: Path, season: str, force: bool) -> Path | None:
         if path.exists() and not force and season not in self.refresh_seasons:
             return path
-        url = self.base_url.format(season=season, file=COMPETITION_FILES[competition])
         logger.info("Downloading %s", url)
         try:
             content = self.http.get(url).content
         except DownloadError as exc:
             if "404" in str(exc):
-                logger.warning("openfootball has no %s %s", competition, season)
+                logger.warning("openfootball has no %s", url)
                 return None
             raise
         path.parent.mkdir(parents=True, exist_ok=True)
