@@ -19,7 +19,7 @@ Regla de procesos: si levantas servidores para probar o tomar capturas, hazlo en
   - Commit: `feat(domain): derived goal markets`
 - [x] **T003** Fuentes europeas: adaptadores `clubelo.py` y `openfootball.py` (verificar formato real de ambos; caché; mapeo de nombres con `team_aliases.yaml`, fallando si falta alguno), comando `data-europe`. Fixtures de test sin red.
   - Commit: `feat(adapters): clubelo and openfootball sources`
-- [ ] **T004** Normalizar las cuotas históricas Más/Menos 2.5 de football-data al esquema canónico (`ou25_*`). Verificar con **una** llamada a The Odds API los `market keys` de fútbol disponibles (eventos de una liga), grabar la respuesta como fixture y ajustar `markets.yaml`.
+- [x] **T004** Normalizar las cuotas históricas Más/Menos 2.5 de football-data al esquema canónico (`ou25_*`). Verificar con **una** llamada a The Odds API los `market keys` de fútbol disponibles (eventos de una liga), grabar la respuesta como fixture y ajustar `markets.yaml`.
   - Commit: `feat(data): over/under historical odds and market keys`
 - [ ] **T005** `ml/models/goal_model.py` (misma liga) usando el mejor modelo de goles validado en la spec 001; matriz de marcadores walk-forward. Tests.
   - Commit: `feat(models): score matrix for any fixture`

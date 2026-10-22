@@ -35,7 +35,8 @@ ODDS_1X2: dict[str, list[tuple[str, str, str]]] = {
     "maxc": [("MaxCH", "MaxCD", "MaxCA")],
     "b365c": [("B365CH", "B365CD", "B365CA")],
 }
-# canonical column -> candidate source columns (Over/Under 2.5 goals).
+# canonical column -> candidate source columns (Over/Under 2.5 goals). Same source prefixes as
+# the 1X2 odds; closing prices (`*c_`) are only ever used for CLV (spec 003, T004).
 ODDS_OU25: dict[str, list[str]] = {
     "avg_over25": ["Avg>2.5", "BbAv>2.5"],
     "avg_under25": ["Avg<2.5", "BbAv<2.5"],
@@ -43,10 +44,16 @@ ODDS_OU25: dict[str, list[str]] = {
     "max_under25": ["Max<2.5", "BbMx<2.5"],
     "ps_over25": ["P>2.5"],
     "ps_under25": ["P<2.5"],
+    "b365_over25": ["B365>2.5"],
+    "b365_under25": ["B365<2.5"],
     "psc_over25": ["PC>2.5"],
     "psc_under25": ["PC<2.5"],
     "avgc_over25": ["AvgC>2.5"],
     "avgc_under25": ["AvgC<2.5"],
+    "maxc_over25": ["MaxC>2.5"],
+    "maxc_under25": ["MaxC<2.5"],
+    "b365c_over25": ["B365C>2.5"],
+    "b365c_under25": ["B365C<2.5"],
 }
 STATS = {
     "FTHG": "home_goals",

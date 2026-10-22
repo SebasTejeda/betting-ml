@@ -57,3 +57,15 @@ Formato:
 - Decisión: implementar el adaptador con el formato CSV documentado (`Rank,Club,Country,Level,Elo,From,To`), validarlo al descargar y no cachear respuestas inválidas. Seguir reintentando; cuando la API responda, correr `data-europe`, comparar con el formato real y completar los alias `clubelo`. Si el formato difiere, se corrige en un commit `fix(adapters)` aparte.
 - Motivo: no bloquear el resto de la spec por una caída temporal de un servicio gratuito.
 - Impacto: `europe_matches.parquet` y los alias `clubelo` quedan pendientes hasta que ClubElo vuelva. T006 (ajuste entre ligas) los necesita.
+
+## 2026-10-22 — Cuotas Más/Menos 2.5: nombres canónicos (T004)
+- Contexto: la tarea pedía normalizar las cuotas históricas Más/Menos 2.5 al esquema canónico `ou25_*`.
+- Decisión: mantener el esquema que ya existía desde la spec 001, `{fuente}_over25` / `{fuente}_under25` (`avg`, `max`, `ps`, `psc`, `avgc`), y agregar las que faltaban: `b365`, `b365c` y `maxc`.
+- Motivo: renombrar rompería la spec 001 sin ganar nada; las columnas ya siguen los mismos prefijos que las cuotas 1X2 (los de cierre terminan en `c` y solo se usan para el CLV).
+- Impacto: Pinnacle y Bet365 Más/Menos existen desde 2019-20 (≈ 99 % de los partidos), así que cubren F1–F3 y el test 2025-26; el promedio y el máximo existen en todas las temporadas.
+
+## 2026-10-22 — Verificación de los market keys de The Odds API pendiente (T004)
+- Contexto: T004 pedía una llamada real a The Odds API para verificar los `market keys` de fútbol, grabar la respuesta como fixture y ajustar `configs/markets.yaml`. En esta máquina no hay `.env` y el dueño no tiene la clave a mano.
+- Decisión (del dueño): cerrar T004 sin la llamada. `configs/markets.yaml` queda con las claves esperadas según la documentación de The Odds API (`h2h`, `totals`, `btts`, `team_totals`, `double_chance`, `draw_no_bet`); hándicap europeo y marcador exacto quedan como `manual`.
+- Motivo: no bloquear la fase de modelos y validación (T005–T010), que no necesita cuotas en vivo.
+- Impacto: la llamada (1 de las 3 permitidas) se hace antes de T014 (adaptador de cuotas por evento), que es la primera tarea que depende de esas claves. Si algún mercado no existe en el plan gratis, se marca `odds_source: manual` y se registra aquí.
