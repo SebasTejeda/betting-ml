@@ -12,7 +12,7 @@ from contextlib import contextmanager
 
 from fastapi import APIRouter, Depends, Query
 
-from betting_ml.api.dependencies import AnalysisApi, get_analysis
+from betting_ml.api.dependencies import AnalysisApi, ServicesApi, get_analysis, get_services
 from betting_ml.api.errors import ApiError
 from betting_ml.api.schemas_003 import (
     AnalysisOut,
@@ -40,6 +40,7 @@ from betting_ml.application.analyze_match import (
 from betting_ml.application.event_odds import EventNotFoundError, InvalidMatchIdError
 from betting_ml.application.read_calibration import CalibrationReportNotFoundError
 from betting_ml.domain.entities import slugify
+from betting_ml.domain.security import Principal
 
 reads = APIRouter(prefix="/api/v1", tags=["spec-004"], dependencies=[Depends(require_read)])
 writes = APIRouter(prefix="/api/v1", tags=["spec-004"], dependencies=[Depends(require_write)])
@@ -151,6 +152,8 @@ def refresh_event_odds(
     home: TeamQuery,
     away: TeamQuery,
     services: AnalysisApi = Depends(get_analysis),
+    api: ServicesApi = Depends(get_services),
+    principal: Principal = Depends(require_write),
 ) -> EventRefreshOut:
     competition = match_id.partition("-")[0]
     day = _match_day(match_id, "path")
@@ -164,9 +167,19 @@ def refresh_event_odds(
         event_odds = services.event_odds()
     except ValueError as exc:  # ODDS_API_KEY not configured
         raise ApiError(503, "ODDS_API_NOT_CONFIGURED", str(exc)) from exc
+    # spec 003 quota of paid refreshes, shared with /odds/refresh (I04)
+    quota = None if api.rate_limits is None else api.rate_limits.take_odds_refresh
     try:
         with _domain_errors():
-            result = event_odds.refresh(match_id, competition, home_ref.name, away_ref.name, day)
+            result = event_odds.refresh(
+                match_id,
+                competition,
+                home_ref.name,
+                away_ref.name,
+                day,
+                actor=principal.actor,
+                quota=quota,
+            )
     except ValueError as exc:  # client built lazily: missing key
         raise ApiError(503, "ODDS_API_NOT_CONFIGURED", str(exc)) from exc
     return EventRefreshOut(

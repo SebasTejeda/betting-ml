@@ -3,6 +3,7 @@ to canonical match ids. The API key only lives in memory (never logged or stored
 
 from __future__ import annotations
 
+import json
 import logging
 import math
 import time
@@ -112,9 +113,13 @@ class TheOddsApiClient:
     def _redact(self, text: str) -> str:
         return text.replace(self._api_key, "***")
 
+    def _json(self, response: httpx.Response) -> Any:
+        """The body without the key, should the API ever echo it (it is cached as is)."""
+        return json.loads(self._redact(response.text))
+
     def sports(self) -> list[dict[str, Any]]:
         """List of sports (does not consume credits)."""
-        return list(self._get("/sports", {"all": "true"}).json())
+        return list(self._json(self._get("/sports", {"all": "true"})))
 
     def odds(self, sport_key: str, markets: str = "h2h") -> OddsResponse:
         """Odds of a sport. Costs markets × regions credits."""
@@ -127,11 +132,11 @@ class TheOddsApiClient:
                 "dateFormat": "iso",
             },
         )
-        return OddsResponse(list(response.json()), Credits.from_headers(response.headers))
+        return OddsResponse(list(self._json(response)), Credits.from_headers(response.headers))
 
     def events(self, sport_key: str) -> list[dict[str, Any]]:
         """Upcoming events of a sport (does not consume credits; spec 003)."""
-        return list(self._get(f"/sports/{sport_key}/events", {"dateFormat": "iso"}).json())
+        return list(self._json(self._get(f"/sports/{sport_key}/events", {"dateFormat": "iso"})))
 
     def event_odds(self, sport_key: str, event_id: str, markets: list[str]) -> OddsResponse:
         """Odds of one event for several markets (spec 003). Costs `estimate_event_cost`."""
@@ -144,7 +149,7 @@ class TheOddsApiClient:
                 "dateFormat": "iso",
             },
         )
-        return OddsResponse([response.json()], Credits.from_headers(response.headers))
+        return OddsResponse([self._json(response)], Credits.from_headers(response.headers))
 
 
 def _message(response: httpx.Response) -> str:

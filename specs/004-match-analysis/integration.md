@@ -82,7 +82,7 @@ Una a la vez: implementar, tests (incluidos los negativos), `lint` y `test` en v
   - Un 422 sin eco de los valores, y los errores nuevos con el formato del contrato.
   - El servicio de análisis tipado en `ServicesApi`, sin `Any`.
   - Tests negativos de cada ruta: sin sesión, sin CSRF, entrada inválida y cuerpo grande.
-- [ ] **I04** Créditos de The Odds API.
+- [x] **I04** Créditos de The Odds API.
   - El refresco por evento exige sesión con CSRF o `X-API-Key`.
   - Cuenta en el cupo `ODDS_REFRESH_MAX_PER_HOUR` y deja un evento de seguridad (`ODDS_REFRESH`).
   - Tests de que no gasta créditos sin cupo ni por debajo de la reserva, y de que la clave no aparece en la caché, en los logs ni en los errores.

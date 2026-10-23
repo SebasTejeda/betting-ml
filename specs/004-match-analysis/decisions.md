@@ -353,3 +353,20 @@ Formato:
   - En `test_api_003.py`: entrada inválida de cada ruta sin eco, refresco que valida antes de gastar créditos y `413` con cuerpo grande sin gastar créditos.
   - Mutaciones comprobadas: volver a cada eco, a `str` en la ruta o a `= Query()` hace fallar un test.
 
+## 2026-10-22 — I04: créditos de The Odds API en el refresco por evento
+- **Acceso.** El refresco ya exigía sesión con CSRF o `X-API-Key` desde I01: es una escritura y `test_route_access` lo cubre.
+- **Un solo cupo para toda la API.** El refresco por evento usa el mismo `RateLimits.take_odds_refresh` que `POST /odds/refresh`. `ODDS_REFRESH_MAX_PER_HOUR` limita todas las llamadas con coste, vengan de donde vengan.
+- **El cupo se toma justo antes de gastar, no en la entrada de la ruta.** Es una diferencia con `POST /odds/refresh`, que lo toma como dependencia. El refresco por evento tiene una caché de 30 minutos, y descontar antes castigaría volver a pulsar sin gastar nada. El servicio recibe `quota` como parámetro y lo llama:
+  - después de la caché;
+  - después de la reserva de créditos (`ODDS_BUDGET_LOW`);
+  - después de la búsqueda del evento, que es gratis;
+  - y justo antes de `event_odds`.
+
+  Sin cupo, `RateLimitedError` da el `429 RATE_LIMITED` de siempre, con `Retry-After`. No se gasta ningún crédito ni se escribe la caché.
+- **Evento de seguridad `ODDS_REFRESH`.** Lo deja el servicio, como `SETTINGS_CHANGED` en `manage_bets`, con `actor`, `scope=event`, `match_id`, créditos usados y restantes, y `from_cache`. Esta ruta no cambia nada en la base, así que no hay evento en `audit_log`. El refresco de la spec 002 sí lo tiene (`ODDS_REFRESHED`), porque guarda un snapshot.
+- **Clave.**
+  - La caché guarda la respuesta cruda del evento. Como defensa adicional, el adaptador redacta su clave en el cuerpo de cada respuesta antes de interpretarla (`_json`). Si la API la repitiera, no llegaría a la caché.
+  - Los errores ya la redactaban (`_redact`) y los logs también (`Redactor`).
+  - Un test de extremo a extremo usa el cliente real contra una API falsa que repite la clave en un 401 y en el cuerpo de un evento. Comprueba que no aparece en la respuesta de error, en la caché ni en el log escrito.
+- Mutaciones comprobadas: quitar el cupo, tomarlo antes de la caché, quitar la redacción del cuerpo, bajar el evento a DEBUG o no pasar el cupo desde la ruta hace fallar algún test.
+

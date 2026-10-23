@@ -1,4 +1,5 @@
 import json
+import logging
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -20,6 +21,7 @@ from betting_ml.application.event_odds import (
     same_team,
 )
 from betting_ml.application.refresh_odds import OddsBudgetLowError
+from betting_ml.application.throttle import RateLimitedError
 
 FIXTURE = (
     Path(__file__).resolve().parents[1] / "fixtures" / "the_odds_api" / "event_odds_SYNTHETIC.json"
@@ -238,3 +240,102 @@ def test_remaining_credits_use_the_latest_value_not_the_lowest(tmp_path: Path) -
     assert _service(tmp_path, _Client(), remaining=None).estimate().credits_remaining == 380
     # A newer snapshot of spec 002 in the same month wins when it is lower.
     assert _service(tmp_path, _Client(), remaining=300).estimate().credits_remaining == 300
+
+
+# ------------------------------------------------------------------ quota and events (I04)
+REFRESH = ("UCL-2026-10-28-real-madrid-rb-leipzig", "UCL", "Real Madrid", "RB Leipzig")
+DAY = date(2026, 10, 28)
+
+
+class _Quota:
+    """ODDS_REFRESH_MAX_PER_HOUR stand-in: raises like RateLimits once the slots are used."""
+
+    def __init__(self, slots: int) -> None:
+        self.slots = slots
+        self.taken = 0
+
+    def __call__(self) -> None:
+        if self.taken == self.slots:
+            raise RateLimitedError(3600, "Máximo de refrescos de cuotas por hora.")
+        self.taken += 1
+
+
+def test_the_quota_is_taken_only_right_before_spending(tmp_path: Path) -> None:
+    client, quota = _Client(), _Quota(slots=1)
+    service = _service(tmp_path, client)
+    assert not service.refresh(*REFRESH, DAY, quota=quota).from_cache
+    assert quota.taken == 1
+    # the slot is used up: any further call to the quota would raise RateLimitedError
+    assert service.refresh(*REFRESH, DAY, quota=quota).from_cache  # cached: no credits, no slot
+    with pytest.raises(EventNotFoundError):  # unknown event: found out for free, no slot
+        service.refresh(
+            "UCL-2026-10-28-real-madrid-getafe", "UCL", "Real Madrid", "Getafe", DAY, quota=quota
+        )
+    with pytest.raises(OddsBudgetLowError):  # under the reserve: refused before the quota
+        _service(tmp_path / "low", _Client(), remaining=55).refresh(*REFRESH, DAY, quota=quota)
+    assert quota.taken == 1
+
+
+def test_without_quota_no_credits_are_spent_and_nothing_is_cached(tmp_path: Path) -> None:
+    client = _Client()
+    with pytest.raises(RateLimitedError):
+        _service(tmp_path, client).refresh(*REFRESH, DAY, quota=_Quota(slots=0))
+    assert client.calls == ["events:soccer_uefa_champs_league"]  # only the free lookup
+    assert not (tmp_path / "event_odds").exists()
+
+
+def test_each_refresh_leaves_a_security_event(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    service = _service(tmp_path, _Client(remaining=394))
+    with caplog.at_level(logging.INFO, logger="betting_ml.security"):
+        service.refresh(*REFRESH, DAY, actor="session")
+        service.refresh(*REFRESH, DAY, actor="api_key")
+    events = [r.fields for r in caplog.records if r.name == "betting_ml.security"]  # type: ignore[attr-defined]
+    assert events == [
+        {
+            "event": "ODDS_REFRESH",
+            "actor": "session",
+            "scope": "event",
+            "match_id": REFRESH[0],
+            "credits_used": 6,
+            "credits_remaining": 394,
+            "from_cache": False,
+        },
+        {
+            "event": "ODDS_REFRESH",
+            "actor": "api_key",
+            "scope": "event",
+            "match_id": REFRESH[0],
+            "credits_used": 0,
+            "credits_remaining": 394,
+            "from_cache": True,
+        },
+    ]
+
+
+def test_a_response_that_echoes_the_key_is_cached_without_it(tmp_path: Path) -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/events"):
+            return httpx.Response(200, json=[EVENT])
+        return httpx.Response(200, json={**EVENT, "debug": "apiKey=secret-key-0123456789"})
+
+    real = TheOddsApiClient(
+        "secret-key-0123456789",
+        regions="eu",
+        http=httpx.Client(transport=httpx.MockTransport(handler)),
+    )
+    service = EventOddsService(
+        client=lambda: real,
+        cache_dir=tmp_path / "event_odds",
+        markets=["h2h"],
+        regions="eu",
+        sport_key=lambda comp: "soccer_uefa_champs_league",
+        parse=lambda event: parse_event_prices(event, ACCESSIBLE, {}),
+        credits_remaining=lambda: 400,
+        min_reserve=50,
+        clock=lambda: datetime(2026, 10, 27, 12, tzinfo=UTC),
+    )
+    service.refresh(*REFRESH, DAY)
+    cached = (tmp_path / "event_odds" / f"{REFRESH[0]}.json").read_text(encoding="utf-8")
+    assert "secret-key-0123456789" not in cached and "apiKey=***" in cached

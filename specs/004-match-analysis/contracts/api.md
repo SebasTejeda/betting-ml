@@ -132,3 +132,14 @@ Se suma al contrato de seguridad de la spec 003 (`specs/003-security-hardening/c
   - `NO_HISTORY` lleva un mensaje fijo, porque el texto interno podía contener la competición recibida.
   - El `404 TEAM_NOT_FOUND` conserva el nombre buscado, igual que el `TEAM_NOT_FOUND` de la spec 001. Es un nombre que ya pasó el patrón.
 - **Cuerpo.** Las rutas no reciben cuerpo. El límite global (`MAX_BODY_BYTES`) responde `413 PAYLOAD_TOO_LARGE` antes de gastar créditos.
+
+## Créditos del refresco por evento (I04, 2026-10-22)
+
+- **Cupo.** `POST /analysis/{match_id}/odds/refresh` comparte con `POST /odds/refresh` el cupo `ODDS_REFRESH_MAX_PER_HOUR` de la spec 003.
+  - Solo se descuenta justo antes de la llamada con coste. Una respuesta de la caché (30 minutos), un presupuesto bajo (`429 ODDS_BUDGET_LOW`) o un evento desconocido (`404 EVENT_NOT_FOUND`) no gastan cupo.
+  - Sin cupo → `429 RATE_LIMITED` con `Retry-After`, sin gastar créditos ni escribir la caché.
+- **Registro.** Cada refresco deja el evento de seguridad `ODDS_REFRESH`, con `actor`, `scope=event`, `match_id`, `credits_used`, `credits_remaining` y `from_cache`.
+- **Clave.** La clave de The Odds API nunca aparece:
+  - en la caché: si una respuesta la repitiera, se redacta antes de interpretarla;
+  - en los logs;
+  - en los errores: `502 ODDS_API_ERROR` la redacta.

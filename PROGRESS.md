@@ -344,4 +344,8 @@ Plan: [`specs/004-match-analysis/integration.md`](specs/004-match-analysis/integ
   - Cada parámetro tiene patrón y longitud (TeamQuery, MatchId, LeagueCode, ApiDate, Kickoff), y los 422 ya no repiten la entrada (match_id, NO_HISTORY, MATCH_TEAMS_MISMATCH).
   - Encontrada la trampa de FastAPI `x: Tipo = Query()`, que pierde las restricciones; un test sobre el OpenAPI la vigila en toda la API.
   - Tests negativos por ruta: entrada inválida sin eco, sin gastar créditos y 413. Contrato regenerado.
+- 2026-10-22 · I04 · El refresco por evento comparte el cupo ODDS_REFRESH_MAX_PER_HOUR con el de la spec 002.
+  - Se descuenta solo justo antes de gastar créditos: la caché, la reserva baja y un evento desconocido no gastan cupo.
+  - Deja el evento de seguridad ODDS_REFRESH.
+  - La clave se redacta también en el cuerpo de las respuestas antes de cachear; un test de extremo a extremo comprueba que no aparece en la caché, los logs ni los errores.
 

@@ -12,9 +12,11 @@ import json
 import logging
 from collections.abc import Iterator
 from datetime import timedelta
+from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 
+import httpx
 import pytest
 from fastapi.testclient import TestClient
 from pydantic import SecretStr
@@ -23,11 +25,14 @@ from betting_ml.adapters.argon2_hasher import Argon2Hasher
 from betting_ml.adapters.memory_rate_limiter import MemoryRateLimiter
 from betting_ml.adapters.sql.db import prepare, session_factory
 from betting_ml.adapters.sql.repositories import SqlSessionStore
+from betting_ml.adapters.the_odds_api import TheOddsApiClient, parse_event_prices
 from betting_ml.api.main import create_app
 from betting_ml.application.authenticate import Authenticate
+from betting_ml.application.event_odds import EventOddsService
 from betting_ml.application.maintenance import IntegrityReport, VerifyIntegrity
 from betting_ml.application.throttle import LoginThrottle
 from betting_ml.config import DEFAULT_MAX_BODY_BYTES, Settings
+from betting_ml.container import AnalysisServices
 from betting_ml.logging_config import REDACTED, Redactor, configure_logging
 
 PASSWORD = "owner-password-for-log-tests"
@@ -264,3 +269,64 @@ def test_failed_integrity_check_is_a_security_event(caplog: pytest.LogCaptureFix
     record = next(r for r in caplog.records if r.name == "betting_ml.security")
     assert record.levelno == logging.ERROR
     assert record.getMessage().startswith("INTEGRITY_CHECK_FAILED problems=1")
+
+
+# ------------------------------------------------------------------ event odds (spec 004, I04)
+def test_the_odds_key_never_reaches_the_cache_the_log_nor_an_error(
+    output: io.StringIO, tmp_path: Path
+) -> None:
+    """The real client against a fake The Odds API that echoes the key everywhere: in a 401
+    message and in the body of an event."""
+    from tests.integration.test_api_003 import EVENT, _stub
+    from tests.unit.test_analyze_match import _service
+
+    reject = [True]
+
+    def api(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/events"):
+            return httpx.Response(200, json=[EVENT])
+        if reject.pop() if reject else False:
+            return httpx.Response(401, json={"message": f"Invalid key {ODDS_KEY} at {request.url}"})
+        echo = {**EVENT, "debug": f"apiKey={ODDS_KEY}"}
+        return httpx.Response(200, json=echo, headers={"x-requests-remaining": "394"})
+
+    real = TheOddsApiClient(
+        ODDS_KEY, regions="eu", http=httpx.Client(transport=httpx.MockTransport(api))
+    )
+    event_odds = EventOddsService(
+        client=lambda: real,
+        cache_dir=tmp_path / "event_odds",
+        markets=["h2h", "totals"],
+        regions="eu",
+        sport_key=lambda comp: "soccer_uefa_champs_league",
+        parse=lambda event: parse_event_prices(event, {"betsson"}, {}),
+        credits_remaining=lambda: 400,
+        min_reserve=50,
+    )
+    analyzer, _, _ = _service()
+    services = _stub(
+        KEY,
+        AnalysisServices(
+            analyze=lambda: analyzer,
+            event_odds=lambda: event_odds,
+            event_odds_prices=event_odds.prices,
+            calibration=None,  # type: ignore[arg-type]
+        ),
+    )
+    match_id = "UCL-2026-10-28-real-madrid-rb-leipzig"
+    url = f"/api/v1/analysis/{match_id}/odds/refresh"
+    params = {"home": "Real Madrid", "away": "RB Leipzig"}
+    with TestClient(create_app(services), headers={"X-API-Key": KEY}) as client:
+        refused = client.post(url, params=params)
+        assert refused.status_code == 502 and refused.json()["error"]["code"] == "ODDS_API_ERROR"
+        assert ODDS_KEY not in refused.text
+        ok = client.post(url, params=params)
+        assert ok.status_code == 200 and not ok.json()["from_cache"]
+
+    cached = (tmp_path / "event_odds" / f"{match_id}.json").read_text(encoding="utf-8")
+    assert ODDS_KEY not in cached
+    text = output.getvalue()
+    assert ODDS_KEY not in text
+    events = [line for line in _lines(output) if line.get("event") == "ODDS_REFRESH"]
+    assert len(events) == 1
+    assert events[0]["actor"] == "api_key" and events[0]["match_id"] == match_id

@@ -10,11 +10,13 @@ from typing import Any
 import pytest
 from fastapi.testclient import TestClient
 
+from betting_ml.adapters.memory_rate_limiter import MemoryRateLimiter
 from betting_ml.adapters.report_store import JsonReportStore
 from betting_ml.adapters.the_odds_api import Credits, OddsResponse, parse_event_prices
 from betting_ml.api.main import create_app
 from betting_ml.application.event_odds import EventOddsService
 from betting_ml.application.read_calibration import ReadMarketCalibration
+from betting_ml.application.throttle import RateLimits
 from betting_ml.config import DEFAULT_MAX_BODY_BYTES
 from betting_ml.container import AnalysisServices
 from betting_ml.ml.models.goal_model import MissingHistoryError
@@ -44,7 +46,11 @@ class _OddsClient:
 
 
 def _client(
-    tmp_path: Path, app_key: str = KEY, remaining: int | None = 400, with_key: bool = True
+    tmp_path: Path,
+    app_key: str = KEY,
+    remaining: int | None = 400,
+    with_key: bool = True,
+    rate_limits: RateLimits | None = None,
 ) -> tuple[TestClient, _OddsClient]:
     analyzer, _, _ = _service()
     odds_client = _OddsClient()
@@ -79,11 +85,14 @@ def _client(
             event_odds_prices=event_odds.prices,
             calibration=ReadMarketCalibration(JsonReportStore(reports)),
         ),
+        rate_limits,
     )
     return TestClient(create_app(services), headers=AUTH), odds_client
 
 
-def _stub(app_key: str, analysis: AnalysisServices | None) -> SimpleNamespace:
+def _stub(
+    app_key: str, analysis: AnalysisServices | None, rate_limits: RateLimits | None = None
+) -> SimpleNamespace:
     return SimpleNamespace(
         predictor=SimpleNamespace(state=lambda: None),
         app_api_key=app_key,
@@ -91,7 +100,7 @@ def _stub(app_key: str, analysis: AnalysisServices | None) -> SimpleNamespace:
         analysis=analysis,
         auth=None,
         secure_cookies=False,
-        rate_limits=None,  # controls off on purpose: the stub has to say so (spec 003, T021)
+        rate_limits=rate_limits,  # None = controls off on purpose (spec 003, T021)
         allowed_hosts=None,
         max_body_bytes=DEFAULT_MAX_BODY_BYTES,
     )
@@ -410,3 +419,29 @@ def test_well_formed_unknown_teams_still_reach_the_use_case(client: TestClient) 
     response = client.get("/api/v1/analysis/fixture", params={"home": "Nobody FC", "away": "X Y"})
     assert response.status_code == 404
     assert response.json()["error"]["code"] == "TEAM_NOT_FOUND"
+
+
+# ------------------------------------------------------------------ credits (I04)
+def _quota(per_hour: int) -> RateLimits:
+    return RateLimits(limiter=MemoryRateLimiter(), per_minute=1000, odds_refresh_per_hour=per_hour)
+
+
+def test_the_event_refresh_shares_the_hourly_quota_of_paid_refreshes(tmp_path: Path) -> None:
+    limits = _quota(per_hour=1)
+    limits.take_odds_refresh()  # the slot went to POST /odds/refresh (spec 002)
+    client, odds = _client(tmp_path, rate_limits=limits)
+    response = client.post(f"/api/v1/analysis/{MATCH_ID}/odds/refresh", params=TEAMS)
+    assert response.status_code == 429
+    assert response.json()["error"]["code"] == "RATE_LIMITED"
+    assert int(response.headers["Retry-After"]) > 0
+    assert odds.calls == 0  # no credits spent
+    assert not (tmp_path / "event_odds" / f"{MATCH_ID}.json").exists()
+
+
+def test_a_cached_refresh_needs_no_slot(tmp_path: Path) -> None:
+    client, odds = _client(tmp_path, rate_limits=_quota(per_hour=1))
+    first = client.post(f"/api/v1/analysis/{MATCH_ID}/odds/refresh", params=TEAMS)
+    assert first.status_code == 200 and not first.json()["from_cache"]
+    again = client.post(f"/api/v1/analysis/{MATCH_ID}/odds/refresh", params=TEAMS)
+    assert again.status_code == 200 and again.json()["from_cache"]
+    assert odds.calls == 1

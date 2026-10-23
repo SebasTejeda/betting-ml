@@ -4,11 +4,17 @@ Refreshing is an explicit user action with a visible cost: the cost is estimated
 (markets × regions), the spec 002 credit reserve is respected (429 ``ODDS_BUDGET_LOW``) and a
 response is cached for 30 minutes, so a second refresh within that window spends nothing. The
 raw response is stored without the API key; the analysis reads the latest cached prices.
+
+Integration I04 (spec 004 in the Daniel branch): the paid call also takes a slot of the
+ODDS_REFRESH_MAX_PER_HOUR quota of spec 003 (``quota``, shared with the spec 002 refresh), only
+right before spending: a cached answer, a low budget or an unknown event costs no slot. Every
+refresh leaves an ``ODDS_REFRESH`` security event with who asked and what it cost.
 """
 
 from __future__ import annotations
 
 import json
+import logging
 import re
 import unicodedata
 from collections.abc import Callable, Mapping
@@ -18,6 +24,7 @@ from pathlib import Path
 from typing import Any, Protocol
 
 from betting_ml.application.refresh_odds import OddsBudgetLowError
+from betting_ml.logging_config import security_event
 
 CACHE_MINUTES = 30
 PriceKey = tuple[str, str, float | None]
@@ -162,16 +169,26 @@ class EventOddsService:
         return from_snapshots
 
     def refresh(
-        self, match_id: str, competition: str, home: str, away: str, day: date
+        self,
+        match_id: str,
+        competition: str,
+        home: str,
+        away: str,
+        day: date,
+        *,
+        actor: str = "system",
+        quota: Callable[[], None] | None = None,
     ) -> EventRefresh:
+        """``quota`` raises (RateLimitedError) when the hourly refreshes are used up."""
         now = self.clock()
         cached = self._cached(match_id)
         if cached is not None:
             fetched = datetime.fromisoformat(cached["fetched_at"])
             if now - fetched < timedelta(minutes=CACHE_MINUTES):
-                return EventRefresh(
+                result = EventRefresh(
                     match_id, cached["markets"], 0, cached.get("credits_remaining"), fetched, True
                 )
+                return self._logged(result, actor)
         cost = self.estimate()
         if cost.credits_remaining is not None and (
             cost.credits_remaining - cost.estimated_credits < self.min_reserve
@@ -184,6 +201,8 @@ class EventOddsService:
         event = find_event(client.events(sport), home, away, day, self.aliases)  # free
         if event is None:
             raise EventNotFoundError(f"{home} vs {away} ({day}) not found in {sport}")
+        if quota is not None:
+            quota()  # the last check before spending credits
         response = client.event_odds(sport, str(event["id"]), self.markets)
         credits = response.credits
         payload = {
@@ -197,7 +216,23 @@ class EventOddsService:
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         self._path(match_id).write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
         used = credits.last if credits.last is not None else cost.estimated_credits
-        return EventRefresh(match_id, self.markets, used, credits.remaining, now, False)
+        return self._logged(
+            EventRefresh(match_id, self.markets, used, credits.remaining, now, False), actor
+        )
+
+    @staticmethod
+    def _logged(result: EventRefresh, actor: str) -> EventRefresh:
+        security_event(
+            "ODDS_REFRESH",
+            logging.INFO,
+            actor=actor,
+            scope="event",
+            match_id=result.match_id,
+            credits_used=result.credits_used,
+            credits_remaining=result.credits_remaining,
+            from_cache=result.from_cache,
+        )
+        return result
 
     def prices(self, match_id: str) -> tuple[dict[PriceKey, tuple[float, str]], datetime | None]:
         """Latest cached prices of the event (any age; the analysis shows when they are from).
