@@ -1,8 +1,10 @@
-"""Static checks of the Dockerfile (Docker is not available in CI or on the dev machine)."""
+"""Static checks of the Dockerfile. The image itself is built and started only by the CI
+``docker`` job: there is no Docker on the dev machine."""
 
 import re
 
-from betting_ml.config import PROJECT_ROOT
+from betting_ml.adapters.sql.db import MIGRATIONS_DIR
+from betting_ml.config import CONFIGS_DIR, PROJECT_ROOT
 
 DOCKERFILE = (PROJECT_ROOT / "Dockerfile").read_text(encoding="utf-8")
 
@@ -45,6 +47,17 @@ def test_secrets_and_data_are_not_copied() -> None:
     for entry in (".env", "data", "models", ".git", ".venv"):
         assert entry in ignored
     assert "COPY .env" not in DOCKERFILE
+
+
+def test_the_image_has_every_folder_the_api_reads_at_startup() -> None:
+    """Integration I08: the API applies the migrations when it starts, and the image had no
+    ``migrations/``: the container died at startup (first run of the CI ``docker`` job)."""
+    ignored = (PROJECT_ROOT / ".dockerignore").read_text(encoding="utf-8").split()
+    for folder in ("src", CONFIGS_DIR.name, MIGRATIONS_DIR.name):
+        assert f"COPY {folder} ./{folder}\n" in DOCKERFILE
+        assert folder not in ignored
+    copies = DOCKERFILE.index(f"COPY {MIGRATIONS_DIR.name} ")
+    assert copies < DOCKERFILE.index("USER app")  # owned by root, like the code
 
 
 def test_makefile_has_docker_target() -> None:

@@ -381,3 +381,4 @@ Plan: [`specs/004-match-analysis/integration.md`](specs/004-match-analysis/integ
 - **Pendiente para el dueño:**
   - hacer el `git push` de la rama `Daniel` y revisar la CI;
   - añadir `ODDS_API_KEY` a `.env` para probar las cuotas por evento con una respuesta real (cuesta unos 12 créditos por partido).
+- 2026-10-23 · I08 (CI) · Primera ejecución del job `docker`: el contenedor moría al arrancar porque la imagen no incluía `migrations/`, que la API aplica al iniciar. Reproducido sin Docker y corregido en el Dockerfile, con un test estático que lo vigila.

@@ -35,6 +35,8 @@ RUN uv sync --frozen --no-dev --no-install-project
 
 COPY src ./src
 COPY configs ./configs
+# The API applies the pending migrations when it starts (adapters/sql/db.py).
+COPY migrations ./migrations
 RUN uv sync --frozen --no-dev
 
 # The code stays root's: the app user can only write data/ (models/ and reports/ are mounted
