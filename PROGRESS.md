@@ -382,3 +382,8 @@ Plan: [`specs/004-match-analysis/integration.md`](specs/004-match-analysis/integ
   - hacer el `git push` de la rama `Daniel` y revisar la CI;
   - añadir `ODDS_API_KEY` a `.env` para probar las cuotas por evento con una respuesta real (cuesta unos 12 créditos por partido).
 - 2026-10-23 · I08 (CI) · Primera ejecución del job `docker`: el contenedor moría al arrancar porque la imagen no incluía `migrations/`, que la API aplica al iniciar. Reproducido sin Docker y corregido en el Dockerfile, con un test estático que lo vigila.
+
+## Spec 005 — rediseño UX/UI (fintech sobrio, oscuro por defecto)
+
+- 2026-10-23 · U00 · Diagnóstico de todas las páginas y dirección elegida por el dueño.
+- 2026-10-23 · U01 · Sistema de diseño (tokens con contraste AA calculado, tipografía, superficies, componentes comunes) y navegación en dos grupos con barra móvil de 5 columnas. La página Análisis queda rediseñada como piloto. 74 tests frontend en verde.

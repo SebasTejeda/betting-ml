@@ -64,9 +64,14 @@ function tokens(selector: ":root" | ".dark"): Record<string, [number, number, nu
 const PAIRS: [string, string][] = [
   ["foreground", "background"],
   ["foreground", "card"],
+  ["foreground", "secondary"], // team monograms (spec 005)
   ["muted-foreground", "background"],
   ["muted-foreground", "card"],
+  ["muted-foreground", "muted"],
   ["primary-foreground", "primary"],
+  ["primary", "card"], // accent text and links (spec 005)
+  ["primary", "background"],
+  ["accent-foreground", "accent"],
   ["positive", "card"],
   ["negative", "card"],
   ["experimental", "experimental-soft"],
@@ -85,12 +90,5 @@ test.each([":root", ".dark"] as const)("text tokens meet WCAG AA (4.5:1) in %s",
       ok: ratio >= 4.5,
       ratio: Math.round(ratio * 100) / 100,
     }).toMatchObject({ ok: true });
-  }
-});
-
-test("white initials on the avatar color meet AA for every hue", () => {
-  for (let hue = 0; hue < 360; hue += 5) {
-    const ratio = contrast([1, 1, 1], oklchToLinearRgb(0.5, 0.13, hue));
-    expect({ hue, ok: ratio >= 4.5 }).toMatchObject({ ok: true });
   }
 });

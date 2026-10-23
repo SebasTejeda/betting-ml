@@ -30,14 +30,14 @@ export function PageTitle({
   aside?: ReactNode;
 }) {
   return (
-    <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+    <div className="mb-2 flex flex-wrap items-end justify-between gap-4">
       <div className="min-w-0">
-        <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight">
-          {Icon && <Icon aria-hidden className="size-6 text-primary" />}
+        <h1 className="flex items-center gap-2.5 text-[1.625rem] leading-tight font-semibold tracking-tight">
+          {Icon && <Icon aria-hidden className="size-5 text-muted-foreground" />}
           {children}
         </h1>
         {description && (
-          <p className="mt-1 max-w-3xl text-sm text-muted-foreground">{description}</p>
+          <p className="mt-1.5 max-w-2xl text-sm text-muted-foreground">{description}</p>
         )}
       </div>
       {aside}
@@ -62,10 +62,10 @@ export function Panel({
   contentClassName?: string;
 }) {
   return (
-    <UiCard className={cn("shadow-sm transition-colors duration-150", className)}>
+    <UiCard className={cn("transition-colors duration-150", className)}>
       {title && (
-        <CardHeader className="flex flex-row items-center justify-between gap-2">
-          <CardTitle className="flex items-center gap-2 text-base font-semibold">
+        <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
+          <CardTitle className="flex items-center gap-2 text-[0.95rem] font-semibold tracking-tight">
             {Icon && <Icon aria-hidden className="size-4 text-muted-foreground" />}
             <h2>{title}</h2>
           </CardTitle>
@@ -142,10 +142,9 @@ export function Empty({
   title?: string;
 }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed p-8 text-center">
-      <span className="flex size-12 items-center justify-center rounded-full bg-muted">
-        <Icon aria-hidden className="size-6 text-muted-foreground" />
-      </span>
+    // No dashed box: it sits inside panels, and a box in a box only adds noise (spec 005).
+    <div className="flex flex-col items-center justify-center gap-2 px-4 py-10 text-center">
+      <Icon aria-hidden className="size-6 text-muted-foreground/70" />
       {title && <p className="font-medium">{title}</p>}
       <p className="max-w-md text-sm text-muted-foreground">{children}</p>
     </div>
@@ -157,7 +156,7 @@ export function ExperimentalBadge({ className }: { className?: string }) {
   return (
     <span
       className={cn(
-        "inline-flex w-fit items-center gap-1 rounded-md border border-experimental-border bg-experimental-soft px-2 py-0.5 text-xs font-semibold text-experimental",
+        "inline-flex w-fit items-center gap-1 rounded-full border border-experimental-border bg-experimental-soft px-2.5 py-0.5 text-[0.7rem] font-semibold tracking-wide text-experimental",
         className,
       )}
     >
@@ -168,12 +167,28 @@ export function ExperimentalBadge({ className }: { className?: string }) {
 }
 
 /** EV with its sign, color and an icon (never color alone). */
-export function EvValue({ ev, className }: { ev: number | null | undefined; className?: string }) {
+export function EvValue({
+  ev,
+  className,
+  bare = false,
+}: {
+  ev: number | null | undefined;
+  className?: string;
+  /** Without the "EV" prefix, for a column already titled EV. */
+  bare?: boolean;
+}) {
   const Icon = ev !== null && ev !== undefined && ev < 0 ? TrendingDown : TrendingUp;
   return (
-    <span className={cn("inline-flex items-center gap-1 tabular-nums", evTone(ev), className)}>
+    <span className={cn("num inline-flex items-center gap-1", evTone(ev), className)}>
       {ev !== null && ev !== undefined && <Icon aria-hidden className="size-3.5" />}
-      EV {pct(ev, 1, true)}
+      {bare ? (
+        <>
+          <span className="sr-only">EV </span>
+          {pct(ev, 1, true)}
+        </>
+      ) : (
+        `EV ${pct(ev, 1, true)}`
+      )}
     </span>
   );
 }
@@ -207,7 +222,7 @@ export function Meter({
       aria-valuemin={0}
       aria-valuemax={max}
       aria-valuenow={value}
-      className="h-2 w-full overflow-hidden rounded-full bg-muted"
+      className="h-1.5 w-full overflow-hidden rounded-full bg-track"
     >
       <div
         className={cn(

@@ -106,11 +106,8 @@ export function AnalysisPage() {
   const analysis = useAnalysis(query);
 
   return (
-    <div className="flex flex-col gap-4">
-      <PageTitle
-        icon={Sparkles}
-        description="Elige dos equipos: probabilidades de muchos mercados, lo más probable con su precio honesto y la forma reciente. Son probabilidades, no certezas."
-      >
+    <div className="flex flex-col gap-6">
+      <PageTitle description="Probabilidades del modelo para cualquier partido, con su precio honesto y la forma reciente. Son probabilidades, no certezas.">
         Análisis de partido
       </PageTitle>
       <SearchForm
@@ -156,7 +153,7 @@ function SearchForm({
     if (values.home.trim() && values.away.trim()) onSubmit(values);
   };
   return (
-    <Card className="px-4 py-4 shadow-sm">
+    <Card className="p-4">
       <form
         className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_10rem_11rem_auto] lg:items-end"
         onSubmit={submit}
@@ -172,7 +169,7 @@ function SearchForm({
           value={values.away}
           onChange={(away) => setValues((v) => ({ ...v, away }))}
         />
-        <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+        <label className="flex flex-col gap-1.5 text-xs font-medium text-muted-foreground">
           Fecha (opcional)
           <input
             type="date"
@@ -181,7 +178,7 @@ function SearchForm({
             onChange={(e) => setValues((v) => ({ ...v, date: e.target.value }))}
           />
         </label>
-        <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+        <label className="flex flex-col gap-1.5 text-xs font-medium text-muted-foreground">
           Competición
           <select
             className="field"
@@ -216,7 +213,7 @@ function TeamInput({
   const listId = useId();
   const hits = useTeamSearch(value);
   return (
-    <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+    <label className="flex flex-col gap-1.5 text-xs font-medium text-muted-foreground">
       {label}
       <input
         className="field"
@@ -258,13 +255,13 @@ function AnalysisError({ error }: { error: unknown }) {
 
 function AnalysisView({ data }: { data: Analysis }) {
   return (
-    <div className="flex flex-col gap-4">
-      <Scoreboard data={data} />
-      <EventOdds data={data} />
-      <div className="grid gap-4 lg:grid-cols-2">
-        <BestOptions data={data} />
-        <MostLikely data={data} />
+    <div className="flex flex-col gap-8">
+      <div className="flex flex-col gap-2">
+        <Scoreboard data={data} />
+        <EventOdds data={data} />
       </div>
+      <BestOptions data={data} />
+      <MostLikely data={data} />
       <FormPanel data={data} />
       <MarketsPanel data={data} />
     </div>
@@ -273,12 +270,23 @@ function AnalysisView({ data }: { data: Analysis }) {
 
 function Scoreboard({ data }: { data: Analysis }) {
   const m = data.match;
+  const h2h = data.markets.find((g) => g.market === "h2h")?.selections ?? [];
+  const p = (key: string) => h2h.find((x) => x.selection === key)?.probability;
+  const split = [
+    { key: "home", label: "Local", value: p("home"), tone: "bg-primary" },
+    { key: "draw", label: "Empate", value: p("draw"), tone: "bg-muted-foreground/45" },
+    { key: "away", label: "Visita", value: p("away"), tone: "bg-chart-2" },
+  ];
+  const hasSplit = split.every((x) => x.value !== undefined);
   return (
-    <Card className="gap-4 bg-linear-to-b from-secondary/60 to-card px-4 py-6 shadow-sm">
-      <div className="flex flex-wrap items-center justify-center gap-2 text-xs text-muted-foreground">
-        <Badge variant="secondary">{m.competition}</Badge>
-        <Clock aria-hidden className="size-3.5" />
-        {m.date}
+    <Card className="gap-6 p-5 sm:p-6">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-muted-foreground">
+        <span className="font-medium text-foreground">{m.competition}</span>
+        <span aria-hidden>·</span>
+        <span className="num inline-flex items-center gap-1">
+          <Clock aria-hidden className="size-3.5" />
+          {m.date}
+        </span>
         {m.cross_league && (
           <Badge variant="outline" className="border-experimental-border text-experimental">
             Entre ligas
@@ -288,14 +296,14 @@ function Scoreboard({ data }: { data: Analysis }) {
       <h2 className="sr-only">
         {m.home_team} – {m.away_team}
       </h2>
-      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+      <div className="grid grid-cols-[1fr_auto_1fr] items-start gap-4">
         <TeamSide
           name={m.home_team}
           side="Local"
           goals={m.expected_goals.home}
           rating={m.ratings?.home}
         />
-        <span aria-hidden className="text-2xl font-light text-muted-foreground">
+        <span aria-hidden className="pt-3 text-sm text-muted-foreground">
           vs
         </span>
         <TeamSide
@@ -303,12 +311,41 @@ function Scoreboard({ data }: { data: Analysis }) {
           side="Visita"
           goals={m.expected_goals.away}
           rating={m.ratings?.away}
+          align="end"
         />
       </div>
+      {hasSplit && (
+        <div className="flex flex-col gap-3 border-t pt-5">
+          <p className="eyebrow">Resultado según el modelo</p>
+          <div className="grid grid-cols-3 gap-3">
+            {split.map((x) => (
+              <div
+                key={x.key}
+                className={cn(
+                  "flex flex-col",
+                  x.key === "draw" && "items-center",
+                  x.key === "away" && "items-end",
+                )}
+              >
+                <span className="num text-2xl font-semibold tracking-tight sm:text-3xl">
+                  {pct(x.value, 0)}
+                </span>
+                <span className="text-xs text-muted-foreground">{x.label}</span>
+              </div>
+            ))}
+          </div>
+          {/* Neutral tones: a probability is not a recommendation (constitution XIII). */}
+          <div aria-hidden className="flex h-2 gap-0.5 overflow-hidden rounded-full">
+            {split.map((x) => (
+              <div key={x.key} className={x.tone} style={{ width: `${(x.value ?? 0) * 100}%` }} />
+            ))}
+          </div>
+        </div>
+      )}
       {m.warnings.length > 0 && (
-        <ul className="mx-auto flex max-w-3xl flex-col gap-1 text-sm text-experimental">
+        <ul className="flex flex-col gap-1.5 rounded-lg bg-experimental-soft px-3 py-2.5 text-sm text-experimental">
           {m.warnings.map((w) => (
-            <li key={w} className="flex items-start gap-1.5">
+            <li key={w} className="flex items-start gap-2">
               <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0" />
               {w}
             </li>
@@ -324,25 +361,35 @@ function TeamSide({
   side,
   goals,
   rating,
+  align = "start",
 }: {
   name: string;
   side: string;
   goals: number;
   rating?: number;
+  align?: "start" | "end";
 }) {
+  const end = align === "end";
   return (
-    <div className="flex flex-col items-center gap-1.5 text-center">
+    <div className={cn("flex min-w-0 items-center gap-3", end && "flex-row-reverse text-right")}>
       <TeamAvatar name={name} size="lg" />
-      <span className="text-base font-semibold sm:text-xl">{name}</span>
-      <span className="text-xs text-muted-foreground">{side}</span>
-      <span className="text-sm tabular-nums">
-        <span className="sr-only">Goles esperados: </span>
-        <strong className="text-lg">{goals.toFixed(2)}</strong>{" "}
-        <span className="text-xs text-muted-foreground">goles esperados</span>
-      </span>
-      {rating !== undefined && (
-        <span className="text-xs text-muted-foreground tabular-nums">Elo {rating.toFixed(0)}</span>
-      )}
+      <div className={cn("flex min-w-0 flex-col gap-0.5", end && "items-end")}>
+        <span className="truncate text-lg font-semibold tracking-tight sm:text-xl">{name}</span>
+        <span className="text-xs text-muted-foreground">
+          {side}
+          {rating !== undefined && (
+            <>
+              {" · "}
+              <span className="num">Elo {rating.toFixed(0)}</span>
+            </>
+          )}
+        </span>
+        <span className="mt-1 text-sm text-muted-foreground">
+          <span className="sr-only">Goles esperados: </span>
+          <span className="num font-semibold text-foreground">{goals.toFixed(2)}</span> goles
+          esperados
+        </span>
+      </div>
     </div>
   );
 }
@@ -352,7 +399,7 @@ function EventOdds({ data }: { data: Analysis }) {
   const estimate = useEventOddsEstimate(m.match_id);
   const refresh = useRefreshEventOdds();
   return (
-    <Card className="flex flex-col gap-2 px-4 py-3 text-sm shadow-sm sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex flex-col gap-2 px-1 text-xs sm:flex-row sm:items-center sm:justify-between">
       <span className="text-muted-foreground">
         {m.odds_snapshot_at
           ? `Cuotas por evento del ${new Date(m.odds_snapshot_at).toLocaleString("es-PE")}.`
@@ -371,6 +418,7 @@ function EventOdds({ data }: { data: Analysis }) {
         <Button
           type="button"
           variant="outline"
+          size="sm"
           disabled={refresh.isPending}
           onClick={() =>
             refresh.mutate({ matchId: m.match_id, home: m.home_team, away: m.away_team })
@@ -388,75 +436,106 @@ function EventOdds({ data }: { data: Analysis }) {
           </span>
         )}
       </div>
-    </Card>
+    </div>
   );
 }
 
 function BestOptions({ data }: { data: Analysis }) {
+  if (data.best_options.length > 0) {
+    return (
+      <Section title="Mejores opciones" icon={Sparkles} action={<ExperimentalBadge />}>
+        <AdviceGrid items={data.best_options} data={data} />
+      </Section>
+    );
+  }
+  // Disabled until there is evidence: one quiet line, not a half-empty panel.
   return (
-    <Panel title="Mejores opciones" icon={Sparkles} action={<ExperimentalBadge />}>
-      {data.best_options.length > 0 ? (
-        <div className="flex flex-col gap-3">
-          {data.best_options.map((item) => (
-            <AdviceCard
-              key={`${item.market}-${item.selection}-${item.line}`}
-              item={item}
-              data={data}
-            />
-          ))}
-        </div>
-      ) : (
-        <p className="flex items-start gap-2 text-sm text-muted-foreground">
-          <Info aria-hidden className="mt-0.5 size-4 shrink-0" />
-          {data.best_options_note ?? data.no_value_message}
-        </p>
-      )}
-    </Panel>
+    <section className="flex flex-col gap-2 rounded-xl border border-dashed px-4 py-3 sm:flex-row sm:items-start sm:gap-4">
+      <div className="flex shrink-0 items-center gap-2">
+        <h2 className="text-sm font-semibold">Mejores opciones</h2>
+        <ExperimentalBadge />
+      </div>
+      <p className="flex items-start gap-2 text-sm text-muted-foreground">
+        <Info aria-hidden className="mt-0.5 size-4 shrink-0" />
+        {data.best_options_note ?? data.no_value_message}
+      </p>
+    </section>
   );
 }
 
 function MostLikely({ data }: { data: Analysis }) {
   return (
-    <Panel title="Lo más probable" icon={ListChecks}>
-      <p className="mb-3 text-xs text-muted-foreground">
-        Lo más probable no es lo mismo que lo mejor: cada opción dice si su cuota la paga bien o
-        mal.
-      </p>
+    <Section
+      title="Lo más probable"
+      icon={ListChecks}
+      description="Lo más probable no es lo mismo que lo mejor: cada opción dice si su cuota la paga bien o mal."
+    >
       {data.most_likely.length === 0 ? (
         <p className="text-sm text-muted-foreground">
           Ninguna selección tiene confianza suficiente para destacarla. La tabla de mercados queda
           como información.
         </p>
       ) : (
-        <div className="flex flex-col gap-3">
-          {data.most_likely.map((item) => (
-            <AdviceCard
-              key={`${item.market}-${item.selection}-${item.line}`}
-              item={item}
-              data={data}
-            />
-          ))}
-        </div>
+        <AdviceGrid items={data.most_likely} data={data} />
       )}
-    </Panel>
+    </Section>
+  );
+}
+
+/** A page section: title, optional description and action, no surrounding box. */
+function Section({
+  title,
+  icon: Icon,
+  description,
+  action,
+  children,
+}: {
+  title: string;
+  icon?: typeof Info;
+  description?: string;
+  action?: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <section className="flex flex-col gap-3">
+      <div className="flex flex-wrap items-end justify-between gap-2">
+        <div>
+          <h2 className="flex items-center gap-2 text-base font-semibold tracking-tight">
+            {Icon && <Icon aria-hidden className="size-4 text-muted-foreground" />}
+            {title}
+          </h2>
+          {description && <p className="mt-0.5 text-sm text-muted-foreground">{description}</p>}
+        </div>
+        {action}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function AdviceGrid({ items, data }: { items: AdviceItem[]; data: Analysis }) {
+  return (
+    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+      {items.map((item) => (
+        <AdviceCard key={`${item.market}-${item.selection}-${item.line}`} item={item} data={data} />
+      ))}
+    </div>
   );
 }
 
 function AdviceCard({ item, data }: { item: AdviceItem; data: Analysis }) {
   const [open, setOpen] = useState(false);
   return (
-    <article className="flex flex-col gap-2 rounded-xl border p-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="font-medium">{item.label}</h3>
-        <div className="flex flex-wrap items-center gap-1.5">
-          <ConfidenceBadge level={item.confidence as Confidence} />
-          {item.verdict === "valor" && <ExperimentalBadge />}
-        </div>
+    <article className="flex flex-col gap-3 rounded-xl border bg-card p-4">
+      <div className="flex items-start justify-between gap-3">
+        <h3 className="leading-snug font-medium">{item.label}</h3>
+        <ConfidenceBadge level={item.confidence as Confidence} />
       </div>
-      <ProbabilityBar probability={item.probability} />
+      {item.verdict === "valor" && <ExperimentalBadge />}
+      <ProbabilityBar probability={item.probability} large />
       <p className="text-sm">{item.price_comment}</p>
       {item.reasons.length > 0 && (
-        <ul className="flex flex-col gap-1 text-sm">
+        <ul className="flex flex-col gap-1.5 border-t pt-3 text-sm text-muted-foreground">
           {item.reasons.map((reason) => (
             <ReasonLine key={reason.text} reason={reason} />
           ))}
@@ -468,8 +547,14 @@ function AdviceCard({ item, data }: { item: AdviceItem; data: Analysis }) {
           {w}
         </p>
       ))}
-      <div>
-        <Button type="button" variant="ghost" size="sm" onClick={() => setOpen((v) => !v)}>
+      <div className="mt-auto pt-1">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          aria-expanded={open}
+          onClick={() => setOpen((v) => !v)}
+        >
           <NotebookPen aria-hidden />
           Registrar en papel
         </Button>
@@ -527,30 +612,40 @@ function ReasonLine({ reason }: { reason: Reason }) {
 
 function ConfidenceBadge({ level }: { level: Confidence }) {
   return (
-    <Badge
-      variant={level === "baja" ? "outline" : "secondary"}
-      className={cn(level === "baja" && "text-muted-foreground")}
+    <span
+      className={cn(
+        "inline-flex shrink-0 items-center gap-1 text-xs whitespace-nowrap",
+        level === "baja" ? "text-muted-foreground" : "text-foreground",
+      )}
     >
-      <Gauge aria-hidden />
+      <Gauge aria-hidden className="size-3.5 text-muted-foreground" />
       {CONFIDENCE_LABEL[level]}
-    </Badge>
+    </span>
   );
 }
 
-function ProbabilityBar({ probability }: { probability: number }) {
+function ProbabilityBar({ probability, large = false }: { probability: number; large?: boolean }) {
   return (
-    <div className="flex items-center gap-2">
+    <div className={cn("flex items-center gap-3", large && "flex-row-reverse")}>
       <div
         role="meter"
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={Math.round(probability * 100)}
         aria-label="Probabilidad del modelo"
-        className="h-2 flex-1 overflow-hidden rounded-full bg-muted"
+        className="h-1.5 flex-1 overflow-hidden rounded-full bg-track"
       >
-        <div className="h-full bg-primary" style={{ width: `${probability * 100}%` }} />
+        <div
+          className="h-full rounded-full bg-primary"
+          style={{ width: `${probability * 100}%` }}
+        />
       </div>
-      <span className="w-12 text-right text-sm font-medium tabular-nums">
+      <span
+        className={cn(
+          "num text-right font-semibold",
+          large ? "min-w-14 text-2xl tracking-tight" : "w-11 text-sm",
+        )}
+      >
         {pct(probability, 0)}
       </span>
     </div>
@@ -560,9 +655,9 @@ function ProbabilityBar({ probability }: { probability: number }) {
 // ------------------------------------------------------------------------------ form
 
 const RESULT_STYLE: Record<FormMatch["result"], string> = {
-  W: "bg-positive text-white",
-  D: "bg-muted-foreground/70 text-white",
-  L: "bg-negative text-white",
+  W: "bg-positive-soft text-positive",
+  D: "bg-muted text-muted-foreground",
+  L: "bg-negative-soft text-negative",
 };
 const RESULT_LABEL: Record<FormMatch["result"], string> = { W: "V", D: "E", L: "D" };
 
@@ -570,12 +665,12 @@ function FormPanel({ data }: { data: Analysis }) {
   const h2h = data.form.h2h;
   return (
     <Panel title="Forma reciente" icon={History}>
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-8 md:grid-cols-2">
         <TeamFormCard form={data.form.home} />
         <TeamFormCard form={data.form.away} />
       </div>
-      <details className="mt-4 rounded-lg border p-3 text-sm">
-        <summary className="cursor-pointer font-medium">
+      <details className="mt-5 border-t pt-4 text-sm">
+        <summary className="cursor-pointer font-medium text-muted-foreground hover:text-foreground">
           Enfrentamientos directos ({h2h.matches.length})
         </summary>
         <p className="mt-2 text-xs text-muted-foreground">{h2h.note}</p>
@@ -615,7 +710,7 @@ function TeamFormCard({ form }: { form: TeamForm }) {
               key={`${m.date}-${m.opponent}`}
               title={`${m.date} · ${m.competition} · ${m.venue === "home" ? "local" : "visita"} vs ${m.opponent} ${m.goals_for}-${m.goals_against}`}
               className={cn(
-                "flex size-8 items-center justify-center rounded-md text-xs font-semibold",
+                "flex size-7 items-center justify-center rounded-md text-xs font-semibold",
                 RESULT_STYLE[m.result],
               )}
             >
@@ -628,7 +723,7 @@ function TeamFormCard({ form }: { form: TeamForm }) {
           ))}
         </ol>
       )}
-      <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+      <dl className="grid grid-cols-[1fr_auto] gap-x-4 text-sm [&>dd]:border-b [&>dd]:py-1.5 [&>dt]:border-b [&>dt]:py-1.5">
         <Stat
           label="Goles a favor / en contra"
           value={`${num(s.goals_for_avg)} / ${num(s.goals_against_avg)}`}
@@ -660,7 +755,7 @@ function Stat({ label, value }: { label: string; value: string }) {
   return (
     <>
       <dt className="text-muted-foreground">{label}</dt>
-      <dd className="text-right font-medium tabular-nums">{value}</dd>
+      <dd className="num text-right font-medium">{value}</dd>
     </>
   );
 }
@@ -674,11 +769,11 @@ function num(value: number | null | undefined): string {
 function MarketsPanel({ data }: { data: Analysis }) {
   return (
     <Panel title="Mercados" icon={ListChecks}>
-      <p className="mb-3 text-xs text-muted-foreground">
+      <p className="mb-4 text-xs text-muted-foreground">
         Probabilidad del modelo, cuota justa (1/p), mejor cuota disponible y EV. Los mercados de
         confianza baja son solo información. {EXPERIMENTAL_LABEL}.
       </p>
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col divide-y border-y">
         {data.markets.map((market) => (
           <MarketGroupTable
             key={market.market}
@@ -707,17 +802,20 @@ function MarketGroupTable({
     ? [...market.selections].sort((a, b) => (b.ev ?? -Infinity) - (a.ev ?? -Infinity))
     : market.selections;
   return (
-    <details open={open} className="group rounded-lg border">
-      <summary className="flex cursor-pointer items-center justify-between gap-2 px-3 py-2 font-medium">
+    <details open={open} className="group">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-2 py-3 font-medium [&::-webkit-details-marker]:hidden">
         <span>{market.name || MARKET_LABEL[market.market]}</span>
-        <ChevronDown aria-hidden className="size-4 transition-transform group-open:rotate-180" />
+        <span className="flex items-center gap-2 text-xs font-normal text-muted-foreground">
+          <span className="num">{market.selections.length}</span>
+          <ChevronDown aria-hidden className="size-4 transition-transform group-open:rotate-180" />
+        </span>
       </summary>
-      <div className="flex justify-end px-3">
+      <div className="flex justify-end">
         <Button type="button" variant="ghost" size="sm" onClick={() => setSortByEv((v) => !v)}>
           Ordenar por {sortByEv ? "probabilidad" : "EV"}
         </Button>
       </div>
-      <Table>
+      <Table className="mb-3">
         <TableHeader>
           <TableRow>
             <TableHead>Selección</TableHead>
@@ -769,24 +867,31 @@ function SelectionRow({
         <TableCell>
           <ProbabilityBar probability={s.probability} />
         </TableCell>
-        <TableCell className="text-right tabular-nums">{fmtOdds(s.fair_odds)}</TableCell>
-        <TableCell className="text-right tabular-nums">
+        <TableCell className="num text-right">{fmtOdds(s.fair_odds)}</TableCell>
+        <TableCell className="num text-right">
           {s.best_odds ? (
             <>
               {fmtOdds(s.best_odds)}
               <span className="block text-xs text-muted-foreground">{s.bookmaker}</span>
             </>
           ) : (
-            <span className="text-xs">sin cuota</span>
+            <span className="text-xs text-muted-foreground">sin cuota</span>
           )}
         </TableCell>
         <TableCell className="text-right">
-          <EvValue ev={s.ev} />
+          {s.ev === null ? (
+            <span className="text-muted-foreground">
+              <span aria-hidden>—</span>
+              <span className="sr-only">EV sin cuota</span>
+            </span>
+          ) : (
+            <EvValue ev={s.ev} bare />
+          )}
         </TableCell>
         <TableCell>
           <ConfidenceBadge level={s.confidence as Confidence} />
         </TableCell>
-        <TableCell>
+        <TableCell className="text-right">
           <Button type="button" variant="ghost" size="sm" onClick={onRegister}>
             <NotebookPen aria-hidden />
             Registrar
