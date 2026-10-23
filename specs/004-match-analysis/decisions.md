@@ -332,3 +332,24 @@ Formato:
 - **Test de concordancia.** Toda selección que acepta el dominio (`SELECTIONS`, `LINE_MARKETS`) se inserta sin error. Así la base y el dominio no pueden separarse sin que falle un test.
 - **Nota.** `_parse_score` del dominio es más permisivo que la API (acepta `"100-0"`). No se toca: la API y la base cierran ese camino.
 
+## 2026-10-22 — I03: API del análisis endurecida
+- **Parámetros con los tipos de `api/validation.py`**, como el resto de la API:
+  - `TeamQuery` (nuevo) para `q`, `home` y `away`;
+  - `MatchId` en la consulta y en la ruta;
+  - `LeagueCode` para `competition` y `ApiDate` para `date`;
+  - `Kickoff` (nuevo, ISO 8601) para `kickoff`.
+
+  Los patrones son algo más amplios que el catálogo: un equipo bien formado pero desconocido sigue llegando al caso de uso y da su `404`.
+- **Trampa de FastAPI encontrada.** Con FastAPI 0.141, `home: TeamQuery = Query()` descarta en silencio las restricciones del tipo `Annotated`: `q=m` daba 200. `home: TeamQuery`, sin `Query()`, las conserva. Para que no vuelva a pasar en ninguna ruta, un test nuevo (`test_every_string_parameter_is_bounded`) recorre el OpenAPI y exige a cada texto de consulta o de ruta un patrón (o lista cerrada) y una longitud máxima. Reintroducir la trampa hace fallar ese test, que señala la ruta.
+- **422 sin eco.**
+  - El `match_id` con una fecha que no existe en el calendario usa `invalid_parameter`, un ayudante nuevo con el mismo formato que los errores de validación. También lo usa ya `ordered_period`.
+  - `MATCH_TEAMS_MISMATCH` deja de devolver el `match_id` en `details`.
+  - `NO_HISTORY` y `InvalidMatchIdError` dejan de devolver `str(exc)`, porque su texto podía llevar la competición o el `match_id` recibidos.
+  - El `404 TEAM_NOT_FOUND` conserva el nombre buscado. Es el mismo criterio que el `TEAM_NOT_FOUND` de la spec 001, y el nombre ya pasó el patrón (sin control ni `<>`). El frontend lo muestra en su mensaje.
+- **Sin `Any`.** El ayudante `_call(fn, *args: Any)` pasa a ser un gestor de contexto (`_domain_errors`). Las llamadas a los casos de uso quedan tipadas de punta a punta. `AnalysisApi` ya era un protocolo tipado desde I01.
+- **Parámetros desconocidos en la consulta.** No hay cuerpos de entrada en estas rutas, así que `extra="forbid"` no aplica. Un parámetro de consulta desconocido se ignora, igual que en el resto de la API desde la spec 003, y no se cambia ese criterio solo para estas rutas.
+- **Tests negativos.**
+  - Las rutas nuevas ya estaban en la cobertura genérica de `test_route_access` (sin credenciales, clave errónea, cookie falsificada y sesión sin CSRF). Un test fija además su clasificación (cinco lecturas y una escritura).
+  - En `test_api_003.py`: entrada inválida de cada ruta sin eco, refresco que valida antes de gastar créditos y `413` con cuerpo grande sin gastar créditos.
+  - Mutaciones comprobadas: volver a cada eco, a `str` en la ruta o a `= Query()` hace fallar un test.
+

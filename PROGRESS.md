@@ -340,4 +340,8 @@ Plan: [`specs/004-match-analysis/integration.md`](specs/004-match-analysis/integ
 - 2026-10-22 · I02 · Migración 0010 con cuatro CHECK sobre bets: mercado del catálogo, outcome si y solo si es 1X2, selecciones por mercado y líneas válidas (medias en goles, enteras en hándicap).
   - Valida antes de alterar: aborta listando rowids, sin valores y sin cambiar nada.
   - Tests nuevos: filas imposibles rechazadas, concordancia con el dominio y manipulación directa detectada por verify-integrity. Mutaciones comprobadas.
+- 2026-10-22 · I03 · API del análisis endurecida.
+  - Cada parámetro tiene patrón y longitud (TeamQuery, MatchId, LeagueCode, ApiDate, Kickoff), y los 422 ya no repiten la entrada (match_id, NO_HISTORY, MATCH_TEAMS_MISMATCH).
+  - Encontrada la trampa de FastAPI `x: Tipo = Query()`, que pierde las restricciones; un test sobre el OpenAPI la vigila en toda la API.
+  - Tests negativos por ruta: entrada inválida sin eco, sin gastar créditos y 413. Contrato regenerado.
 

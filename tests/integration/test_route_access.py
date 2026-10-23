@@ -179,3 +179,17 @@ def test_client_identity_groups_an_ipv6_prefix(host: str, identity: str) -> None
 
 def test_client_identity_without_a_connection_address() -> None:
     assert client_ip({"client": None}) == "unknown"
+
+
+def test_match_analysis_routes_are_behind_the_same_gate() -> None:
+    """Spec 004 (I03): the routes from the Sebastian branch are private; the refresh spends
+    credits, so it is a write (session + CSRF, or X-API-Key)."""
+    reads = {
+        ("GET", "/api/v1/teams/search"),
+        ("GET", "/api/v1/analysis/fixture"),
+        ("GET", "/api/v1/analysis"),
+        ("GET", "/api/v1/analysis/{match_id}/odds/estimate"),
+        ("GET", "/api/v1/markets/calibration"),
+    }
+    assert reads <= set(_private(Access.READ))
+    assert ("POST", "/api/v1/analysis/{match_id}/odds/refresh") in _private(Access.WRITE)

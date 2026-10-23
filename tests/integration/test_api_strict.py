@@ -5,6 +5,7 @@ request id and the trace only in the log)."""
 from __future__ import annotations
 
 import logging
+import re
 from collections.abc import Iterator
 from types import SimpleNamespace
 from typing import Any
@@ -200,6 +201,33 @@ def test_prediction_fields_are_checked(client: TestClient, field: str, value: An
 )
 def test_query_and_path_parameters_are_checked(client: TestClient, path: str) -> None:
     _validation(client.get(path, headers=AUTH))
+
+
+def _string_schemas(schema: dict[str, Any]) -> Iterator[dict[str, Any]]:
+    for option in schema.get("anyOf", [schema]):
+        if option.get("type") == "string" and "format" not in option:
+            yield option
+
+
+def test_every_string_parameter_is_bounded() -> None:
+    """Spec 004 (I03): every query or path string declares a pattern (or a closed list) and a
+    maximum length. Guards a FastAPI trap: ``x: Constrained = Query()`` silently drops the
+    constraints of the Annotated type (``x: Constrained`` keeps them)."""
+    closed = re.compile(r"^\^\([\w|]+\)\$$")  # "^(real|paper|all)$" bounds its own length
+    loose = []
+    for path, operations in _app().openapi()["paths"].items():
+        for method, operation in operations.items():
+            for parameter in operation.get("parameters", []):
+                if parameter["in"] not in ("query", "path"):
+                    continue  # credentials headers: compared in constant time, never parsed
+                for schema in _string_schemas(parameter["schema"]):
+                    pattern = schema.get("pattern", "")
+                    bounded = "enum" in schema or (
+                        bool(pattern) and ("maxLength" in schema or closed.match(pattern))
+                    )
+                    if not bounded:
+                        loose.append(f"{method.upper()} {path} {parameter['name']}")
+    assert loose == []
 
 
 @pytest.mark.parametrize("bet_id", ["0", "-1", str(2**31), "abc"])

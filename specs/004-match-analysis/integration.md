@@ -77,7 +77,7 @@ Una a la vez: implementar, tests (incluidos los negativos), `lint` y `test` en v
     - `outcome` obligatorio si y solo si `market = 'h2h'`.
   - La migración valida antes de alterar y nunca corrige en silencio.
   - La auditoría y `verify-integrity` incluyen `market`, `selection` y `line`, con un test de manipulación directa.
-- [ ] **I03** API del análisis endurecida.
+- [x] **I03** API del análisis endurecida.
   - Parámetros con patrón y longitud. Esquemas de entrada con `extra="forbid"`.
   - Un 422 sin eco de los valores, y los errores nuevos con el formato del contrato.
   - El servicio de análisis tipado en `ServicesApi`, sin `Any`.

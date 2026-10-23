@@ -37,6 +37,17 @@ BookmakerKey = Annotated[
     str, StringConstraints(min_length=1, max_length=40, pattern=r"^[a-z0-9_]+$")
 ]
 TeamName = Annotated[str, StringConstraints(min_length=1, max_length=60, pattern=_NO_CONTROL)]
+# a team typed in the match analysis (spec 004): at least two characters to search
+TeamQuery = Annotated[str, StringConstraints(min_length=2, max_length=60, pattern=_NO_CONTROL)]
+# ISO 8601 date and time, as find_fixture returns it ("2026-10-28T20:00:00+00:00")
+Kickoff = Annotated[
+    str,
+    StringConstraints(
+        min_length=16,
+        max_length=32,
+        pattern=r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,6})?)?(Z|[+-]\d{2}:\d{2})?$",
+    ),
+]
 Note = Annotated[str, StringConstraints(max_length=500, pattern=_NOTE_TEXT)]
 Currency = Annotated[str, StringConstraints(min_length=3, max_length=3, pattern=r"^[A-Z]{3}$")]
 
@@ -55,12 +66,17 @@ class StrictInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
+def invalid_parameter(loc: list[str], msg: str) -> ApiError:
+    """A 422 found after the type checks, in the same shape and, like them, without the value."""
+    return ApiError(
+        422,
+        "VALIDATION_ERROR",
+        "Parámetros de entrada inválidos",
+        {"errors": [{"loc": loc, "msg": msg}]},
+    )
+
+
 def ordered_period(date_from: dt.date | None, date_to: dt.date | None) -> None:
     """``from`` after ``to`` is a client error, not an empty result."""
     if date_from is not None and date_to is not None and date_from > date_to:
-        raise ApiError(
-            422,
-            "VALIDATION_ERROR",
-            "Parámetros de entrada inválidos",
-            {"errors": [{"loc": ["query", "from"], "msg": "Debe ser anterior o igual a 'to'"}]},
-        )
+        raise invalid_parameter(["query", "from"], "Debe ser anterior o igual a 'to'")

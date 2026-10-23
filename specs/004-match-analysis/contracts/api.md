@@ -114,3 +114,21 @@ Devuelve `reports/market_calibration.json`.
 - **Errores del análisis:** además de `404 TEAM_NOT_FOUND`, `422 SAME_TEAM` y `503 RATINGS_UNAVAILABLE`: `422 NO_HISTORY` (equipo sin partidos previos en su liga).
 - **`GET /markets/calibration`:** `{ "leagues": <market_calibration.json>, "europe": <market_calibration_europe.json> | null }`.
 - **`POST /bets`:** `outcome` pasa a ser opcional; `market` (por defecto `h2h`), `selection` y `line`. 1X2 exige `outcome`; los demás mercados, `selection` válida (y `line` donde corresponde); `outcome` con otro mercado → 422. `BetOut` agrega `market`, `selection`, `line` y `outcome` puede ser `null`.
+
+## Integración en la rama `Daniel` (I03, 2026-10-22; ver decisions.md)
+
+Se suma al contrato de seguridad de la spec 003 (`specs/003-security-hardening/contracts/api.md`).
+
+- **Acceso.** Las seis rutas exigen credenciales: sesión o `X-API-Key`. El refresco por evento es una escritura: sesión con `X-CSRF-Token`, o `X-API-Key`.
+- **Parámetros**, con los tipos de `api/validation.py`:
+  - `q`, `home` y `away`: de 2 a 60 caracteres, sin caracteres de control ni `<>`.
+  - `match_id`, en la consulta y en la ruta: el patrón `{competición}-{AAAA-MM-DD}-{slugs}`, hasta 160 caracteres. Si la fecha no existe en el calendario → `422 VALIDATION_ERROR` con `loc` `["query"|"path", "match_id"]`.
+  - `competition`: de 1 a 8 caracteres alfanuméricos.
+  - `date`: entre 2000-01-01 y 2099-12-31.
+  - `kickoff`: fecha y hora ISO 8601, hasta 32 caracteres.
+- **Errores sin eco.**
+  - Un `422` nunca repite lo recibido.
+  - `MATCH_TEAMS_MISMATCH` ya no lleva `details` (antes devolvía el `match_id`).
+  - `NO_HISTORY` lleva un mensaje fijo, porque el texto interno podía contener la competición recibida.
+  - El `404 TEAM_NOT_FOUND` conserva el nombre buscado, igual que el `TEAM_NOT_FOUND` de la spec 001. Es un nombre que ya pasó el patrón.
+- **Cuerpo.** Las rutas no reciben cuerpo. El límite global (`MAX_BODY_BYTES`) responde `413 PAYLOAD_TOO_LARGE` antes de gastar créditos.

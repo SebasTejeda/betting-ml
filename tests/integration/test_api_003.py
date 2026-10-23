@@ -17,6 +17,7 @@ from betting_ml.application.event_odds import EventOddsService
 from betting_ml.application.read_calibration import ReadMarketCalibration
 from betting_ml.config import DEFAULT_MAX_BODY_BYTES
 from betting_ml.container import AnalysisServices
+from betting_ml.ml.models.goal_model import MissingHistoryError
 from tests.unit.test_analyze_match import _service
 
 KEY = "app-test-key-for-the-analysis-routes-0123"
@@ -285,3 +286,127 @@ def test_stale_event_odds_are_flagged(tmp_path: Path) -> None:
     params = {"home": "Real Madrid", "away": "RB Leipzig", "match_id": match_id}
     warnings = client.get("/api/v1/analysis", params=params).json()["match"]["warnings"]
     assert any("actualízalas" in w for w in warnings)
+
+
+# ------------------------------------------------------------------ strict input (I03)
+MATCH_ID = "UCL-2026-10-28-real-madrid-rb-leipzig"
+TEAMS = {"home": "Real Madrid", "away": "RB Leipzig"}
+
+
+def _validation_without_echo(response: Any) -> list[dict[str, Any]]:
+    assert response.status_code == 422, response.text
+    error = response.json()["error"]
+    assert error["code"] == "VALIDATION_ERROR"
+    for item in error["details"]["errors"]:
+        assert set(item) <= {"loc", "msg", "type"}  # never "input" nor "ctx"
+    assert "SECRET" not in response.text
+    return list(error["details"]["errors"])
+
+
+@pytest.mark.parametrize(
+    ("path", "params"),
+    [
+        ("/api/v1/teams/search", {"q": "m"}),
+        ("/api/v1/teams/search", {"q": "SECRET" + "x" * 60}),
+        ("/api/v1/teams/search", {"q": "SECRET<script>"}),
+        ("/api/v1/teams/search", {"q": "SECRET\x00"}),
+        ("/api/v1/teams/search", {}),
+        ("/api/v1/analysis/fixture", {"home": "SECRET\n", "away": "Getafe"}),
+        ("/api/v1/analysis/fixture", {"home": "Real Madrid"}),
+        ("/api/v1/analysis", {**TEAMS, "match_id": "SECRET-ID"}),
+        ("/api/v1/analysis", {**TEAMS, "match_id": "UCL-2026-10-28/../../SECRET"}),
+        ("/api/v1/analysis", {**TEAMS, "competition": "SECRET;DROP"}),
+        ("/api/v1/analysis", {**TEAMS, "competition": "SECRETXYZ"}),
+        ("/api/v1/analysis", {**TEAMS, "kickoff": "SECRET"}),
+        ("/api/v1/analysis", {**TEAMS, "kickoff": "2026-10-28T20:00:00+00:00SECRET"}),
+        ("/api/v1/analysis", {**TEAMS, "date": "1999-01-01"}),
+        ("/api/v1/analysis", {**TEAMS, "min_edge": "-0.1"}),
+        ("/api/v1/analysis/SECRET/odds/estimate", {}),
+    ],
+)
+def test_analysis_inputs_are_checked_without_echo(
+    client: TestClient, path: str, params: dict[str, str]
+) -> None:
+    _validation_without_echo(client.get(path, params=params))
+
+
+def test_a_match_id_with_an_impossible_date_is_422_without_echo(tmp_path: Path) -> None:
+    client, odds = _client(tmp_path)
+    bad = "UCL-2026-13-45-real-madrid-rb-leipzig"  # well formed, not a day
+    errors = _validation_without_echo(
+        client.get("/api/v1/analysis", params={**TEAMS, "match_id": bad})
+    )
+    assert errors == [{"loc": ["query", "match_id"], "msg": "La fecha del match_id no existe"}]
+    response = client.post(f"/api/v1/analysis/{bad}/odds/refresh", params=TEAMS)
+    assert _validation_without_echo(response)[0]["loc"] == ["path", "match_id"]
+    assert "2026-13-45" not in response.text
+    assert odds.calls == 0
+
+
+@pytest.mark.parametrize(
+    ("match_id", "params"),
+    [
+        ("SECRET", TEAMS),
+        ("UCL-2026-10-28-" + "a" * 150, TEAMS),
+        (MATCH_ID, {"home": "SECRET<b>", "away": "RB Leipzig"}),
+        (MATCH_ID, {"home": "Real Madrid"}),
+    ],
+)
+def test_refresh_inputs_are_checked_before_spending_credits(
+    tmp_path: Path, match_id: str, params: dict[str, str]
+) -> None:
+    client, odds = _client(tmp_path)
+    _validation_without_echo(
+        client.post(f"/api/v1/analysis/{match_id}/odds/refresh", params=params)
+    )
+    assert odds.calls == 0
+
+
+def test_teams_mismatch_does_not_repeat_the_match_id(client: TestClient) -> None:
+    other = "UCL-2026-10-28-barcelona-psg"
+    for response in (
+        client.get("/api/v1/analysis", params={**TEAMS, "match_id": other}),
+        client.post(f"/api/v1/analysis/{other}/odds/refresh", params=TEAMS),
+    ):
+        assert response.status_code == 422
+        error = response.json()["error"]
+        assert error["code"] == "MATCH_TEAMS_MISMATCH" and error["details"] == {}
+        assert "barcelona" not in response.text
+
+
+def test_no_history_answers_without_the_text_of_the_error() -> None:
+    """Its text can carry the competition received: the 422 keeps only a fixed message."""
+
+    def no_history(*args: object, **kwargs: object) -> None:
+        raise MissingHistoryError("no SECRET-COMPETITION history before 2026-10-22")
+
+    analysis = AnalysisServices(
+        analyze=lambda: SimpleNamespace(analyze=no_history),  # type: ignore[arg-type,return-value]
+        event_odds=lambda: None,  # type: ignore[arg-type,return-value]
+        event_odds_prices=lambda match_id: ({}, None),
+        calibration=None,  # type: ignore[arg-type]
+    )
+    client = TestClient(create_app(_stub(KEY, analysis)), headers=AUTH)
+    response = client.get("/api/v1/analysis", params=TEAMS)
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "NO_HISTORY"
+    assert "SECRET" not in response.text
+
+
+def test_refresh_with_a_large_body_is_413_before_spending_credits(tmp_path: Path) -> None:
+    client, odds = _client(tmp_path)
+    response = client.post(
+        f"/api/v1/analysis/{MATCH_ID}/odds/refresh",
+        params=TEAMS,
+        content=b"x" * (DEFAULT_MAX_BODY_BYTES + 1),
+    )
+    assert response.status_code == 413
+    assert response.json()["error"]["code"] == "PAYLOAD_TOO_LARGE"
+    assert odds.calls == 0
+
+
+def test_well_formed_unknown_teams_still_reach_the_use_case(client: TestClient) -> None:
+    """Patterns are wider than the catalog: an unknown but well-formed team is a 404."""
+    response = client.get("/api/v1/analysis/fixture", params={"home": "Nobody FC", "away": "X Y"})
+    assert response.status_code == 404
+    assert response.json()["error"]["code"] == "TEAM_NOT_FOUND"
