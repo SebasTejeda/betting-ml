@@ -7,6 +7,8 @@ on it is settled can never disagree: probability = Σ M over the "won" cells, an
 
 from __future__ import annotations
 
+import math
+import re
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any
@@ -16,6 +18,10 @@ import numpy.typing as npt
 
 MAX_GOALS = 10
 TOP_CORRECT_SCORES = 5
+# Same bounds as the CHECK constraints on ``bets`` (migration 0010): goal lines 0.5 … 9.5,
+# handicap −10 … 10, scores of one or two ASCII digits per team.
+MAX_LINE = 10
+SCORE = re.compile(r"[0-9]{1,2}-[0-9]{1,2}")
 
 FloatArray = npt.NDArray[np.float64]
 
@@ -94,16 +100,10 @@ def normalize_matrix(matrix: Any, max_goals: int = MAX_GOALS) -> FloatArray:
 
 
 def _parse_score(selection: str) -> tuple[int, int]:
-    try:
-        home, away = selection.split("-")
-        h, a = int(home), int(away)
-    except ValueError as exc:
-        raise InvalidSelectionError(
-            f"correct score must look like '2-1', got {selection!r}"
-        ) from exc
-    if h < 0 or a < 0:
-        raise InvalidSelectionError(f"invalid correct score {selection!r}")
-    return h, a
+    if not isinstance(selection, str) or not SCORE.fullmatch(selection):
+        raise InvalidSelectionError(f"correct score must look like '2-1', got {selection!r}")
+    home, away = selection.split("-")
+    return int(home), int(away)
 
 
 def validate_selection(market: Market | str, selection: str, line: float | None) -> Market:
@@ -120,11 +120,13 @@ def validate_selection(market: Market | str, selection: str, line: float | None)
     if mk in LINE_MARKETS:
         if line is None:
             raise InvalidSelectionError(f"{mk.value} needs a line")
+        if not math.isfinite(float(line)):
+            raise InvalidSelectionError(f"{mk.value} line must be a finite number")
         if mk is Market.EUROPEAN_HANDICAP:
-            if float(line) != int(line):
-                raise InvalidSelectionError("european handicap lines are whole numbers")
-        elif float(line) <= 0 or (float(line) * 2) % 2 != 1:
-            raise InvalidSelectionError("goal lines must be positive half lines (0.5, 1.5, …)")
+            if float(line) != int(line) or abs(float(line)) > MAX_LINE:
+                raise InvalidSelectionError("european handicap lines are whole numbers, −10 … 10")
+        elif not 0 < float(line) < MAX_LINE or (float(line) * 2) % 2 != 1:
+            raise InvalidSelectionError("goal lines must be half lines from 0.5 to 9.5")
     elif line is not None:
         raise InvalidSelectionError(f"{mk.value} takes no line")
     return mk

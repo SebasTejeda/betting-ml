@@ -339,3 +339,71 @@ def test_a_response_that_echoes_the_key_is_cached_without_it(tmp_path: Path) -> 
     service.refresh(*REFRESH, DAY)
     cached = (tmp_path / "event_odds" / f"{REFRESH[0]}.json").read_text(encoding="utf-8")
     assert "secret-key-0123456789" not in cached and "apiKey=***" in cached
+
+
+# ------------------------------------------------ integration I08: one balance for both consumers
+class _Recorder:
+    def __init__(self, fails: bool = False) -> None:
+        self.calls: list[tuple[int, int, str]] = []
+        self.fails = fails
+
+    def __call__(self, remaining: int, used: int, actor: str) -> None:
+        self.calls.append((remaining, used, actor))
+        if self.fails:
+            raise RuntimeError("database is locked")
+
+
+def _refresh(service: EventOddsService, actor: str = "session") -> Any:
+    return service.refresh(
+        "UCL-2026-10-28-real-madrid-rb-leipzig",
+        "UCL",
+        "Real Madrid",
+        "RB Leipzig",
+        date(2026, 10, 28),
+        actor=actor,
+    )
+
+
+def test_a_paid_refresh_records_the_balance_and_a_cached_one_does_not(tmp_path: Path) -> None:
+    recorder = _Recorder()
+    service = _service(tmp_path, _Client(remaining=394))
+    service.record_credits = recorder
+    _refresh(service)
+    assert recorder.calls == [(394, 6, "session")]
+    _refresh(service)  # from the cache: nothing spent, nothing recorded
+    assert recorder.calls == [(394, 6, "session")]
+
+
+def test_a_failed_paid_call_still_records_what_the_api_reported(tmp_path: Path) -> None:
+    class _Failing(_Client):
+        last_credits = Credits(361, 39, 6)
+
+        def event_odds(self, sport_key: str, event_id: str, markets: list[str]) -> OddsResponse:
+            raise RuntimeError("502 after being charged")
+
+    recorder = _Recorder()
+    service = _service(tmp_path, _Failing())
+    service.record_credits = recorder
+    with pytest.raises(RuntimeError, match="502"):
+        _refresh(service)
+    assert recorder.calls == [(361, 6, "session")]
+
+
+def test_a_failure_to_record_never_loses_the_paid_answer(tmp_path: Path) -> None:
+    recorder = _Recorder(fails=True)
+    service = _service(tmp_path, _Client(remaining=394))
+    service.record_credits = recorder
+    result = _refresh(service)
+    assert not result.from_cache and recorder.calls  # tried, failed, logged
+    assert service.prices("UCL-2026-10-28-real-madrid-rb-leipzig")[0]  # the cache was written
+
+
+def test_a_cache_dated_in_the_future_is_not_fresh(tmp_path: Path) -> None:
+    client = _Client(remaining=394)
+    now = [datetime(2026, 10, 27, 12, tzinfo=UTC)]
+    service = _service(tmp_path, client, clock=lambda: now[0])
+    _refresh(service)
+    now[0] -= timedelta(hours=2)  # the clock went back: the file now looks two hours ahead
+    again = _refresh(service)
+    assert not again.from_cache
+    assert sum(call.startswith("odds:") for call in client.calls) == 2

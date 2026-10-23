@@ -10,3 +10,7 @@ paths = [
   '''(^|/)frontend/dist/''',
   '''(^|/)__pycache__/''',  # bytecode of the tests' fake secrets (never committed)
 ]
+# Exact fake values of the tests, never real keys (one entry each, never a pattern).
+regexes = [
+  '''^secret-key-0123456789$''',  # tests/unit/test_event_odds.py (spec 004, I04)
+]

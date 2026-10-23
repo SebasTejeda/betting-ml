@@ -6,13 +6,16 @@ from __future__ import annotations
 
 import gzip
 import json
-from collections.abc import Iterator
+import socket
+import threading
+import time
 from datetime import date
 from pathlib import Path
 
 import httpx
 import pytest
 import requests
+import urllib3
 
 from betting_ml.adapters.clubelo import ClubEloSource
 from betting_ml.adapters.http import Download, DownloadError, DownloadTooLargeError, HttpClient
@@ -25,22 +28,28 @@ ELO_SAMPLE = FIXTURES / "clubelo" / "2023-09-18.csv"
 
 
 class _Streamed:
-    """A streamed requests.Response: counts the chunks read and whether it was closed."""
+    """A streamed requests.Response whose ``raw.read1`` hands out one network read per call
+    (``b""`` at the end): counts the reads and whether it was closed."""
 
-    def __init__(self, chunks: list[bytes], headers: dict[str, str] | None = None) -> None:
-        self.chunks = chunks
+    def __init__(
+        self, chunks: list[bytes | Exception], headers: dict[str, str] | None = None
+    ) -> None:
+        self.chunks = iter(chunks)
         self.headers = headers or {}
         self.status_code = 200
         self.read = 0
         self.closed = False
+        self.raw = self
 
     def raise_for_status(self) -> None:
         return None
 
-    def iter_content(self, chunk_size: int) -> Iterator[bytes]:
-        for chunk in self.chunks:
-            self.read += 1
-            yield chunk
+    def read1(self, amt: int, decode_content: bool = True) -> bytes:
+        chunk = next(self.chunks, b"")
+        if isinstance(chunk, Exception):
+            raise chunk
+        self.read += 1 if chunk else 0
+        return chunk
 
     def close(self) -> None:
         self.closed = True
@@ -96,6 +105,43 @@ def test_a_body_that_drips_past_the_deadline_is_refused() -> None:
     with pytest.raises(DownloadError, match=r"not complete after 120.0s"):
         http.get("https://x/slow")
     assert response.read == 3 and len(session.kwargs) == 1
+
+
+def test_a_read_timeout_inside_the_body_is_a_network_error_and_retried() -> None:
+    timeout = urllib3.exceptions.ReadTimeoutError(None, "x", "read timed out")  # type: ignore[arg-type]
+    cut = _Streamed([b"a,b\n", timeout])
+    http, session = _client([cut, _Streamed([b"a,b\n1,2\n"])])
+    assert http.get("https://x/file.csv").content == b"a,b\n1,2\n"
+    assert len(session.kwargs) == 2 and cut.closed
+
+
+def test_a_real_server_dripping_bytes_is_cut_at_the_deadline() -> None:
+    """A real socket, not a double: every byte arrives well within ``timeout``, so only the
+    deadline can stop it (reading whole chunks used to wait for the full body)."""
+    server = socket.create_server(("127.0.0.1", 0))
+    port = server.getsockname()[1]
+
+    def drip() -> None:
+        connection, _ = server.accept()
+        with connection:
+            connection.recv(4096)
+            connection.sendall(b"HTTP/1.1 200 OK\r\nContent-Length: 40\r\n\r\n")
+            try:
+                for _ in range(40):
+                    time.sleep(0.1)
+                    connection.sendall(b"x")
+            except OSError:  # the client hung up at its deadline
+                pass
+
+    worker = threading.Thread(target=drip, daemon=True)
+    worker.start()
+    http = HttpClient(retries=1, timeout=2.0, deadline_seconds=0.5)
+    started = time.monotonic()
+    with pytest.raises(DownloadError, match=r"not complete after 0.5s"):
+        http.get(f"http://127.0.0.1:{port}/slow")
+    assert time.monotonic() - started < 2.0  # the whole body would take 4 s
+    server.close()
+    worker.join(timeout=5)
 
 
 # ------------------------------------------------------------------ files written to disk

@@ -224,6 +224,7 @@ Especificación en [`specs/003-security-hardening/`](specs/003-security-hardenin
   - Auditoría de solo inserción encadenada con SHA-256.
   - Copias verificadas con `.sha256`.
   - Hash de los modelos antes de cargarlos.
+- **Fuentes externas y créditos (spec 004).** Descargas con tope de tamaño y de tiempo; un solo saldo de créditos de The Odds API para el comparador y el análisis, con su reserva y su cupo por hora.
 
 | make | sin make | Qué hace |
 |---|---|---|

@@ -38,6 +38,7 @@ Desde la raíz del repositorio:
 # 1. Datos y modelos. Cada model.joblib queda con su SHA-256 en metadata.json.
 uv sync
 uv run betting-ml data
+uv run betting-ml data-europe      # Champions/Europa League y Elo entre ligas (página Análisis)
 uv run betting-ml train-prod
 # Si copias modelos entrenados en otra máquina, revísalos y registra su hash una vez:
 #   uv run betting-ml models-rehash
@@ -192,9 +193,12 @@ Si sospechas que algo se filtró:
 
 ```bash
 git pull
+uv run betting-ml data && uv run betting-ml data-europe   # datos al día (opcional)
 (cd frontend && npm ci && npm run build)
 docker compose -f deploy/compose.yaml up -d --build
 ```
+
+- **Migraciones:** la API aplica las pendientes al arrancar. Sin Docker, `uv run betting-ml db-upgrade`, después de una copia (`betting-ml backup`).
 
 - **Dependencias y acciones de CI:** llegan como PR de Dependabot, y la CI debe estar en verde (job `security` incluido).
 - **Imágenes base:** Dependabot no las actualiza. Para renovar un digest:

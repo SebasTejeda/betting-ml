@@ -330,7 +330,7 @@ Formato:
   - Mutación comprobada: sin la validación previa, la reconstrucción falla con un `IntegrityError` en lugar del mensaje que lista los `rowid`.
 - **Auditoría.** `market`, `selection` y `line` ya formaban parte del estado auditado, porque es la fila entera. Hay un test nuevo de manipulación directa: cambios por SQL que los `CHECK` permiten (otra línea, otra selección, otro mercado válido) los sigue detectando `verify-integrity`.
 - **Test de concordancia.** Toda selección que acepta el dominio (`SELECTIONS`, `LINE_MARKETS`) se inserta sin error. Así la base y el dominio no pueden separarse sin que falle un test.
-- **Nota.** `_parse_score` del dominio es más permisivo que la API (acepta `"100-0"`). No se toca: la API y la base cierran ese camino.
+- **Nota.** `_parse_score` del dominio era más permisivo que la API (aceptaba `"100-0"`). En I08 se alinea con la base: ver esa entrada.
 
 ## 2026-10-22 — I03: API del análisis endurecida
 - **Parámetros con los tipos de `api/validation.py`**, como el resto de la API:
@@ -421,3 +421,27 @@ Formato:
 - **Clave en las URL.** Solo The Odds API lleva clave. Sus errores y logs nombran la ruta y la redactan (`_redact`, I04). Las demás fuentes no usan clave.
 - Mutaciones comprobadas: quitar cada límite, el plazo o la validación de openfootball, o conservar `content-encoding`, hace fallar algún test.
 
+
+## 2026-10-23 — I08: checkpoint y cierre
+- **Revisión `ml-reviewer` sin bloqueantes.** Fuga, holdouts (los locks no se tocan y no se ejecutó ningún modo `-final`), `Decimal`, arquitectura hexagonal, autenticación de todas las rutas, límites US6 en los ocho mercados y claves: correctos. Se corrigieron sus hallazgos importantes y casi todos los menores.
+- **Un solo saldo de créditos de The Odds API.** El refresco por evento guardaba el saldo solo en su caché, así que `/odds/budget`, el auto-refresh y la reserva de la spec 002 no lo veían. Si el último snapshot decía 60 y el análisis gastaba 24, `POST /odds/refresh` calculaba sobre 60 y hacía una llamada de pago por debajo de la reserva.
+  - Ahora cada llamada de pago por evento deja un snapshot solo de créditos, como el sondeo gratuito de la spec 002, auditado como `ODDS_EVENT_CREDITS`. También cuando la llamada falla después de cobrar (se usa `last_credits` de la respuesta).
+  - Si guardar ese snapshot falla, se registra en el log y el refresco sigue: los créditos ya se gastaron y la caché conserva el saldo.
+  - Efecto visible: igual que con el sondeo, la hora de "último refresco" del comparador pasa a ser la de esa llamada.
+  - Tests nuevos: con el `Container` y la base reales, tras un refresco por evento (con éxito o fallido) `RefreshOdds.budget()` ve el saldo nuevo y la spec 002 se niega a gastar por debajo de la reserva. Mutaciones comprobadas: sin el cableado, o sin registrar el saldo de una llamada fallida, fallan tests.
+- **La llamada por evento no se reintenta.** Una respuesta fallida puede haberse cobrado ya (unos 12 créditos), y un refresco ocupa un solo hueco del cupo por hora. `odds()` de la spec 002 sigue reintentando los 5xx: cuesta 1 crédito por región, y su contrato solo prohíbe reintentar los 4xx. Queda así a propósito.
+- **`OddsSourceNotConfiguredError`** (puerto del dominio) sustituye al `ValueError` genérico de "falta `ODDS_API_KEY`". Antes, cualquier `ValueError` (una caché corrupta, por ejemplo) salía como `503 ODDS_API_NOT_CONFIGURED` con el texto de la excepción. Ahora solo la clave ausente da ese 503, con un texto fijo; lo demás es un 500 sin eco.
+- **El dominio rechaza lo mismo que la base.** `validate_selection` aceptaba marcadores de tres cifras o con espacios (`"100-1"`, `" 2-1"`), líneas de goles de 10 o más, hándicaps fuera de −10…10 y líneas `NaN`. Una apuesta registrada desde la CLI o un script llegaba a los `CHECK` de la `0010` y salía como un 500. Ahora usa los mismos límites: marcador de 1 o 2 dígitos ASCII por equipo, goles de 0,5 a 9,5, hándicap entero de −10 a 10, líneas finitas. Un test recorre los casos imposibles de la base y exige que el dominio también los rechace.
+- **Descargas.** `HttpClient` leía con `iter_content`, que espera un bloque entero: un servidor que goteara un byte por `timeout` podía alargar la descarga horas. Ahora lee con `raw.read1`, que vuelve en cuanto llegan bytes, y comprueba el plazo tras cada lectura. Lo prueba un socket real que gotea y se corta a los 0,5 s. Un timeout de lectura dentro del cuerpo pasa a ser un error de red reintentable. El plazo cuenta desde las cabeceras (riesgo aceptado en `SECURITY.md` §3).
+  - `urllib3>=2.2` pasa a ser dependencia directa: `read1(decode_content=)` solo existe en urllib3 2.x, y `requests` admite la 1.26.
+- **Caché del refresco con fecha futura.** Un `fetched_at` adelantado (reloj desfasado, archivo editado) contaba como fresco para siempre. Ahora solo vale si su edad está entre 0 y 30 minutos.
+- **Anotado, sin cambio.** El 404 `EVENT_NOT_FOUND` repite competición y equipos, ya validados por patrón o catálogo, igual que `TEAM_NOT_FOUND`.
+- **`make security` limpio.** ruff S, pip-audit y npm audit sin hallazgos. gitleaks 8.30.1 (zip verificado por SHA-256): 0 fugas en los 168 commits. En el árbol solo marca `.env`, que está ignorado. `.gitleaks.toml` admite un único valor falso exacto de `tests/unit/test_event_odds.py`.
+- **Verificación de punta a punta**, con el script de T022 adaptado, contra una base desechable y credenciales generadas, sin `ODDS_API_KEY`:
+  - **dev y prod, 23/23 cada uno.** Login erróneo y correcto, cookie `HttpOnly` (y `Secure` en prod), análisis Arsenal–Chelsea con varios mercados, CSP, 422 sin eco, estimación de coste, apuesta en papel de Más/Menos 2.5 (403 sin CSRF, 201 con él), apuesta real de BTTS por encima del stake máximo (409 `LIMIT_WARNING` y 201 con `confirm`), línea asiática rechazada (422), resumen por mercado con `X-API-Key`, logout y sesión vieja en 401, `verify-integrity`, `backup`, `restore --yes`, `verify-integrity` otra vez, `sha256sum -c` y ningún secreto en el log.
+  - **Navegador** (Chrome, build de producción con `vite preview` y la CSP aplicada). Login, página Análisis con el análisis completo, consola sin violaciones, `localStorage` y `sessionStorage` vacíos y la cookie invisible para JavaScript. Cierra lo que I06 dejó pendiente.
+- **Despliegue local actualizado** (iniciado el 2026-10-22):
+  - `data` y `data-europe` con los datos al día: 346 partidos de la temporada en curso, frente a 250.
+  - `train-prod`: campeones `E12-lightgbm-2026-10-22` y `E06-logistic-2026-10-22`. No se reevalúa nada ni se toca el holdout: los conteos de entrenamiento (19 837) y holdout (1 752) no cambian, y `TrainProduction` exige el lock completado. Se versiona su `metadata.json`, nunca el `.joblib`.
+  - `data/app.db` está en la `0010`. `verify-integrity` limpio, con copia previa en `data/backups/`.
+- **Documentación.** `SECURITY.md` (fuentes externas, créditos, `ODDS_REFRESH`, riesgo del plazo), README y `docs/deploy.md` (`data-europe`, migraciones sin Docker).

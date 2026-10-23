@@ -50,7 +50,9 @@ Las rutas de Python son relativas a `src/betting_ml/`; las demás, a la raíz de
 | Verificación | `betting-ml verify-integrity` recorre la cadena, compara las apuestas y los ajustes con su último evento, revisa los PRAGMA y comprueba que los triggers sean los originales. | `application/maintenance.py` |
 | Copias | `betting-ml backup`: una copia consistente con la API de backup de SQLite, verificada, con un `.sha256` compatible con `sha256sum -c` y rotación (14 por defecto). `restore` comprueba hash, esquema y cadena antes de reemplazar la base. | `application/maintenance.py` |
 | Modelos | Antes de cargar un `.joblib` se comprueba su SHA-256 contra `metadata.json`. | `adapters/joblib_registry.py` |
-| Logs | JSON con `request_id`, redacción global de secretos y eventos de seguridad (`LOGIN_OK`, `LOGIN_FAILED`, `LOGIN_LOCKED`, `ACCESS_DENIED`, `LOGOUT`, `SETTINGS_CHANGED`…). | `logging_config.py` |
+| Fuentes externas | Toda descarga (football-data, Understat, fixtures, ClubElo, openfootball) se lee en streaming con un límite de 20 MB y un plazo total de 120 s; The Odds API, con 5 MB y 60 s, contando el gzip ya descomprimido. Superar un límite no se reintenta. Lo descargado se valida antes de escribirse en disco y las rutas de la caché salen de la configuración o de un `match_id` validado. | `adapters/http.py`, `adapters/the_odds_api.py`, `adapters/openfootball.py` |
+| Créditos de The Odds API | Un único saldo para el refresco por liga (spec 002) y por evento (spec 004): cada llamada de pago deja un snapshot con el saldo que informa la API, también si falla después de cobrar. La reserva mínima, el cupo de 6 refrescos de pago por hora y la caché de 30 min valen para las dos. La llamada por evento no se reintenta. La clave se redacta en URL, errores, logs y caché. | `application/refresh_odds.py`, `application/event_odds.py` |
+| Logs | JSON con `request_id`, redacción global de secretos y eventos de seguridad (`LOGIN_OK`, `LOGIN_FAILED`, `LOGIN_LOCKED`, `ACCESS_DENIED`, `LOGOUT`, `SETTINGS_CHANGED`, `ODDS_REFRESH`…). | `logging_config.py` |
 | Cadena de suministro | `make security` (ruff S, pip-audit, npm audit, gitleaks) falla en CI ante cualquier hallazgo. Las acciones de CI se fijan por SHA y las imágenes Docker por digest; hay Dependabot. | `.github/`, `Dockerfile`, `deploy/` |
 | Despliegue | Contenedor no root, raíz de solo lectura, `cap_drop: ALL` y la API sin puerto publicado. Caddy pone TLS y se fía solo de su propio `X-Forwarded-For`. | `deploy/compose.yaml`, `docs/deploy.md` |
 
@@ -62,6 +64,7 @@ Cada control tiene **tests negativos** (el ataque falla) y, en los críticos, un
 - **Sin cifrado en reposo.** La base y las copias no están cifradas. Cifra el disco del servidor y el destino de las copias externas.
 - **Un solo proceso.** El limitador de peticiones y el bloqueo de login viven en memoria. Con varias réplicas o workers dejarían de ser globales: habría que cambiar el adaptador de `RateLimiter`. Reiniciar el proceso los pone a cero.
 - **Un solo usuario.** No hay roles ni cuentas. Si hiciera falta multiusuario, sería una spec nueva.
+- **El plazo total de una descarga cuenta desde que llegan las cabeceras.** Un servidor que las envíe gota a gota, cada una dentro del `timeout`, solo lo limitan los topes de cabeceras de `http.client`. Las fuentes son pocas y conocidas; se acepta.
 - **Las cuotas son autodeclaradas.** Las apuestas hechas en casas externas se registran con la cuota que escribe el dueño. La app no puede comprobarla.
 - Otros puntos menores aceptados, con su motivo, en `specs/003-security-hardening/decisions.md` (entradas T010, T017 y T021).
 

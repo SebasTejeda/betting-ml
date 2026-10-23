@@ -3,7 +3,20 @@ I07): fake responses of the download tests inherit it and only set ``content``."
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+from functools import cached_property
+
+
+class RawBody:
+    """``response.raw``: ``read1`` hands out the body a piece at a time, then ``b""``."""
+
+    def __init__(self, content: bytes) -> None:
+        self._content = content
+        self._at = 0
+
+    def read1(self, amt: int, decode_content: bool = True) -> bytes:
+        piece = self._content[self._at : self._at + amt]
+        self._at += len(piece)
+        return piece
 
 
 class StreamedBody:
@@ -13,9 +26,9 @@ class StreamedBody:
     def headers(self) -> dict[str, str]:
         return {}
 
-    def iter_content(self, chunk_size: int) -> Iterator[bytes]:
-        for start in range(0, len(self.content), chunk_size):
-            yield self.content[start : start + chunk_size]
+    @cached_property
+    def raw(self) -> RawBody:
+        return RawBody(self.content)
 
     def close(self) -> None:
         return None

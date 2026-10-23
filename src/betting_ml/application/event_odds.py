@@ -9,6 +9,10 @@ Integration I04 (spec 004 in the Daniel branch): the paid call also takes a slot
 ODDS_REFRESH_MAX_PER_HOUR quota of spec 003 (``quota``, shared with the spec 002 refresh), only
 right before spending: a cached answer, a low budget or an unknown event costs no slot. Every
 refresh leaves an ``ODDS_REFRESH`` security event with who asked and what it cost.
+
+Integration I08: the balance a paid call reports (also when it fails after being charged) is
+handed to ``record_credits``, which stores it where the spec 002 refresh and ``/odds/budget``
+read it, so both consumers of The Odds API share one balance and one reserve.
 """
 
 from __future__ import annotations
@@ -25,6 +29,8 @@ from typing import Any, Protocol
 
 from betting_ml.application.refresh_odds import OddsBudgetLowError
 from betting_ml.logging_config import security_event
+
+logger = logging.getLogger(__name__)
 
 CACHE_MINUTES = 30
 PriceKey = tuple[str, str, float | None]
@@ -114,6 +120,7 @@ class EventOddsService:
         min_reserve: int,
         aliases: Mapping[str, list[str]] | None = None,
         clock: Callable[[], datetime] = lambda: datetime.now(UTC),
+        record_credits: Callable[[int, int, str], None] | None = None,
     ) -> None:
         self.client = client
         self.cache_dir = cache_dir
@@ -125,6 +132,7 @@ class EventOddsService:
         self.min_reserve = min_reserve
         self.aliases = aliases
         self.clock = clock
+        self.record_credits = record_credits
 
     def _path(self, match_id: str) -> Path:
         """Cache file of a match; the id is validated so it can never leave ``cache_dir``."""
@@ -184,7 +192,8 @@ class EventOddsService:
         cached = self._cached(match_id)
         if cached is not None:
             fetched = datetime.fromisoformat(cached["fetched_at"])
-            if now - fetched < timedelta(minutes=CACHE_MINUTES):
+            # a fetched_at in the future (clock skew, edited file) is not fresh forever
+            if timedelta(0) <= now - fetched < timedelta(minutes=CACHE_MINUTES):
                 result = EventRefresh(
                     match_id, cached["markets"], 0, cached.get("credits_remaining"), fetched, True
                 )
@@ -203,7 +212,11 @@ class EventOddsService:
             raise EventNotFoundError(f"{home} vs {away} ({day}) not found in {sport}")
         if quota is not None:
             quota()  # the last check before spending credits
-        response = client.event_odds(sport, str(event["id"]), self.markets)
+        try:
+            response = client.event_odds(sport, str(event["id"]), self.markets)
+        except Exception:
+            self._record(getattr(client, "last_credits", None), actor)  # may have been charged
+            raise
         credits = response.credits
         payload = {
             "match_id": match_id,
@@ -216,9 +229,21 @@ class EventOddsService:
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         self._path(match_id).write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
         used = credits.last if credits.last is not None else cost.estimated_credits
+        self._record(credits, actor, used)
         return self._logged(
             EventRefresh(match_id, self.markets, used, credits.remaining, now, False), actor
         )
+
+    def _record(self, credits: Any, actor: str, used: int | None = None) -> None:
+        """Hand the reported balance to ``record_credits``; a failure there is logged, never
+        raised: the credits are already spent and the cache file still holds the balance."""
+        remaining = None if credits is None else credits.remaining
+        if self.record_credits is None or remaining is None:
+            return
+        try:
+            self.record_credits(remaining, used if used is not None else credits.last or 0, actor)
+        except Exception:
+            logger.exception("could not store the event refresh credits")
 
     @staticmethod
     def _logged(result: EventRefresh, actor: str) -> EventRefresh:

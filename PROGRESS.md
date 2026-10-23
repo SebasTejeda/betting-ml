@@ -362,3 +362,22 @@ Plan: [`specs/004-match-analysis/integration.md`](specs/004-match-analysis/integ
   - The Odds API: 5 MB y 60 s, con gzip contado ya descomprimido.
   - openfootball valida antes de escribir en disco y no pisa una copia buena.
 
+- 2026-10-23 · I08 · 🔍 Checkpoint y cierre: `ml-reviewer` sin bloqueantes, y sus hallazgos corregidos.
+  - Un solo saldo de créditos: el refresco por evento deja un snapshot auditado (`ODDS_EVENT_CREDITS`), también si falla tras cobrar, y la spec 002 ya no gasta por debajo de la reserva. La llamada por evento no se reintenta.
+  - El dominio rechaza lo mismo que los CHECK de la 0010 (marcadores, líneas, NaN). Solo la falta de `ODDS_API_KEY` da 503, con texto fijo. Las descargas cortan a un servidor que gotea bytes, y una caché con fecha futura ya no es fresca. `urllib3>=2.2` declarada.
+  - `make security` limpio (gitleaks: 0 en 168 commits). De punta a punta, 23/23 en dev y en prod, más el navegador con el build real y la CSP, sin violaciones.
+  - Despliegue local: datos y Europa al día, campeones reentrenados el 2026-10-22, base en la 0010 y `verify-integrity` limpio.
+  - SECURITY.md, README y deploy.md al día. 1350 tests backend (cobertura 98,0 %) y 75 frontend en verde.
+
+## Resumen final (spec 004, integración)
+
+- **Nivel: Excelente.** I01–I08 hechas; el checkpoint no tuvo bloqueantes y el despliegue local está actualizado y verificado. Como en la spec 003, el despliegue con Docker queda para la CI o el primer despliegue real.
+- **Hecho:**
+  - El análisis de partido de la rama `Sebastian` funciona dentro de `Daniel`, con todas sus rutas autenticadas, CSRF en el refresco y entradas estrictas sin eco.
+  - La base tiene `CHECK` y auditoría para los ocho mercados, y el dominio rechaza lo mismo que la base.
+  - Los límites de juego responsable valen en todos los mercados.
+  - The Odds API tiene un solo saldo, una reserva y un cupo por hora para el comparador y el análisis.
+  - Las descargas externas tienen tope de tamaño y de tiempo.
+- **Pendiente para el dueño:**
+  - hacer el `git push` de la rama `Daniel` y revisar la CI;
+  - añadir `ODDS_API_KEY` a `.env` para probar las cuotas por evento con una respuesta real (cuesta unos 12 créditos por partido).

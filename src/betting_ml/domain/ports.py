@@ -18,6 +18,10 @@ if TYPE_CHECKING:
     from betting_ml.domain.entities import Fixture
 
 
+class OddsSourceNotConfiguredError(ValueError):
+    """The paid odds source has no key (ODDS_API_KEY): it cannot be called at all."""
+
+
 @runtime_checkable
 class MatchDataSource(Protocol):
     """Historical results and odds (e.g. football-data.co.uk)."""

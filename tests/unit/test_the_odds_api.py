@@ -15,6 +15,7 @@ from betting_ml.adapters.the_odds_api import (
 )
 from betting_ml.config import load_bookmakers, load_leagues, load_team_aliases
 from betting_ml.domain.entities import Outcome
+from betting_ml.domain.ports import OddsSourceNotConfiguredError
 
 FIXTURES = Path(__file__).parents[1] / "fixtures" / "the_odds_api"
 KEY = "test-secret-key-123"
@@ -145,9 +146,29 @@ def test_client_gives_up_on_network_errors() -> None:
     assert KEY not in str(err.value)
 
 
+def test_the_paid_event_call_is_never_retried() -> None:
+    """Integration I08: a failed event_odds call may already have been charged; one refresh
+    (one quota slot) spends at most one estimate."""
+    calls = {"n": 0}
+
+    def failing(request: httpx.Request) -> httpx.Response:
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise httpx.ReadTimeout("slow")
+        return httpx.Response(502, json={"message": "bad gateway"})
+
+    with pytest.raises(OddsApiError) as err:
+        _client(failing, retries=3).event_odds("soccer_epl", "evt", ["totals"])
+    assert err.value.status == 503 and calls["n"] == 1
+    calls["n"] = 1  # a 5xx is not retried either
+    with pytest.raises(OddsApiError):
+        _client(failing, retries=3).event_odds("soccer_epl", "evt", ["totals"])
+    assert calls["n"] == 2
+
+
 def test_credits_parsing_and_missing_key() -> None:
     assert Credits.from_headers(
         {"x-requests-remaining": "431.0", "x-requests-used": "x"}
     ) == Credits(431, None, None)
-    with pytest.raises(ValueError):
+    with pytest.raises(OddsSourceNotConfiguredError):
         TheOddsApiClient("")

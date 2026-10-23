@@ -98,7 +98,7 @@ Una a la vez: implementar, tests (incluidos los negativos), `lint` y `test` en v
 - [x] **I07** Fuentes externas nuevas (ClubElo, openfootball, cuotas por evento).
   - Timeout y límite de bytes por descarga (era cobertura aplazada de la auditoría T021).
   - Redacción de la clave en las URL y validación de lo que se escribe en disco.
-- [ ] **I08** 🔍 Checkpoint y cierre.
+- [x] **I08** 🔍 Checkpoint y cierre.
   - `ml-reviewer` sobre la integración. `make security` limpio.
   - Verificación de punta a punta en dev y prod: login, Análisis, registro en papel de otro mercado, 409 de límites, `verify-integrity`, backup y restore.
   - `SECURITY.md`, README, `docs/deploy.md` (`data-europe`) y `PROGRESS.md` actualizados.

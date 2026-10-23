@@ -19,6 +19,7 @@ from betting_ml.application.read_calibration import ReadMarketCalibration
 from betting_ml.application.throttle import RateLimits
 from betting_ml.config import DEFAULT_MAX_BODY_BYTES
 from betting_ml.container import AnalysisServices
+from betting_ml.domain.ports import OddsSourceNotConfiguredError
 from betting_ml.ml.models.goal_model import MissingHistoryError
 from tests.unit.test_analyze_match import _service
 
@@ -51,13 +52,16 @@ def _client(
     remaining: int | None = 400,
     with_key: bool = True,
     rate_limits: RateLimits | None = None,
+    failure: Exception | None = None,
 ) -> tuple[TestClient, _OddsClient]:
     analyzer, _, _ = _service()
     odds_client = _OddsClient()
 
     def client_factory() -> _OddsClient:
         if not with_key:
-            raise ValueError("ODDS_API_KEY is not configured")
+            raise OddsSourceNotConfiguredError("ODDS_API_KEY is not configured")
+        if failure is not None:
+            raise failure
         return odds_client
 
     event_odds = EventOddsService(
@@ -216,6 +220,19 @@ def test_event_odds_estimate_refresh_and_prices(tmp_path: Path) -> None:
     assert over25["ev"] == pytest.approx(over25["probability"] * 1.66 - 1)
 
 
+def test_only_a_missing_key_is_reported_as_not_configured(tmp_path: Path) -> None:
+    """Integration I08: any other ValueError (a corrupt cache, a bad date) is a plain 500
+    that repeats nothing, not a 503 ``ODDS_API_NOT_CONFIGURED`` carrying its text."""
+    broken, _ = _client(tmp_path, failure=ValueError("corrupt cache at C:/private/path"))
+    client = TestClient(broken.app, headers=AUTH, raise_server_exceptions=False)
+    r = client.post(
+        "/api/v1/analysis/UCL-2026-10-28-real-madrid-rb-leipzig/odds/refresh",
+        params={"home": "Real Madrid", "away": "RB Leipzig"},
+    )
+    assert r.status_code == 500 and "ODDS_API_NOT_CONFIGURED" not in r.text
+    assert "corrupt cache" not in r.text and "private" not in r.text
+
+
 def test_event_odds_errors(tmp_path: Path) -> None:
     match_id = "UCL-2026-10-28-real-madrid-rb-leipzig"
     params = {"home": "Real Madrid", "away": "RB Leipzig"}
@@ -225,6 +242,7 @@ def test_event_odds_errors(tmp_path: Path) -> None:
     nokey, _ = _client(tmp_path / "nokey", with_key=False)
     r = nokey.post(f"/api/v1/analysis/{match_id}/odds/refresh", params=params, headers=AUTH)
     assert r.status_code == 503 and r.json()["error"]["code"] == "ODDS_API_NOT_CONFIGURED"
+    assert "ODDS_API_KEY is not configured" not in r.text  # fixed text, not the exception's
     disabled, _ = _client(tmp_path / "disabled", app_key="cambia-esto")
     r = disabled.post(f"/api/v1/analysis/{match_id}/odds/refresh", params=params, headers=AUTH)
     assert r.status_code == 503 and r.json()["error"]["code"] == "WRITES_DISABLED"

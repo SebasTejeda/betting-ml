@@ -103,8 +103,9 @@ from betting_ml.config import (
     load_markets,
     load_team_aliases,
 )
+from betting_ml.domain.audit import AuditInfo
 from betting_ml.domain.entities import Outcome
-from betting_ml.domain.journal import QuoteSource
+from betting_ml.domain.journal import OddsSnapshot, QuoteSource
 from betting_ml.ml.models.cross_league import CrossLeagueModel
 from betting_ml.ml.models.goal_model import ScoreMatrixModel
 
@@ -365,6 +366,18 @@ class Container:
             snapshot = self.odds_repository.latest_snapshot(QuoteSource.API)
             return None if snapshot is None else snapshot.credits_remaining
 
+        def record_credits(remaining: int, used: int, actor: str) -> None:
+            # a credits-only snapshot, like the free probe of spec 002 (integration I08)
+            self.odds_repository.save_snapshot(
+                OddsSnapshot(
+                    datetime.now(UTC),
+                    QuoteSource.API,
+                    credits_remaining=remaining,
+                    credits_used=used,
+                ),
+                AuditInfo(actor, "ODDS_EVENT_CREDITS"),
+            )
+
         return EventOddsService(
             client=self.odds_client,
             cache_dir=self.settings.data_path / "cache" / "event_odds",
@@ -377,6 +390,7 @@ class Container:
             credits_remaining=remaining,
             min_reserve=self.settings.odds_min_credits_reserve,
             aliases=aliases,
+            record_credits=record_credits,
         )
 
     def analysis_prices(self, match_id: str) -> dict[PriceKey, tuple[float, str]]:

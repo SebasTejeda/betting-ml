@@ -13,6 +13,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 import requests
+import urllib3
 
 logger = logging.getLogger(__name__)
 
@@ -103,10 +104,18 @@ class HttpClient:
             )
         started = self._clock()
         body = bytearray()
-        for chunk in response.iter_content(CHUNK_BYTES):
-            body += chunk
-            if len(body) > self.max_bytes:
-                raise DownloadTooLargeError(f"GET {url}: more than {self.max_bytes} bytes")
-            if self._clock() - started > self.deadline_seconds:
-                raise DownloadError(f"GET {url}: body not complete after {self.deadline_seconds}s")
+        # ``read1`` returns as soon as some bytes arrive, so the deadline is checked after every
+        # network read; ``iter_content`` waits for a whole chunk, which a server dripping one
+        # byte per ``timeout`` could stretch for hours.
+        try:
+            while chunk := response.raw.read1(CHUNK_BYTES, decode_content=True):
+                body += chunk
+                if len(body) > self.max_bytes:
+                    raise DownloadTooLargeError(f"GET {url}: more than {self.max_bytes} bytes")
+                if self._clock() - started > self.deadline_seconds:
+                    raise DownloadError(
+                        f"GET {url}: body not complete after {self.deadline_seconds}s"
+                    )
+        except urllib3.exceptions.HTTPError as exc:  # a read timeout or a cut connection
+            raise requests.ConnectionError(exc) from exc
         return bytes(body)

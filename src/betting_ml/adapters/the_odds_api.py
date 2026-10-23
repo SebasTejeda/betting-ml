@@ -18,6 +18,7 @@ import pandas as pd
 from betting_ml.adapters.team_names import TeamNameResolver
 from betting_ml.domain.entities import Outcome, make_match_id
 from betting_ml.domain.journal import OddsQuote
+from betting_ml.domain.ports import OddsSourceNotConfiguredError
 
 logger = logging.getLogger(__name__)
 # httpx logs full URLs at INFO, and the API key travels in the query string.
@@ -78,7 +79,7 @@ class TheOddsApiClient:
         clock: Callable[[], float] = time.monotonic,
     ) -> None:
         if not api_key:
-            raise ValueError("ODDS_API_KEY is not configured")
+            raise OddsSourceNotConfiguredError("ODDS_API_KEY is not configured")
         self._api_key = api_key
         self.regions = regions
         self.http = http or httpx.Client(timeout=20.0)
@@ -94,11 +95,12 @@ class TheOddsApiClient:
     def __repr__(self) -> str:  # never expose the key
         return f"TheOddsApiClient(regions={self.regions!r})"
 
-    def _get(self, path: str, params: dict[str, str]) -> httpx.Response:
+    def _get(self, path: str, params: dict[str, str], retries: int | None = None) -> httpx.Response:
         url = f"{self.base_url}{path}"
         query = {**params, "apiKey": self._api_key}
+        retries = self.retries if retries is None else retries
         last_error: Exception | None = None
-        for attempt in range(1, self.retries + 1):
+        for attempt in range(1, retries + 1):
             try:
                 response = self._bounded_get(path, url, query)
             except httpx.HTTPError as exc:  # network / timeout
@@ -113,10 +115,10 @@ class TheOddsApiClient:
             logger.warning(
                 "The Odds API %s failed (attempt %d): %s", path, attempt, type(last_error).__name__
             )
-            if attempt < self.retries:
+            if attempt < retries:
                 self._sleep(self.backoff_seconds * attempt)
         raise OddsApiError(
-            503, self._redact(f"{path} failed after {self.retries} attempts: {last_error}")
+            503, self._redact(f"{path} failed after {retries} attempts: {last_error}")
         )
 
     def _bounded_get(self, path: str, url: str, query: dict[str, str]) -> httpx.Response:
@@ -180,7 +182,10 @@ class TheOddsApiClient:
         return list(self._json(self._get(f"/sports/{sport_key}/events", {"dateFormat": "iso"})))
 
     def event_odds(self, sport_key: str, event_id: str, markets: list[str]) -> OddsResponse:
-        """Odds of one event for several markets (spec 003). Costs `estimate_event_cost`."""
+        """Odds of one event for several markets (spec 003). Costs `estimate_event_cost`.
+
+        Never retried (integration I08): a failed answer may already have been charged, and a
+        refresh takes a single slot of the hourly quota, so it spends at most one estimate."""
         response = self._get(
             f"/sports/{sport_key}/events/{event_id}/odds",
             {
@@ -189,6 +194,7 @@ class TheOddsApiClient:
                 "oddsFormat": "decimal",
                 "dateFormat": "iso",
             },
+            retries=1,
         )
         return OddsResponse([self._json(response)], Credits.from_headers(response.headers))
 

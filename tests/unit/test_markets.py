@@ -18,6 +18,7 @@ from betting_ml.domain.markets import (
     selection_probability,
     settle,
     top_correct_scores,
+    validate_selection,
 )
 
 # Hand-checkable 3x3 matrix (rows: home goals 0..2, cols: away goals 0..2).
@@ -208,11 +209,40 @@ def test_probability_matches_settlement(matrix: np.ndarray) -> None:
         (Market.TEAM_TOTALS, "home_over", -1.5),
         (Market.EUROPEAN_HANDICAP, "home", -0.5),
         (Market.CORRECT_SCORE, "2:1", None),
+        # same bounds as the CHECK constraints of migration 0010 (integration I08)
+        (Market.TOTALS, "over", 10.5),
+        (Market.TOTALS, "over", float("nan")),
+        (Market.TEAM_TOTALS, "home_over", float("inf")),
+        (Market.EUROPEAN_HANDICAP, "home", 11),
+        (Market.EUROPEAN_HANDICAP, "home", -11),
+        (Market.EUROPEAN_HANDICAP, "home", float("nan")),
+        (Market.CORRECT_SCORE, "100-1", None),
+        (Market.CORRECT_SCORE, " 2-1", None),
+        (Market.CORRECT_SCORE, "2-1 ", None),
+        (Market.CORRECT_SCORE, "٢-١", None),  # non-ASCII digits
+        (Market.CORRECT_SCORE, "+2-1", None),
     ],
 )
 def test_invalid_selections(market: str, selection: str, line: float | None) -> None:
     with pytest.raises(InvalidSelectionError):
         settle(market, selection, line, 1, 0)
+
+
+@pytest.mark.parametrize(
+    ("market", "selection", "line"),
+    [
+        (Market.TOTALS, "over", 9.5),
+        (Market.TEAM_TOTALS, "away_under", 0.5),
+        (Market.EUROPEAN_HANDICAP, "draw", 10),
+        (Market.EUROPEAN_HANDICAP, "away", -10),
+        (Market.CORRECT_SCORE, "99-0", None),
+        (Market.CORRECT_SCORE, "0-0", None),
+    ],
+)
+def test_selections_at_the_bounds_are_valid(
+    market: Market, selection: str, line: float | None
+) -> None:
+    assert validate_selection(market, selection, line) is market
 
 
 def test_normalize_truncates_and_renormalizes() -> None:

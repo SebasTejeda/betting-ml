@@ -24,7 +24,13 @@ from betting_ml.adapters.sql.db import (
     upgrade,
 )
 from betting_ml.adapters.sql.models import Base
-from betting_ml.domain.markets import LINE_MARKETS, SELECTIONS, Market
+from betting_ml.domain.markets import (
+    LINE_MARKETS,
+    SELECTIONS,
+    InvalidSelectionError,
+    Market,
+    validate_selection,
+)
 
 CREATED = "2026-10-03 10:00:00.000000"
 LATER = "2026-10-03 22:00:00.000000"
@@ -390,47 +396,65 @@ def test_every_market_the_domain_accepts_is_accepted(engine: sa.Engine) -> None:
         _insert(connection, "bets", BET)  # 1X2: outcome, no selection, no line
 
 
-@pytest.mark.parametrize(
-    ("changes", "constraint"),
-    [
-        ({"market": "poker", "outcome": None}, "ck_bets_market"),
-        ({"market": "H2H"}, "ck_bets_market"),
-        ({"outcome": None}, "ck_bets_outcome_market"),  # 1X2 without its outcome
-        ({**_market_bet("btts", "yes", None), "outcome": "H"}, "ck_bets_outcome_market"),
-        ({"selection": "home"}, "ck_bets_selection"),  # 1X2 uses outcome
-        (_market_bet("btts", None, None), "ck_bets_selection"),
-        (_market_bet("btts", "over", None), "ck_bets_selection"),
-        (_market_bet("double_chance", "1x", None), "ck_bets_selection"),
-        (_market_bet("draw_no_bet", "draw", None), "ck_bets_selection"),
-        (_market_bet("totals", "home_over", 2.5), "ck_bets_selection"),
-        (_market_bet("team_totals", "over", 1.5), "ck_bets_selection"),
-        (_market_bet("european_handicap", "1X", 1), "ck_bets_selection"),
-        (_market_bet("correct_score", None, None), "ck_bets_selection"),
-        (_market_bet("correct_score", "", None), "ck_bets_selection"),
-        (_market_bet("correct_score", "2-1-0", None), "ck_bets_selection"),
-        (_market_bet("correct_score", "100-1", None), "ck_bets_selection"),
-        (_market_bet("correct_score", "a-b", None), "ck_bets_selection"),
-        (_market_bet("correct_score", " 2-1", None), "ck_bets_selection"),
-        ({"line": 2.5}, "ck_bets_line"),  # 1X2 has no line
-        (_market_bet("btts", "yes", 2.5), "ck_bets_line"),
-        (_market_bet("correct_score", "2-1", 0.5), "ck_bets_line"),
-        (_market_bet("totals", "over", None), "ck_bets_line"),
-        (_market_bet("totals", "over", 2.0), "ck_bets_line"),
-        (_market_bet("totals", "over", 2.25), "ck_bets_line"),  # no Asian lines
-        (_market_bet("totals", "over", -0.5), "ck_bets_line"),
-        (_market_bet("totals", "over", 10.5), "ck_bets_line"),
-        (_market_bet("team_totals", "home_over", 0), "ck_bets_line"),
-        (_market_bet("european_handicap", "home", None), "ck_bets_line"),
-        (_market_bet("european_handicap", "home", 0.5), "ck_bets_line"),
-        (_market_bet("european_handicap", "home", 11), "ck_bets_line"),
-        (_market_bet("european_handicap", "home", -11), "ck_bets_line"),
-    ],
-)
+IMPOSSIBLE_MARKETS = [
+    ({"market": "poker", "outcome": None}, "ck_bets_market"),
+    ({"market": "H2H"}, "ck_bets_market"),
+    ({"outcome": None}, "ck_bets_outcome_market"),  # 1X2 without its outcome
+    ({**_market_bet("btts", "yes", None), "outcome": "H"}, "ck_bets_outcome_market"),
+    ({"selection": "home"}, "ck_bets_selection"),  # 1X2 uses outcome
+    (_market_bet("btts", None, None), "ck_bets_selection"),
+    (_market_bet("btts", "over", None), "ck_bets_selection"),
+    (_market_bet("double_chance", "1x", None), "ck_bets_selection"),
+    (_market_bet("draw_no_bet", "draw", None), "ck_bets_selection"),
+    (_market_bet("totals", "home_over", 2.5), "ck_bets_selection"),
+    (_market_bet("team_totals", "over", 1.5), "ck_bets_selection"),
+    (_market_bet("european_handicap", "1X", 1), "ck_bets_selection"),
+    (_market_bet("correct_score", None, None), "ck_bets_selection"),
+    (_market_bet("correct_score", "", None), "ck_bets_selection"),
+    (_market_bet("correct_score", "2-1-0", None), "ck_bets_selection"),
+    (_market_bet("correct_score", "100-1", None), "ck_bets_selection"),
+    (_market_bet("correct_score", "a-b", None), "ck_bets_selection"),
+    (_market_bet("correct_score", " 2-1", None), "ck_bets_selection"),
+    ({"line": 2.5}, "ck_bets_line"),  # 1X2 has no line
+    (_market_bet("btts", "yes", 2.5), "ck_bets_line"),
+    (_market_bet("correct_score", "2-1", 0.5), "ck_bets_line"),
+    (_market_bet("totals", "over", None), "ck_bets_line"),
+    (_market_bet("totals", "over", 2.0), "ck_bets_line"),
+    (_market_bet("totals", "over", 2.25), "ck_bets_line"),  # no Asian lines
+    (_market_bet("totals", "over", -0.5), "ck_bets_line"),
+    (_market_bet("totals", "over", 10.5), "ck_bets_line"),
+    (_market_bet("team_totals", "home_over", 0), "ck_bets_line"),
+    (_market_bet("european_handicap", "home", None), "ck_bets_line"),
+    (_market_bet("european_handicap", "home", 0.5), "ck_bets_line"),
+    (_market_bet("european_handicap", "home", 11), "ck_bets_line"),
+    (_market_bet("european_handicap", "home", -11), "ck_bets_line"),
+]
+
+
+@pytest.mark.parametrize(("changes", "constraint"), IMPOSSIBLE_MARKETS)
 def test_impossible_markets_are_rejected(
     engine: sa.Engine, changes: dict[str, Any], constraint: str
 ) -> None:
     with pytest.raises(IntegrityError, match=constraint), engine.begin() as connection:
         _insert(connection, "bets", {**BET, **changes})
+
+
+@pytest.mark.parametrize(
+    "row",
+    [
+        {**BET, **changes}
+        for changes, constraint in IMPOSSIBLE_MARKETS
+        # the outcome/market pairing is checked by ``Bet`` itself, a 1X2 bet has no selection
+        if constraint in {"ck_bets_selection", "ck_bets_line"}
+        and changes.get("market", "h2h") != "h2h"
+        and changes.get("selection") is not None
+    ],
+)
+def test_the_domain_refuses_what_the_database_refuses(row: dict[str, Any]) -> None:
+    """Integration I08: a bet coming from anywhere but the API (CLI, script) is refused by the
+    domain with a clear error, never by a CHECK as a 500."""
+    with pytest.raises(InvalidSelectionError):
+        validate_selection(row["market"], row["selection"], row.get("line"))
 
 
 def test_an_existing_bet_cannot_be_changed_into_an_impossible_one(engine: sa.Engine) -> None:

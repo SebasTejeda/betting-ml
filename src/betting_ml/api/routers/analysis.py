@@ -40,12 +40,14 @@ from betting_ml.application.analyze_match import (
 from betting_ml.application.event_odds import EventNotFoundError, InvalidMatchIdError
 from betting_ml.application.read_calibration import CalibrationReportNotFoundError
 from betting_ml.domain.entities import slugify
+from betting_ml.domain.ports import OddsSourceNotConfiguredError
 from betting_ml.domain.security import Principal
 
 reads = APIRouter(prefix="/api/v1", tags=["spec-004"], dependencies=[Depends(require_read)])
 writes = APIRouter(prefix="/api/v1", tags=["spec-004"], dependencies=[Depends(require_write)])
 STALE_ODDS_HOURS = 6
 TEAMS_MISMATCH = "home y away no corresponden al match_id"
+ODDS_NOT_CONFIGURED = "La API de cuotas no está configurada (ODDS_API_KEY)"
 
 
 @contextmanager
@@ -165,8 +167,8 @@ def refresh_event_odds(
         raise ApiError(422, "MATCH_TEAMS_MISMATCH", TEAMS_MISMATCH)
     try:
         event_odds = services.event_odds()
-    except ValueError as exc:  # ODDS_API_KEY not configured
-        raise ApiError(503, "ODDS_API_NOT_CONFIGURED", str(exc)) from exc
+    except OddsSourceNotConfiguredError as exc:
+        raise ApiError(503, "ODDS_API_NOT_CONFIGURED", ODDS_NOT_CONFIGURED) from exc
     # spec 003 quota of paid refreshes, shared with /odds/refresh (I04)
     quota = None if api.rate_limits is None else api.rate_limits.take_odds_refresh
     try:
@@ -180,8 +182,8 @@ def refresh_event_odds(
                 actor=principal.actor,
                 quota=quota,
             )
-    except ValueError as exc:  # client built lazily: missing key
-        raise ApiError(503, "ODDS_API_NOT_CONFIGURED", str(exc)) from exc
+    except OddsSourceNotConfiguredError as exc:  # client built lazily
+        raise ApiError(503, "ODDS_API_NOT_CONFIGURED", ODDS_NOT_CONFIGURED) from exc
     return EventRefreshOut(
         match_id=result.match_id,
         markets=result.markets,
