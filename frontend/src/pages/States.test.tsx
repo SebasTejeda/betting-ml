@@ -1,4 +1,5 @@
 import { screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 
 import { MATCH_ID, detail, settings } from "../test/fixtures";
@@ -70,4 +71,15 @@ test("calculator without a match asks to choose one", async () => {
   );
   renderApp("/calculator");
   expect(await screen.findByText("Elige un partido para evaluar una cuota.")).toBeInTheDocument();
+});
+
+test("the first tab stop skips the navigation to the page content", async () => {
+  server.use(http.get(`${API}/settings`, () => HttpResponse.json(settings)));
+  renderApp("/settings");
+  await screen.findByRole("form", { name: "Ajustes" });
+  const skip = screen.getByRole("link", { name: "Saltar al contenido" });
+  await userEvent.tab();
+  expect(skip).toHaveFocus();
+  expect(skip).toHaveAttribute("href", "#contenido");
+  expect(document.getElementById("contenido")?.tagName).toBe("MAIN");
 });

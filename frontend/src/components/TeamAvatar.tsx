@@ -1,6 +1,8 @@
-import { initials, teamHue } from "@/lib/team";
+import { initials } from "@/lib/team";
 import { cn } from "@/lib/utils";
 
+/** Team monogram, neutral (spec 005: no loud colors competing with the data; random hues
+ *  made two teams look alike). No official crests are downloaded. */
 export function TeamAvatar({
   name,
   size = "md",
@@ -10,19 +12,16 @@ export function TeamAvatar({
   size?: "sm" | "md" | "lg";
   className?: string;
 }) {
-  const hue = teamHue(name);
   return (
     <span
       aria-hidden
       className={cn(
-        "inline-flex shrink-0 items-center justify-center rounded-full font-semibold tracking-tight text-white ring-2 ring-background select-none",
+        "inline-flex shrink-0 items-center justify-center rounded-full bg-secondary font-semibold tracking-tight text-foreground ring-1 ring-foreground/15 select-none",
         size === "sm" && "size-7 text-[0.65rem]",
         size === "md" && "size-9 text-xs",
-        size === "lg" && "size-14 text-base",
+        size === "lg" && "size-12 text-sm",
         className,
       )}
-      // Mid lightness/chroma keeps white initials readable (AA) for every hue.
-      style={{ backgroundColor: `oklch(0.5 0.13 ${hue})` }}
     >
       {initials(name)}
     </span>

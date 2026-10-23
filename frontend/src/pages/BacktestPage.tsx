@@ -1,9 +1,9 @@
-import { ChartLine, FileWarning, Scale, SearchX, TableProperties } from "lucide-react";
+import { SearchX, TriangleAlert } from "lucide-react";
 
 import { ApiError } from "../api/client";
 import { useBacktest } from "../api/hooks";
 import { Empty, ErrorBox, Loading, PageTitle, Panel } from "../components/common";
-import { Badge } from "../components/ui/badge";
+import { Card } from "../components/ui/card";
 import {
   Table,
   TableBody,
@@ -75,25 +75,28 @@ export function BacktestPage() {
   const margins = report.margins;
   return (
     <>
-      <PageTitle
-        icon={ChartLine}
-        description="Resultados medidos del comparador y de la señal frente a la cuota de cierre de Pinnacle."
-      >
+      <PageTitle description="Resultados medidos del comparador y de la señal frente a la cuota de cierre de Pinnacle.">
         Backtest contra Pinnacle
       </PageTitle>
-      <Panel className="mb-4" contentClassName="flex flex-col gap-3">
-        <div className="flex flex-wrap items-center gap-3">
-          <span className="text-sm text-muted-foreground">Conclusión</span>
-          <Badge variant="secondary" className="h-6 px-3 text-sm">
-            {report.conclusion ?? "—"}
-          </Badge>
-          <span className="text-sm text-muted-foreground">nivel</span>
-          <Badge variant="outline" className="h-6 px-3 text-sm">
-            {report.level ?? "—"}
-          </Badge>
-        </div>
-        <p className="flex items-start gap-2 text-sm text-muted-foreground">
-          <FileWarning aria-hidden className="mt-0.5 size-4 shrink-0 text-experimental" />
+      <Card className="mt-6 mb-5 gap-5 p-5 sm:p-6">
+        <dl className="flex flex-wrap gap-x-12 gap-y-4">
+          <div className="flex flex-col gap-1">
+            <dt className="eyebrow">Conclusión</dt>
+            <dd className="text-xl font-semibold tracking-tight">{report.conclusion ?? "—"}</dd>
+          </div>
+          <div className="flex flex-col gap-1">
+            <dt className="eyebrow">Nivel</dt>
+            <dd className="text-xl font-semibold tracking-tight">{report.level ?? "—"}</dd>
+          </div>
+          <div className="flex flex-col gap-1">
+            <dt className="eyebrow">Temporada de prueba</dt>
+            <dd className="num text-xl font-semibold tracking-tight">
+              {report.test?.season ?? "—"}
+            </dd>
+          </div>
+        </dl>
+        <p className="flex items-start gap-2.5 rounded-lg bg-experimental-soft px-3 py-2.5 text-sm text-foreground">
+          <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0 text-experimental" />
           <span>
             La estrategia principal ({report.primary_strategy ?? "—"}) no le ganó a la cuota de
             cierre en la temporada de prueba {report.test?.season ?? ""}. Por eso la señal de valor
@@ -101,16 +104,13 @@ export function BacktestPage() {
             tiene muy pocas apuestas y se eligió después de ver el resultado: no está validada.
           </span>
         </p>
-      </Panel>
+      </Card>
       {margins && (
-        <Panel title="Por qué el comparador: margen pagado" icon={Scale} className="mb-4">
+        <Panel title="Por qué el comparador: margen pagado" className="mb-5">
           <MarginTable margins={margins} />
         </Panel>
       )}
-      <Panel
-        title={`Resultados en prueba (${report.test?.season ?? "—"}, una sola evaluación)`}
-        icon={TableProperties}
-      >
+      <Panel title={`Resultados en prueba (${report.test?.season ?? "—"}, una sola evaluación)`}>
         {results.length === 0 ? (
           <Empty>Sin resultados.</Empty>
         ) : (
@@ -136,17 +136,15 @@ export function BacktestPage() {
                       {VARIANT[r.variant] ?? r.variant}
                     </span>
                   </TableHead>
-                  <TableCell className="text-right tabular-nums">{r.n_bets}</TableCell>
-                  <TableCell className="text-right tabular-nums">
+                  <TableCell className="num text-right">{r.n_bets}</TableCell>
+                  <TableCell className="num text-right">
                     <span className={evTone(r.clv_mean)}>{pct(r.clv_mean, 2, true)}</span>
                     <span className="block text-xs text-muted-foreground">
                       {ci(r.clv_ci_low, r.clv_ci_high)}
                     </span>
                   </TableCell>
-                  <TableCell className="text-right tabular-nums">
-                    {pct(r.clv_positive_rate, 0)}
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums">
+                  <TableCell className="num text-right">{pct(r.clv_positive_rate, 0)}</TableCell>
+                  <TableCell className="num text-right">
                     <span className={evTone(r.roi_flat)}>{pct(r.roi_flat, 1, true)}</span>
                     <span className="block text-xs text-muted-foreground">
                       {ci(r.roi_ci_low, r.roi_ci_high)}
@@ -188,13 +186,15 @@ function MarginTable({ margins }: { margins: NonNullable<Report["margins"]> }) {
             <TableHead scope="row" className="font-normal text-foreground">
               {label}
             </TableHead>
-            <TableCell className="text-right tabular-nums">
+            <TableCell className="num text-right">
               {pct(block?.margins?.avg?.margin_mean)}
             </TableCell>
-            <TableCell className="text-right font-semibold text-positive tabular-nums">
+            <TableCell className="num text-right font-semibold">
               {pct(block?.margins?.max?.margin_mean)}
             </TableCell>
-            <TableCell className="text-right font-semibold text-positive tabular-nums">
+            <TableCell
+              className={`num text-right font-semibold ${evTone(block?.best_vs_avg?.uplift_mean)}`}
+            >
               {pct(block?.best_vs_avg?.uplift_mean, 1, true)}
             </TableCell>
           </TableRow>

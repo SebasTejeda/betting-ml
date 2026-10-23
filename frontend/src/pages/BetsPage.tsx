@@ -1,21 +1,12 @@
 import {
-  Ban,
   ChartColumn,
   CircleCheck,
   CircleMinus,
   CircleX,
-  Coins,
-  FlaskConical,
-  Gauge,
-  Hash,
   Hourglass,
-  Info,
   type LucideIcon,
-  Percent,
   RefreshCw,
   Trash2,
-  TrendingUp,
-  Wallet,
 } from "lucide-react";
 import { useId, useState } from "react";
 import {
@@ -24,6 +15,7 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
+  Cell,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -93,10 +85,22 @@ const TOOLTIP_STYLE = {
   color: "var(--popover-foreground)",
 };
 
-/** Bets on the spec-003 markets: "totals · over 2.5". */
+// The API keeps the market codes; the page speaks Spanish (unknown codes are shown as they are).
+const SELECTION_WORD: Record<string, string> = {
+  over: "más de",
+  under: "menos de",
+  yes: "sí",
+  no: "no",
+  home: "local",
+  draw: "empate",
+  away: "visita",
+};
+
+/** Bets on the spec-003 markets: "Más/Menos goles · más de 2.5". */
 function selectionLabel(bet: Bet): string {
   const line = bet.line === null || bet.line === undefined ? "" : ` ${bet.line}`;
-  return `${MARKET_LABEL[bet.market] ?? bet.market} · ${bet.selection ?? ""}${line}`;
+  const selection = bet.selection ? (SELECTION_WORD[bet.selection] ?? bet.selection) : "";
+  return `${MARKET_LABEL[bet.market] ?? bet.market} · ${selection}${line}`;
 }
 
 export function BetsPage() {
@@ -111,9 +115,9 @@ export function BetsPage() {
   return (
     <>
       <PageTitle
-        icon={Wallet}
+        description="Tu diario de apuestas reales y en papel: el CLV dice si le ganas a la cuota de cierre, y el límite mensual protege tu bankroll."
         aside={
-          <div className="flex flex-col items-start gap-1 text-sm sm:items-end">
+          <div className="flex flex-col items-start gap-1.5 text-sm sm:items-end">
             <Button
               type="button"
               variant="outline"
@@ -124,7 +128,7 @@ export function BetsPage() {
               Liquidar con resultados oficiales
             </Button>
             {settle.isSuccess && (
-              <span role="status" className="text-xs text-positive">
+              <span role="status" className="text-xs text-muted-foreground">
                 {settle.data.settled} liquidadas · {settle.data.clv_computed} con CLV ·{" "}
                 {settle.data.still_pending} pendientes
                 {settle.data.corrected > 0 && ` · ${settle.data.corrected} corregidas`}
@@ -136,83 +140,84 @@ export function BetsPage() {
       >
         Mis apuestas
       </PageTitle>
-      <div
-        role="group"
-        aria-label="Tipo de apuestas"
-        className="mb-4 inline-flex rounded-lg border bg-card p-1 shadow-sm"
-      >
-        {(["real", "paper", "all"] as const).map((value) => (
-          <button
-            key={value}
-            type="button"
-            aria-pressed={kind === value}
-            className={cn(
-              "rounded-md px-3 py-1.5 text-sm transition-colors duration-150",
-              kind === value
-                ? "bg-secondary font-medium text-foreground shadow-xs"
-                : "text-muted-foreground hover:text-foreground",
-            )}
-            onClick={() => {
-              setKind(value);
-              setPage(1);
-            }}
-          >
-            {value === "real" ? "Reales" : value === "paper" ? "En papel" : "Todas"}
-          </button>
-        ))}
-      </div>
-      <p className="mb-4 flex items-start gap-2 rounded-lg border border-info/30 bg-info-soft/60 p-3 text-sm">
-        <Info aria-hidden className="mt-0.5 size-4 shrink-0 text-info" />
-        <span>
-          Con menos de 300 apuestas el ROI es mayormente ruido: mira el CLV (si le ganas a la cuota
-          de cierre de la referencia).
-        </span>
-      </p>
-      {summary.isPending ? (
-        <Loading what="el resumen" variant="cards" />
-      ) : summary.isError ? (
-        <ErrorBox error={summary.error} />
-      ) : (
-        <SummaryPanel summary={summary.data} currency={currency} />
-      )}
-      <Panel
-        title="Apuestas"
-        icon={Hash}
-        className="mt-4"
-        action={
-          <label className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-            Estado
-            <select
-              className="field h-8 w-36"
-              value={status ?? ""}
-              onChange={(event) => {
-                setStatus((event.target.value || undefined) as BetsParams["status"]);
+      <div className="mt-5 mb-5 flex flex-wrap items-center justify-between gap-3 border-b pb-5">
+        <div
+          role="group"
+          aria-label="Tipo de apuestas"
+          className="inline-flex rounded-lg bg-muted p-1"
+        >
+          {(["real", "paper", "all"] as const).map((value) => (
+            <button
+              key={value}
+              type="button"
+              aria-pressed={kind === value}
+              className={cn(
+                "min-h-10 rounded-md px-3.5 text-sm transition-colors duration-150 md:min-h-8",
+                kind === value
+                  ? "bg-card font-medium text-foreground shadow-xs ring-1 ring-border"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+              onClick={() => {
+                setKind(value);
                 setPage(1);
               }}
             >
-              <option value="">Todos</option>
-              {Object.entries(STATUS_LABEL).map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </select>
-          </label>
-        }
-      >
-        <BetsTable
-          params={{ kind: kind === "all" ? undefined : kind, status, page }}
-          currency={currency}
-          onPage={setPage}
-        />
-        <p className="mt-4 text-xs text-muted-foreground">
-          Liquidar a mano solo es posible después del inicio del partido, y borrar solo antes. Una
-          apuesta marcada a mano como ganada o nula cuenta como perdida para el límite mensual hasta
-          que se confirme con el resultado oficial, y una apuesta real sin liquidar de un partido ya
-          terminado (más de 3 h) también cuenta como perdida hasta liquidarla. Si un partido se
-          aplaza, márcala como nula.
+              {value === "real" ? "Reales" : value === "paper" ? "En papel" : "Todas"}
+            </button>
+          ))}
+        </div>
+        <p className="max-w-md text-xs text-muted-foreground">
+          Con menos de 300 apuestas el ROI es mayormente ruido: mira el CLV (si le ganas a la cuota
+          de cierre de la referencia).
         </p>
-      </Panel>
+      </div>
+      <div className="flex flex-col gap-5">
+        {summary.isPending ? (
+          <Loading what="el resumen" variant="cards" />
+        ) : summary.isError ? (
+          <ErrorBox error={summary.error} />
+        ) : (
+          <SummaryFigures summary={summary.data} currency={currency} />
+        )}
+        {/* The bets stay usable even when the summary fails. */}
+        <Panel
+          title="Apuestas"
+          action={
+            <label className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+              Estado
+              <select
+                className="field h-10 w-36 md:h-8"
+                value={status ?? ""}
+                onChange={(event) => {
+                  setStatus((event.target.value || undefined) as BetsParams["status"]);
+                  setPage(1);
+                }}
+              >
+                <option value="">Todos</option>
+                {Object.entries(STATUS_LABEL).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          }
+        >
+          <BetsTable
+            params={{ kind: kind === "all" ? undefined : kind, status, page }}
+            currency={currency}
+            onPage={setPage}
+          />
+          <p className="mt-4 border-t pt-3 text-xs text-muted-foreground">
+            Liquidar a mano solo es posible después del inicio del partido, y borrar solo antes. Una
+            apuesta marcada a mano como ganada o nula cuenta como perdida para el límite mensual
+            hasta que se confirme con el resultado oficial, y una apuesta real sin liquidar de un
+            partido ya terminado (más de 3 h) también cuenta como perdida hasta liquidarla. Si un
+            partido se aplaza, márcala como nula.
+          </p>
+        </Panel>
+        {summary.data && <SummaryCharts summary={summary.data} currency={currency} />}
+      </div>
     </>
   );
 }
@@ -220,94 +225,89 @@ export function BetsPage() {
 function Kpi({
   label,
   value,
-  icon: Icon,
   tone,
   hint,
 }: {
   label: string;
   value: string;
-  icon: LucideIcon;
   tone?: string;
   hint?: string;
 }) {
   return (
-    <Card className="gap-1 px-4 shadow-sm">
-      <dt className="flex items-center gap-1.5 text-xs text-muted-foreground">
-        <Icon aria-hidden className="size-3.5" />
-        {label}
-      </dt>
-      <dd className={cn("text-2xl font-semibold tracking-tight tabular-nums", tone)}>{value}</dd>
+    // gap-px over a border-coloured grid: one hairline between figures, in every layout.
+    <div className="flex flex-col gap-1 bg-card px-4 py-4 sm:px-5">
+      <dt className="eyebrow">{label}</dt>
+      <dd className={cn("num text-2xl font-semibold tracking-tight", tone)}>{value}</dd>
       {hint && <dd className="text-xs text-muted-foreground">{hint}</dd>}
-    </Card>
+    </div>
   );
 }
 
-function SummaryPanel({ summary, currency }: { summary: Summary; currency: string }) {
+function SummaryFigures({ summary, currency }: { summary: Summary; currency: string }) {
   const month = summary.month;
   const used = month.loss_limit > 0 ? Math.min(1, month.current_loss / month.loss_limit) : 1;
   const signal = summary.experimental_signal;
   return (
-    <div className="flex flex-col gap-4">
-      <dl className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6" aria-label="Indicadores">
-        <Kpi
-          label="Apuestas (liquidadas)"
-          icon={Hash}
-          value={`${summary.bets} (${summary.settled})`}
-        />
-        <Kpi
-          label="CLV medio"
-          icon={TrendingUp}
-          value={pct(summary.clv_mean, 2, true)}
-          tone={evTone(summary.clv_mean)}
-        />
-        <Kpi label="% CLV positivo" icon={Percent} value={pct(summary.clv_positive_rate, 0)} />
-        <Kpi
-          label="Beneficio"
-          icon={Coins}
-          value={money(summary.profit, currency)}
-          tone={evTone(summary.profit)}
-        />
-        <Kpi
-          label="ROI"
-          icon={ChartColumn}
-          value={pct(summary.roi, 1, true)}
-          tone={evTone(summary.roi)}
-          hint="ruido con pocas apuestas"
-        />
-        <Kpi
-          label="Mejor cuota vs promedio"
-          icon={Gauge}
-          value={pct(summary.best_odds_uplift_mean, 1, true)}
-        />
-      </dl>
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Panel title="Límite mensual" icon={Ban}>
-          <p className="mb-3 text-sm">
-            Pérdida del mes: <strong>{money(month.current_loss, currency)}</strong> de{" "}
-            {money(month.loss_limit, currency)}
+    <div className="flex flex-col gap-5">
+      {/* One strip, not six boxes: the figures are read together (CLV first, ROI is noise). */}
+      <Card className="py-0">
+        <dl
+          aria-label="Indicadores"
+          className="grid grid-cols-2 gap-px bg-border md:grid-cols-3 xl:grid-cols-6"
+        >
+          <Kpi label="Apuestas (liquidadas)" value={`${summary.bets} (${summary.settled})`} />
+          <Kpi
+            label="CLV medio"
+            value={pct(summary.clv_mean, 2, true)}
+            tone={evTone(summary.clv_mean)}
+          />
+          <Kpi label="% CLV positivo" value={pct(summary.clv_positive_rate, 0)} />
+          <Kpi
+            label="Beneficio"
+            value={money(summary.profit, currency)}
+            tone={evTone(summary.profit)}
+          />
+          <Kpi
+            label="ROI"
+            value={pct(summary.roi, 1, true)}
+            tone={evTone(summary.roi)}
+            hint="ruido con pocas apuestas"
+          />
+          <Kpi
+            label="Mejor cuota vs promedio"
+            value={pct(summary.best_odds_uplift_mean, 1, true)}
+          />
+        </dl>
+      </Card>
+      <div className="grid gap-5 lg:grid-cols-2">
+        <Panel title="Límite mensual">
+          <p className="mb-3 flex flex-wrap items-baseline gap-x-1.5 text-sm text-muted-foreground">
+            Pérdida del mes:
+            <strong className="num text-2xl font-semibold tracking-tight text-foreground">
+              {money(month.current_loss, currency)}
+            </strong>
+            <span className="num">de {money(month.loss_limit, currency)}</span>
           </p>
+          {/* Blue while there is room; amber from 80 %, red at the limit. */}
           <Meter
             label="Uso del límite mensual"
             value={Math.round(used * 100)}
-            tone={used >= 1 ? "negative" : used >= 0.8 ? "experimental" : "positive"}
+            tone={used >= 1 ? "negative" : used >= 0.8 ? "experimental" : "primary"}
           />
-          <p className="mt-2 text-xs text-muted-foreground">
+          <p className="num mt-2 text-xs text-muted-foreground">
             Disponible: {money(month.remaining, currency)}
             {month.remaining <= 0 && " · apuestas reales bloqueadas hasta el mes siguiente"}
           </p>
         </Panel>
-        <Panel
-          title="Progreso de la señal"
-          icon={FlaskConical}
-          action={<ExperimentalBadge />}
-          className="border border-experimental-border"
-        >
-          <p className="mb-3 text-sm">
-            <strong className="text-2xl font-semibold tabular-nums">
+        <Panel title="Progreso de la señal" action={<ExperimentalBadge />}>
+          <p className="mb-3 flex flex-wrap items-baseline gap-x-1.5 text-sm text-muted-foreground">
+            <strong className="num text-2xl font-semibold tracking-tight text-foreground">
               {signal.paper_bets}/{signal.target}
-            </strong>{" "}
-            apuestas en papel liquidadas · CLV acumulado{" "}
-            <strong className={evTone(signal.clv_mean)}>{pct(signal.clv_mean, 2, true)}</strong>
+            </strong>
+            apuestas en papel liquidadas · CLV acumulado
+            <strong className={cn("num", evTone(signal.clv_mean))}>
+              {pct(signal.clv_mean, 2, true)}
+            </strong>
           </p>
           <Meter
             label="Apuestas en papel de la señal"
@@ -322,27 +322,49 @@ function SummaryPanel({ summary, currency }: { summary: Summary; currency: strin
           </p>
         </Panel>
       </div>
-      <div className="grid gap-4 lg:grid-cols-3">
-        <Panel title="Bankroll" icon={Wallet} className="lg:col-span-2">
-          {summary.bankroll.series.length < 2 ? (
-            <Empty icon={ChartColumn}>Aún no hay apuestas liquidadas.</Empty>
-          ) : (
-            <BankrollChart series={summary.bankroll.series} currency={currency} />
-          )}
-        </Panel>
-        <Panel title="Por liga y casa (CLV medio)" icon={ChartColumn}>
-          {summary.by_league.length === 0 && summary.by_bookmaker.length === 0 ? (
-            <Empty>Sin apuestas liquidadas con CLV.</Empty>
-          ) : (
-            <>
-              <GroupBars groups={summary.by_league} name="league" label="Por liga" />
-              <GroupBars groups={summary.by_bookmaker} name="bookmaker" label="Por casa" />
-            </>
-          )}
-        </Panel>
-      </div>
-      <MarketsEvidence markets={summary.by_market} />
     </div>
+  );
+}
+
+function SummaryCharts({ summary, currency }: { summary: Summary; currency: string }) {
+  const nothingSettled =
+    summary.bankroll.series.length < 2 &&
+    summary.by_league.length === 0 &&
+    summary.by_bookmaker.length === 0;
+  return (
+    <>
+      {nothingSettled ? (
+        // One quiet line instead of two empty chart panels.
+        <Panel title="Bankroll y CLV por liga y casa">
+          <p className="flex items-center gap-2 text-sm text-muted-foreground">
+            <ChartColumn aria-hidden className="size-4 shrink-0" />
+            Aún no hay apuestas liquidadas: la curva de bankroll y el CLV por liga y casa aparecen
+            al liquidar las primeras.
+          </p>
+        </Panel>
+      ) : (
+        <div className="grid gap-5 lg:grid-cols-3">
+          <Panel title="Bankroll" className="lg:col-span-2">
+            {summary.bankroll.series.length < 2 ? (
+              <Empty icon={ChartColumn}>Aún no hay apuestas liquidadas.</Empty>
+            ) : (
+              <BankrollChart series={summary.bankroll.series} currency={currency} />
+            )}
+          </Panel>
+          <Panel title="Por liga y casa (CLV medio)">
+            {summary.by_league.length === 0 && summary.by_bookmaker.length === 0 ? (
+              <Empty>Sin apuestas liquidadas con CLV.</Empty>
+            ) : (
+              <>
+                <GroupBars groups={summary.by_league} name="league" label="Por liga" />
+                <GroupBars groups={summary.by_bookmaker} name="bookmaker" label="Por casa" />
+              </>
+            )}
+          </Panel>
+        </div>
+      )}
+      <MarketsEvidence markets={summary.by_market} />
+    </>
   );
 }
 
@@ -350,11 +372,14 @@ function SummaryPanel({ summary, currency }: { summary: Summary; currency: strin
  *  bets with mean CLV > 0 (manual change in configs/markets.yaml). */
 function MarketsEvidence({ markets }: { markets: MarketSummary[] }) {
   return (
-    <Panel title="Evidencia por mercado" icon={FlaskConical} action={<ExperimentalBadge />}>
+    <Panel title="Evidencia por mercado" action={<ExperimentalBadge />}>
       {markets.length === 0 ? (
         <Empty>Aún no hay apuestas.</Empty>
       ) : (
         <Table>
+          <TableCaption className="sr-only">
+            Evidencia por mercado: apuestas, ROI y CLV
+          </TableCaption>
           <TableHeader>
             <TableRow>
               <TableHead>Mercado</TableHead>
@@ -369,19 +394,17 @@ function MarketsEvidence({ markets }: { markets: MarketSummary[] }) {
             {markets.map((m) => (
               <TableRow key={m.market}>
                 <TableCell className="font-medium">{MARKET_LABEL[m.market] ?? m.market}</TableCell>
-                <TableCell className="text-right tabular-nums">
+                <TableCell className="num text-right">
                   {m.bets} ({m.settled})
                 </TableCell>
-                <TableCell className={cn("text-right tabular-nums", evTone(m.roi))}>
+                <TableCell className={cn("num text-right", evTone(m.roi))}>
                   {pct(m.roi, 1, true)}
                 </TableCell>
-                <TableCell className={cn("text-right tabular-nums", evTone(m.clv_mean_pinnacle))}>
+                <TableCell className={cn("num text-right", evTone(m.clv_mean_pinnacle))}>
                   {pct(m.clv_mean_pinnacle, 2, true)}{" "}
                   <span className="text-xs text-muted-foreground">n={m.clv_n_pinnacle}</span>
                 </TableCell>
-                <TableCell
-                  className={cn("text-right tabular-nums", evTone(m.clv_mean_market_average))}
-                >
+                <TableCell className={cn("num text-right", evTone(m.clv_mean_market_average))}>
                   {pct(m.clv_mean_market_average, 2, true)}{" "}
                   <span className="text-xs text-muted-foreground">n={m.clv_n_market_average}</span>
                 </TableCell>
@@ -434,17 +457,24 @@ function BankrollChart({
         <AreaChart data={series} margin={{ left: -8, right: 8, top: 8 }}>
           <defs>
             <linearGradient id={gradient} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="var(--chart-1)" stopOpacity={0.45} />
+              <stop offset="0%" stopColor="var(--chart-1)" stopOpacity={0.3} />
               <stop offset="100%" stopColor="var(--chart-1)" stopOpacity={0} />
             </linearGradient>
           </defs>
-          <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" vertical={false} />
-          <XAxis dataKey="date" fontSize={11} stroke="var(--chart-text)" tickLine={false} />
+          <CartesianGrid stroke="var(--chart-grid)" vertical={false} />
+          <XAxis
+            dataKey="date"
+            fontSize={11}
+            stroke="var(--chart-text)"
+            tickLine={false}
+            axisLine={false}
+          />
           <YAxis
             domain={["auto", "auto"]}
             fontSize={11}
             stroke="var(--chart-text)"
             tickLine={false}
+            axisLine={false}
           />
           <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v) => money(Number(v), currency)} />
           <Area
@@ -477,18 +507,35 @@ function GroupBars({
   }));
   return (
     <div className="mb-3">
-      <p className="mb-1 text-xs font-medium text-muted-foreground">{label}</p>
+      <p className="eyebrow mb-1">{label}</p>
       <div className="h-28" role="img" aria-label={label}>
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} margin={{ left: -20, right: 4 }}>
-            <XAxis dataKey="name" fontSize={11} stroke="var(--chart-text)" tickLine={false} />
-            <YAxis fontSize={11} unit="%" stroke="var(--chart-text)" tickLine={false} />
+            <XAxis
+              dataKey="name"
+              fontSize={11}
+              stroke="var(--chart-text)"
+              tickLine={false}
+              axisLine={false}
+            />
+            <YAxis
+              fontSize={11}
+              unit="%"
+              stroke="var(--chart-text)"
+              tickLine={false}
+              axisLine={false}
+            />
             <Tooltip
               contentStyle={TOOLTIP_STYLE}
               cursor={{ fill: "var(--muted)" }}
               formatter={(v) => `${Number(v).toFixed(2)} %`}
             />
-            <Bar dataKey="clv" name="CLV medio" fill="var(--chart-2)" radius={[4, 4, 0, 0]} />
+            {/* CLV is a signed figure: green above zero, red below (the value is in the tooltip). */}
+            <Bar dataKey="clv" name="CLV medio" radius={[4, 4, 0, 0]}>
+              {data.map((d) => (
+                <Cell key={d.name} fill={d.clv >= 0 ? "var(--positive)" : "var(--negative)"} />
+              ))}
+            </Bar>
           </BarChart>
         </ResponsiveContainer>
       </div>
@@ -606,14 +653,17 @@ function BetRow({
         <span className="font-medium">
           {bet.home_team && bet.away_team ? `${bet.home_team} – ${bet.away_team}` : bet.match_id}
         </span>
-        <div className="text-xs text-muted-foreground">
+        <div className="num mt-0.5 text-xs text-muted-foreground">
           {bet.league} · {kickoff(bet.kickoff)}
         </div>
       </TableCell>
       <TableCell className="min-w-40 whitespace-normal">
-        {bet.outcome ? OUTCOME_LABEL[bet.outcome] : selectionLabel(bet)}{" "}
-        <span className="tabular-nums">{odds(bet.odds)}</span> · {bet.bookmaker}
-        <div className="mt-1 flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
+        <span className="font-medium">
+          {bet.outcome ? OUTCOME_LABEL[bet.outcome] : selectionLabel(bet)}
+        </span>{" "}
+        <span className="num font-semibold">{odds(bet.odds)}</span>{" "}
+        <span className="text-muted-foreground">· {bet.bookmaker}</span>
+        <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
           <Badge variant="outline" className="font-normal">
             {bet.kind === "paper" ? "Papel" : "Real"}
           </Badge>
@@ -621,17 +671,17 @@ function BetRow({
           {bet.sin_referencia && <span className="text-experimental">sin cuota de referencia</span>}
         </div>
       </TableCell>
-      <TableCell className="text-right tabular-nums">{money(bet.stake, currency)}</TableCell>
+      <TableCell className="num text-right">{money(bet.stake, currency)}</TableCell>
       <TableCell className="whitespace-normal">
         <StatusBadge status={bet.status} />
         {bet.result_source === "manual" && (
           <div className="mt-1 text-xs text-experimental">a mano, sin confirmar</div>
         )}
       </TableCell>
-      <TableCell className={cn("text-right tabular-nums", evTone(bet.profit))}>
+      <TableCell className={cn("num text-right", evTone(bet.profit))}>
         {money(bet.profit, currency)}
       </TableCell>
-      <TableCell className={cn("text-right tabular-nums", evTone(bet.clv))}>
+      <TableCell className={cn("num text-right", evTone(bet.clv))}>
         {pct(bet.clv, 2, true)}
       </TableCell>
       <TableCell>
@@ -648,7 +698,7 @@ function BetRow({
             </label>
             <select
               id={`settle-${bet.id}`}
-              className="field h-7 w-28 px-2 text-xs"
+              className="field h-10 w-28 px-2 text-xs md:h-8"
               value={choice}
               onChange={(event) => setChoice(event.target.value as typeof choice)}
             >
@@ -665,8 +715,9 @@ function BetRow({
         {bet.status === "pendiente" && !started && (
           <Button
             type="button"
-            variant="destructive"
+            variant="ghost"
             size="sm"
+            className="text-negative hover:bg-negative-soft hover:text-negative"
             disabled={busy}
             onClick={onDelete}
             aria-label={`Borrar apuesta ${bet.id}`}

@@ -296,3 +296,11 @@ test("a bet on a match without odds is registered with the no-reference notice",
     from_experimental_signal: false,
   });
 }, 20_000);
+
+test("a house chosen in the link stays selected once the houses load", async () => {
+  base();
+  renderApp(`/calculator?match=${MATCH_ID}&outcome=away&bookmaker=teapuesto&odds=4.4`);
+  await screen.findByRole("option", { name: "Te Apuesto" });
+  expect(screen.getByLabelText("Casa")).toHaveValue("teapuesto");
+  expect(screen.getByLabelText("Resultado")).toHaveValue("away");
+});

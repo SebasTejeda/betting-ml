@@ -1,19 +1,15 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { initials, teamHue } from "./team";
+import { initials } from "./team";
 import { applyTheme, getTheme } from "./theme";
 
 // ------------------------------------------------------------------ team avatars
-test("team initials and a stable hue per name", () => {
+test("team initials", () => {
   expect(initials("Real Madrid")).toBe("RM");
   expect(initials("Arsenal")).toBe("AR");
   expect(initials("Nott'm Forest")).toBe("NM");
   expect(initials("")).toBe("?");
-  expect(teamHue("Arsenal")).toBe(teamHue("Arsenal"));
-  expect(teamHue("Arsenal")).not.toBe(teamHue("Chelsea"));
-  expect(teamHue("Barcelona")).toBeGreaterThanOrEqual(0);
-  expect(teamHue("Barcelona")).toBeLessThan(360);
 });
 
 // ------------------------------------------------------------------ theme
@@ -64,9 +60,14 @@ function tokens(selector: ":root" | ".dark"): Record<string, [number, number, nu
 const PAIRS: [string, string][] = [
   ["foreground", "background"],
   ["foreground", "card"],
+  ["foreground", "secondary"], // team monograms (spec 005)
   ["muted-foreground", "background"],
   ["muted-foreground", "card"],
+  ["muted-foreground", "muted"],
   ["primary-foreground", "primary"],
+  ["primary", "card"], // accent text and links (spec 005)
+  ["primary", "background"],
+  ["accent-foreground", "accent"],
   ["positive", "card"],
   ["negative", "card"],
   ["experimental", "experimental-soft"],
@@ -75,6 +76,21 @@ const PAIRS: [string, string][] = [
   ["positive", "positive-soft"],
   ["negative", "negative-soft"],
 ];
+
+// Field borders are user-interface components: at least 3:1 against what surrounds them (1.4.11).
+test.each([":root", ".dark"] as const)("field borders meet 3:1 in %s", (theme) => {
+  const t = tokens(theme);
+  for (const bg of ["card", "background"]) {
+    const ratio = contrast(t["input"]!, t[bg]!);
+    expect({
+      pair: `input on ${bg}`,
+      ok: ratio >= 3,
+      ratio: Math.round(ratio * 100) / 100,
+    }).toMatchObject({
+      ok: true,
+    });
+  }
+});
 
 test.each([":root", ".dark"] as const)("text tokens meet WCAG AA (4.5:1) in %s", (theme) => {
   const t = tokens(theme);
@@ -85,12 +101,5 @@ test.each([":root", ".dark"] as const)("text tokens meet WCAG AA (4.5:1) in %s",
       ok: ratio >= 4.5,
       ratio: Math.round(ratio * 100) / 100,
     }).toMatchObject({ ok: true });
-  }
-});
-
-test("white initials on the avatar color meet AA for every hue", () => {
-  for (let hue = 0; hue < 360; hue += 5) {
-    const ratio = contrast([1, 1, 1], oklchToLinearRgb(0.5, 0.13, hue));
-    expect({ hue, ok: ratio >= 4.5 }).toMatchObject({ ok: true });
   }
 });

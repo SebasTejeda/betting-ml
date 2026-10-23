@@ -1,15 +1,6 @@
-import {
-  Calculator,
-  ChartLine,
-  Clock,
-  NotebookPen,
-  Scale,
-  SearchX,
-  Table2,
-  TriangleAlert,
-  Sparkles,
-} from "lucide-react";
-import { Link, useParams } from "react-router-dom";
+import { ArrowLeft, ChevronDown, SearchX, Sparkles, TriangleAlert } from "lucide-react";
+import { useState } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import {
   CartesianGrid,
   Legend,
@@ -23,11 +14,12 @@ import {
 
 import { ApiError } from "../api/client";
 import { useMatchDetail } from "../api/hooks";
-import { OUTCOME_LABEL, OUTCOMES, type ComparatorDetail, type Triple } from "../api/types";
+import { OUTCOME_LABEL, OUTCOMES, type ComparatorDetail } from "../api/types";
 import { Empty, ErrorBox, ExperimentalBadge, Loading, Panel } from "../components/common";
 import { ManualOddsForm } from "../components/ManualOddsForm";
+import { SplitBar } from "../components/OutcomeSplit";
 import { TeamAvatar } from "../components/TeamAvatar";
-import { Badge } from "../components/ui/badge";
+import { Button } from "../components/ui/button";
 import { Card } from "../components/ui/card";
 import {
   Table,
@@ -39,14 +31,9 @@ import {
   TableRow,
 } from "../components/ui/table";
 import { kickoff, odds, pct } from "../lib/format";
+import { OUTCOME_DASH, OUTCOME_STROKE, OUTCOME_TONE } from "../lib/outcome";
 import { analysisLink, calculatorLink } from "../lib/links";
 import { cn } from "../lib/utils";
-
-const OUTCOME_COLOR = {
-  home: "bg-chart-1",
-  draw: "bg-chart-3",
-  away: "bg-chart-2",
-} as const;
 
 export function MatchPage() {
   const { matchId = "" } = useParams();
@@ -64,103 +51,148 @@ export function MatchPage() {
     return <ErrorBox error={detail.error} />;
   }
   const match = detail.data;
+  const signal = match.experimental_signal;
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-5">
+      <BackLink />
       <Scoreboard match={match} />
-      <div className="grid gap-4 lg:grid-cols-5">
-        <Panel title="Probabilidades 1X2" icon={Scale} className="lg:col-span-2">
+      <div className="grid gap-5 lg:grid-cols-5">
+        <Panel title="Probabilidades 1X2" className="lg:col-span-2">
           <ReferenceAndModel match={match} />
         </Panel>
-        <Panel title="Cuota de referencia en el tiempo" icon={ChartLine} className="lg:col-span-3">
+        <Panel title="Cuota de referencia en el tiempo" className="lg:col-span-3">
           <ReferenceChart match={match} />
         </Panel>
       </div>
-      <Panel title="Cuotas por casa" icon={Table2}>
-        <BooksTable match={match} />
-      </Panel>
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Panel title="Calculadora rápida (casas peruanas)" icon={Calculator}>
-          <ManualOddsForm matchId={match.match_id} />
-          <Link
-            to={calculatorLink({ matchId: match.match_id })}
-            className="mt-3 inline-block text-sm text-primary underline-offset-2 hover:underline"
-          >
-            Abrir en la calculadora para registrar la apuesta
-          </Link>
+      <div className="grid items-start gap-5 lg:grid-cols-5">
+        <Panel title="Cuotas por casa" className="lg:col-span-3">
+          <BooksTable key={match.match_id} match={match} />
         </Panel>
-        {match.experimental_signal && match.experimental_signal.bets.length > 0 && (
-          <Panel
-            title="Señal de valor"
-            icon={NotebookPen}
-            action={<ExperimentalBadge />}
-            className="border border-experimental-border"
-          >
-            <p className="mb-3 text-sm text-muted-foreground">
-              Sin evidencia todavía: se anota en papel para medir su CLV.
-            </p>
-            <ul className="flex flex-col gap-2 text-sm">
-              {match.experimental_signal.bets.map((bet) => (
-                <li key={bet.outcome} className="flex flex-wrap items-center gap-2">
-                  <Link
-                    className="font-medium underline-offset-2 hover:underline"
-                    to={calculatorLink({
-                      matchId: match.match_id,
-                      outcome: bet.outcome,
-                      bookmaker: bet.bookmaker,
-                      odds: bet.odds,
-                      fromSignal: true,
-                    })}
-                  >
-                    {OUTCOME_LABEL[bet.outcome]} {odds(bet.odds)} en {bet.bookmaker} · EV{" "}
-                    {pct(bet.ev, 1, true)}
-                    {bet.model_agrees !== null &&
-                      ` · el modelo ${bet.model_agrees ? "coincide" : "no coincide"}`}{" "}
-                    · anotar en papel
-                  </Link>
-                </li>
-              ))}
-            </ul>
+        <div className="flex flex-col gap-5 lg:col-span-2">
+          <Panel title="Calculadora rápida (casas peruanas)">
+            <ManualOddsForm matchId={match.match_id} />
+            <Link
+              to={calculatorLink({ matchId: match.match_id })}
+              className="mt-4 inline-block text-sm text-primary underline-offset-2 hover:underline"
+            >
+              Abrir en la calculadora para registrar la apuesta
+            </Link>
           </Panel>
-        )}
+          {signal && signal.bets.length > 0 && (
+            <Panel
+              title="Señal de valor"
+              action={<ExperimentalBadge />}
+              className="border-experimental-border"
+            >
+              <p className="mb-3 text-sm text-muted-foreground">
+                Sin evidencia todavía: se anota en papel para medir su CLV.
+              </p>
+              <ul className="flex flex-col gap-2 text-sm">
+                {signal.bets.map((bet) => (
+                  <li key={bet.outcome}>
+                    <Link
+                      className="num font-medium underline-offset-2 hover:underline"
+                      to={calculatorLink({
+                        matchId: match.match_id,
+                        outcome: bet.outcome,
+                        bookmaker: bet.bookmaker,
+                        odds: bet.odds,
+                        fromSignal: true,
+                      })}
+                    >
+                      {OUTCOME_LABEL[bet.outcome]} {odds(bet.odds)} en {bet.bookmaker} · EV{" "}
+                      {pct(bet.ev, 1, true)}
+                      {bet.model_agrees !== null &&
+                        ` · el modelo ${bet.model_agrees ? "coincide" : "no coincide"}`}{" "}
+                      · anotar en papel
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </Panel>
+          )}
+        </div>
       </div>
     </div>
   );
 }
 
-function Scoreboard({ match }: { match: ComparatorDetail }) {
+/** Back to where the user came from (Hoy or Top keep their filters); Hoy on a direct visit. */
+function BackLink() {
+  const navigate = useNavigate();
+  const fromApp = ((window.history.state as { idx?: number } | null)?.idx ?? 0) > 0;
   return (
-    <Card className="gap-4 bg-linear-to-b from-secondary/60 to-card px-4 py-6 shadow-sm">
-      <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
-        <Badge variant="secondary">{match.league}</Badge>
-        <Clock aria-hidden className="size-3.5" />
-        {kickoff(match.kickoff)}
+    <Link
+      to="/"
+      onClick={(event) => {
+        if (!fromApp) return;
+        event.preventDefault();
+        navigate(-1);
+      }}
+      className="inline-flex min-h-10 w-fit items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+    >
+      <ArrowLeft aria-hidden className="size-4" />
+      {fromApp ? "Volver" : "Hoy"}
+    </Link>
+  );
+}
+
+function Scoreboard({ match }: { match: ComparatorDetail }) {
+  // The fair price leads (it is the measured edge); the model is the second opinion.
+  const split = match.fair?.probabilities ?? match.model?.probabilities;
+  const source = match.fair
+    ? `Probabilidad justa (${match.fair.source})`
+    : "Probabilidad según el modelo";
+  return (
+    <Card className="gap-6 p-5 sm:p-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-muted-foreground">
+          <span className="font-medium text-foreground">{match.league}</span>
+          <span aria-hidden>·</span>
+          <span className="num">{kickoff(match.kickoff)}</span>
+        </div>
+        <Button asChild variant="outline" size="sm">
+          <Link to={analysisLink(match.home_team, match.away_team, match.match_id)}>
+            <Sparkles aria-hidden />
+            Analizar el partido
+            <span className="sr-only"> (mercados, forma y lo más probable)</span>
+          </Link>
+        </Button>
       </div>
       <h1 className="sr-only">
         {match.home_team} – {match.away_team}
       </h1>
-      <div aria-hidden className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
-        <div className="flex flex-col items-center gap-2 text-center">
-          <TeamAvatar name={match.home_team} size="lg" />
-          <span className="text-base font-semibold sm:text-xl">{match.home_team}</span>
-          <span className="text-xs text-muted-foreground">Local</span>
-        </div>
-        <span className="text-2xl font-light text-muted-foreground">vs</span>
-        <div className="flex flex-col items-center gap-2 text-center">
-          <TeamAvatar name={match.away_team} size="lg" />
-          <span className="text-base font-semibold sm:text-xl">{match.away_team}</span>
-          <span className="text-xs text-muted-foreground">Visita</span>
-        </div>
+      <div aria-hidden className="grid grid-cols-[1fr_auto_1fr] items-center gap-4">
+        <Team name={match.home_team} side="Local" />
+        <span className="text-sm text-muted-foreground">vs</span>
+        <Team name={match.away_team} side="Visita" end />
       </div>
-      <Link
-        to={analysisLink(match.home_team, match.away_team, match.match_id)}
-        className="mx-auto inline-flex items-center gap-1 text-sm font-medium text-primary underline-offset-2 hover:underline"
-      >
-        <Sparkles aria-hidden className="size-4" />
-        Analizar el partido (mercados, forma y lo más probable)
-      </Link>
+      {split && (
+        <div className="flex flex-col gap-3 border-t pt-5">
+          <p className="eyebrow">{source}</p>
+          <div className="grid grid-cols-3 gap-3">
+            {OUTCOMES.map((o) => (
+              <div
+                key={o}
+                className={cn(
+                  "flex flex-col",
+                  o === "draw" && "items-center",
+                  o === "away" && "items-end",
+                )}
+              >
+                <span className="num text-2xl font-semibold tracking-tight sm:text-3xl">
+                  {pct(split[o], 0)}
+                </span>
+                <span className="text-xs text-muted-foreground">{OUTCOME_LABEL[o]}</span>
+              </div>
+            ))}
+          </div>
+          <SplitBar values={split} />
+        </div>
+      )}
       {match.warning && (
-        <p className="flex items-center justify-center gap-1 text-sm text-experimental">
-          <TriangleAlert aria-hidden className="size-4" />
+        <p className="flex items-center gap-2 rounded-lg bg-experimental-soft px-3 py-2.5 text-sm text-experimental">
+          <TriangleAlert aria-hidden className="size-4 shrink-0" />
           {match.warning}
         </p>
       )}
@@ -168,18 +200,20 @@ function Scoreboard({ match }: { match: ComparatorDetail }) {
   );
 }
 
-function ProbBar({ label, probs }: { label: string; probs: Triple }) {
+function Team({ name, side, end = false }: { name: string; side: string; end?: boolean }) {
   return (
-    <div className="flex flex-col gap-1">
-      <span className="text-xs font-medium text-muted-foreground">{label}</span>
-      <div aria-hidden className="flex h-3 w-full overflow-hidden rounded-full bg-muted">
-        {OUTCOMES.map((o) => (
-          <div
-            key={o}
-            className={cn("h-full transition-[width] duration-200", OUTCOME_COLOR[o])}
-            style={{ width: `${100 * (probs[o] ?? 0)}%` }}
-          />
-        ))}
+    <div
+      className={cn(
+        "flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:gap-3",
+        end && "items-end text-right sm:flex-row-reverse",
+      )}
+    >
+      <TeamAvatar name={name} size="lg" />
+      <div className={cn("flex min-w-0 flex-col gap-0.5", end && "items-end")}>
+        <span className="line-clamp-2 text-base font-semibold tracking-tight break-words sm:text-xl">
+          {name}
+        </span>
+        <span className="text-xs text-muted-foreground">{side}</span>
       </div>
     </div>
   );
@@ -189,47 +223,63 @@ function ReferenceAndModel({ match }: { match: ComparatorDetail }) {
   if (!match.fair && !match.model) {
     return <Empty>Sin cuota de referencia ni opinión del modelo para este partido.</Empty>;
   }
+  const fair = match.fair;
+  const model = match.model;
   return (
-    <div className="flex flex-col gap-4">
-      {match.fair && (
-        <ProbBar label={`Justa (${match.fair.source})`} probs={match.fair.probabilities} />
-      )}
-      {match.model && (
-        <ProbBar
-          label={`Modelo (${match.model.version ?? "—"})`}
-          probs={match.model.probabilities}
-        />
-      )}
-      <dl
-        className="grid gap-2 text-sm sm:grid-cols-3 lg:grid-cols-1"
-        aria-label="Referencia y modelo"
-      >
-        {OUTCOMES.map((o) => (
-          <div key={o} className="rounded-lg bg-secondary/50 p-2">
-            <dt className="flex items-center gap-1.5 font-medium">
-              <span aria-hidden className={cn("size-2.5 rounded-full", OUTCOME_COLOR[o])} />
-              {OUTCOME_LABEL[o]}
-            </dt>
-            <dd className="text-xs">
-              {match.fair
-                ? `Justa (${match.fair.source}): ${odds(match.fair.odds[o])} · ${pct(match.fair.probabilities[o])}`
-                : "Sin referencia"}
-            </dd>
-            {match.model && (
-              <dd className="text-xs text-muted-foreground">
-                Modelo ({match.model.version ?? "—"}): {pct(match.model.probabilities[o])}
-              </dd>
-            )}
-          </div>
-        ))}
-      </dl>
+    <div className="flex flex-col gap-3">
+      <Table aria-label="Referencia y modelo">
+        <TableHeader>
+          <TableRow>
+            <TableHead>Resultado</TableHead>
+            <TableHead className="text-right">Cuota</TableHead>
+            <TableHead className="text-right">Justa</TableHead>
+            <TableHead className="text-right">Modelo</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {OUTCOMES.map((o) => (
+            <TableRow key={o}>
+              <TableHead scope="row" className="text-foreground">
+                <span className="inline-flex items-center gap-2">
+                  <span aria-hidden className={cn("size-2 rounded-full", OUTCOME_TONE[o])} />
+                  {OUTCOME_LABEL[o]}
+                </span>
+              </TableHead>
+              <TableCell className="num text-right font-semibold">
+                {fair ? odds(fair.odds[o]) : "—"}
+              </TableCell>
+              <TableCell className="num text-right">
+                {fair ? pct(fair.probabilities[o]) : "Sin referencia"}
+              </TableCell>
+              <TableCell className="num text-right text-muted-foreground">
+                {model ? pct(model.probabilities[o]) : "—"}
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+      <p className="text-xs text-muted-foreground">
+        {fair ? `Justa: ${fair.source}, sin margen` : "Sin cuota de referencia"}
+        {model && ` · Modelo: ${model.version ?? "—"}`}
+      </p>
     </div>
   );
 }
 
 function BooksTable({ match }: { match: ComparatorDetail }) {
+  const [showReference, setShowReference] = useState(false);
   if (match.bookmakers.length === 0) return <Empty>Sin cuotas de casas para este partido.</Empty>;
   const bestKey = (o: (typeof OUTCOMES)[number]) => match.best[o]?.bookmaker;
+  // Houses you can use from Peru first; the rest are only a price reference.
+  const accessible = match.bookmakers.filter((b) => b.accessible);
+  const reference = match.bookmakers.filter((b) => !b.accessible);
+  // A reference house that pays the best price stays visible, or the highlight would be hidden.
+  const bestKeys = new Set(OUTCOMES.map(bestKey));
+  const shown = showReference || accessible.length === 0;
+  const rows = shown
+    ? [...accessible, ...reference]
+    : [...accessible, ...reference.filter((b) => bestKeys.has(b.key))];
+  const folded = reference.length - (rows.length - accessible.length);
   return (
     <>
       <Table>
@@ -248,12 +298,12 @@ function BooksTable({ match }: { match: ComparatorDetail }) {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {match.bookmakers.map((book) => (
+          {rows.map((book) => (
             <TableRow key={book.key}>
-              <TableHead scope="row" className="font-medium text-foreground">
+              <TableHead scope="row" className="text-foreground">
                 {book.key}
                 {!book.accessible && (
-                  <span className="ml-1 text-xs font-normal text-muted-foreground">
+                  <span className="ml-1.5 text-xs font-normal text-muted-foreground">
                     (referencia)
                   </span>
                 )}
@@ -261,11 +311,11 @@ function BooksTable({ match }: { match: ComparatorDetail }) {
               {OUTCOMES.map((o) => {
                 const isBest = bestKey(o) === book.key;
                 return (
-                  <TableCell key={o} className="text-right tabular-nums">
+                  <TableCell key={o} className="num text-right">
                     <span
                       className={cn(
                         "inline-block rounded-md px-2 py-0.5",
-                        isBest && "bg-positive-soft font-semibold text-positive",
+                        isBest && "bg-accent font-semibold text-accent-foreground",
                       )}
                     >
                       {odds(book.odds[o])}
@@ -274,24 +324,41 @@ function BooksTable({ match }: { match: ComparatorDetail }) {
                   </TableCell>
                 );
               })}
-              <TableCell className="text-right text-muted-foreground tabular-nums">
+              <TableCell className="num text-right text-muted-foreground">
                 {pct(book.margin)}
               </TableCell>
             </TableRow>
           ))}
         </TableBody>
       </Table>
-      <p className="mt-3 text-xs text-muted-foreground">
-        Margen de la mejor combinación: {pct(match.margins.best_combined)} · promedio:{" "}
-        {pct(match.margins.average)}
-      </p>
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+        <p className="num text-xs text-muted-foreground">
+          Margen de la mejor combinación: {pct(match.margins.best_combined)} · promedio:{" "}
+          {pct(match.margins.average)}
+        </p>
+        {accessible.length > 0 && (showReference || folded > 0) && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            aria-expanded={showReference}
+            onClick={() => setShowReference((v) => !v)}
+          >
+            {showReference ? "Ocultar casas de referencia" : `Ver ${folded} casas de referencia`}
+            <ChevronDown
+              aria-hidden
+              className={cn("transition-transform duration-150", showReference && "rotate-180")}
+            />
+          </Button>
+        )}
+      </div>
     </>
   );
 }
 
 function ReferenceChart({ match }: { match: ComparatorDetail }) {
   if (match.reference_history.length < 2) {
-    return <Empty icon={ChartLine}>Aún no hay suficientes snapshots de la referencia.</Empty>;
+    return <Empty>Aún no hay suficientes snapshots de la referencia.</Empty>;
   }
   const data = match.reference_history.map((point) => ({
     at: kickoff(point.at),
@@ -300,16 +367,23 @@ function ReferenceChart({ match }: { match: ComparatorDetail }) {
     Visita: point.odds.away,
   }));
   return (
-    <div className="h-64" aria-label="Gráfico de la cuota de referencia" role="img">
+    <div className="h-60" aria-label="Gráfico de la cuota de referencia" role="img">
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={data} margin={{ left: -12, right: 8, top: 8 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" />
-          <XAxis dataKey="at" fontSize={11} stroke="var(--chart-text)" tickLine={false} />
+          <CartesianGrid vertical={false} stroke="var(--chart-grid)" />
+          <XAxis
+            dataKey="at"
+            fontSize={11}
+            stroke="var(--chart-text)"
+            tickLine={false}
+            axisLine={false}
+          />
           <YAxis
             domain={["auto", "auto"]}
             fontSize={11}
             stroke="var(--chart-text)"
             tickLine={false}
+            axisLine={false}
           />
           <Tooltip
             contentStyle={{
@@ -317,30 +391,22 @@ function ReferenceChart({ match }: { match: ComparatorDetail }) {
               border: "1px solid var(--border)",
               borderRadius: 8,
               color: "var(--popover-foreground)",
+              fontSize: 12,
             }}
           />
-          <Legend />
-          <Line
-            type="monotone"
-            dataKey="Local"
-            stroke="var(--chart-1)"
-            strokeWidth={2}
-            dot={false}
-          />
-          <Line
-            type="monotone"
-            dataKey="Empate"
-            stroke="var(--chart-3)"
-            strokeWidth={2}
-            dot={false}
-          />
-          <Line
-            type="monotone"
-            dataKey="Visita"
-            stroke="var(--chart-2)"
-            strokeWidth={2}
-            dot={false}
-          />
+          <Legend iconType="plainline" wrapperStyle={{ fontSize: 12 }} />
+          {/* Each line also has its own dash: the colours alone are too close (WCAG 1.4.1). */}
+          {OUTCOMES.map((o) => (
+            <Line
+              key={o}
+              type="monotone"
+              dataKey={OUTCOME_LABEL[o]}
+              stroke={OUTCOME_STROKE[o]}
+              strokeDasharray={OUTCOME_DASH[o]}
+              strokeWidth={2}
+              dot={false}
+            />
+          ))}
         </LineChart>
       </ResponsiveContainer>
     </div>

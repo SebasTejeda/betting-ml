@@ -13,13 +13,15 @@ test("shows every bookmaker, highlights the best price and the margins", async (
   );
   renderApp(`/match/${MATCH_ID}`);
   expect(await screen.findByRole("heading", { name: "Arsenal – Chelsea" })).toBeInTheDocument();
-  const table = screen.getByRole("table");
+  const table = screen.getByRole("table", { name: /Cuotas de cada casa/ });
   const betsson = within(table).getByRole("row", { name: /betsson/ });
   expect(within(betsson).getAllByText("(mejor cuota)", { exact: false })).toHaveLength(2);
   expect(within(table).getByText("1.7 %")).toBeInTheDocument();
   expect(screen.getByRole("img", { name: /cuota de referencia/ })).toBeInTheDocument();
-  expect(screen.getByText("Justa (pinnacle): 4.35 · 23.0 %")).toBeInTheDocument();
-  expect(screen.getByText("Modelo (E12-test): 24.0 %")).toBeInTheDocument();
+  const probabilities = screen.getByRole("table", { name: "Referencia y modelo" });
+  const away = within(probabilities).getByRole("row", { name: /Visita/ });
+  expect(away).toHaveTextContent(/4\.35.*23\.0 %.*24\.0 %/);
+  expect(screen.getByText("Justa: pinnacle, sin margen · Modelo: E12-test")).toBeInTheDocument();
   expect(screen.getByText("EXPERIMENTAL — solo papel")).toBeInTheDocument();
 });
 
@@ -71,4 +73,39 @@ test("unknown match", async () => {
   );
   renderApp("/match/nope");
   expect(await screen.findByText(/Partido no encontrado/)).toBeInTheDocument();
+});
+
+test("reference houses are folded, except one paying the best price", async () => {
+  const withReference = {
+    ...detail,
+    best: { ...detail.best, draw: { bookmaker: "pinnacle", odds: 3.85, ev: null } },
+    bookmakers: [
+      ...detail.bookmakers,
+      {
+        key: "unibet_uk",
+        accessible: false,
+        odds: { home: 1.9, draw: 3.5, away: 4.1 },
+        margin: 0.05,
+        updated_at: "2026-10-09T13:00:00Z",
+      },
+    ],
+  };
+  server.use(
+    http.get(`${API}/comparator/${MATCH_ID}`, () => HttpResponse.json(withReference)),
+    http.get(`${API}/bookmakers`, () => HttpResponse.json(bookmakers)),
+  );
+  renderApp(`/match/${MATCH_ID}`);
+  const table = await screen.findByRole("table", { name: /Cuotas de cada casa/ });
+  // pinnacle pays the best draw: visible with its highlight; unibet_uk is folded.
+  const pinnacle = within(table).getByRole("row", { name: /pinnacle/ });
+  expect(within(pinnacle).getByText("(mejor cuota)", { exact: false })).toBeInTheDocument();
+  expect(within(table).queryByRole("row", { name: /unibet_uk/ })).not.toBeInTheDocument();
+  const toggle = screen.getByRole("button", { name: "Ver 1 casas de referencia" });
+  expect(toggle).toHaveAttribute("aria-expanded", "false");
+  await userEvent.click(toggle);
+  expect(within(table).getByRole("row", { name: /unibet_uk/ })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Ocultar casas de referencia" })).toHaveAttribute(
+    "aria-expanded",
+    "true",
+  );
 });

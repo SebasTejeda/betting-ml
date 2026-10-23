@@ -1,6 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { CircleCheck, CircleX, type LucideIcon, Scale } from "lucide-react";
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
@@ -46,6 +46,8 @@ export function ManualOddsForm({
   const {
     register,
     handleSubmit,
+    getValues,
+    setValue,
     formState: { errors },
   } = useForm<z.input<typeof schema>, unknown, FormValues>({
     resolver: zodResolver(schema),
@@ -56,6 +58,12 @@ export function ManualOddsForm({
     },
   });
 
+  // A house given in the link arrives before its <option> exists; set it again once the list
+  // loads, or the select shows "Elige…" while the form still holds the house.
+  useEffect(() => {
+    if (bookmakers.data) setValue("bookmaker", getValues("bookmaker"));
+  }, [bookmakers.data, getValues, setValue]);
+
   const submit = handleSubmit((values) =>
     calculator.mutate(
       { match_id: matchId, ...values },
@@ -64,9 +72,10 @@ export function ManualOddsForm({
   );
 
   return (
-    <div className="flex flex-col gap-4">
+    // Container query: the form also lives in a narrow side column (match page).
+    <div className="@container flex flex-col gap-4">
       <form
-        className="grid grid-cols-2 items-end gap-3 sm:grid-cols-[1fr_1.4fr_0.8fr_auto]"
+        className="grid grid-cols-2 items-end gap-3 @lg:grid-cols-[1fr_1.4fr_0.8fr_auto]"
         onSubmit={submit}
         noValidate
       >
@@ -150,7 +159,7 @@ export function CalculationResult({ result }: { result: CalculatorResult }) {
         </p>
         <ExperimentalBadge />
       </div>
-      <dl className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+      <dl className="grid grid-cols-2 gap-4 @lg:grid-cols-4">
         <Stat label={`Cuota justa (${result.reference})`}>{fmtOdds(result.fair_odds)}</Stat>
         <Stat label="Probabilidad justa">{pct(result.fair_probability)}</Stat>
         <Stat label="EV">

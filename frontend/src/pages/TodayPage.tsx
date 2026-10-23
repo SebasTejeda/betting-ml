@@ -1,11 +1,10 @@
 import {
-  CalendarDays,
+  ArrowRight,
   CalendarX2,
-  Clock,
   NotebookPen,
   RefreshCw,
-  TriangleAlert,
   Sparkles,
+  TriangleAlert,
 } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
@@ -24,7 +23,6 @@ import {
 } from "../components/common";
 import { MatchFilters } from "../components/MatchFilters";
 import { TeamAvatar } from "../components/TeamAvatar";
-import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
 import { Card } from "../components/ui/card";
 import { kickoff, odds, pct, todayLima } from "../lib/format";
@@ -39,8 +37,7 @@ export function TodayPage() {
   return (
     <>
       <PageTitle
-        icon={CalendarDays}
-        description="La mejor cuota disponible por resultado y cuánto margen cobra cada casa. Elegir la mejor casa en vez de una promedio es la ventaja medida (ver Backtest)."
+        description="La mejor cuota disponible por resultado y el margen que cobra cada casa. Elegir la mejor casa en vez de una promedio es la ventaja medida (ver Backtest)."
         aside={<RefreshButton league={league} />}
       >
         Hoy
@@ -63,9 +60,14 @@ export function TodayPage() {
         </Empty>
       ) : (
         <>
-          <p className="mb-3 text-xs text-muted-foreground">
-            Cuotas del {comparator.data.snapshot_at ? kickoff(comparator.data.snapshot_at) : "—"} ·
-            referencia {comparator.data.reference} · {comparator.data.count} partidos
+          <p className="num mb-4 flex flex-wrap gap-x-2 text-xs text-muted-foreground">
+            <span className="font-medium text-foreground">{comparator.data.count} partidos</span>
+            <span aria-hidden>·</span>
+            <span>
+              cuotas del {comparator.data.snapshot_at ? kickoff(comparator.data.snapshot_at) : "—"}
+            </span>
+            <span aria-hidden>·</span>
+            <span>referencia {comparator.data.reference}</span>
           </p>
           <ul aria-label="Partidos" className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {comparator.data.matches.map((match) => (
@@ -85,7 +87,7 @@ function RefreshButton({ league }: { league: string }) {
   const refresh = useRefreshOdds();
   const remaining = budget.data?.credits_remaining;
   return (
-    <div className="flex flex-col items-start gap-1 text-sm sm:items-end">
+    <div className="flex flex-col items-start gap-1.5 text-sm sm:items-end">
       <Button
         type="button"
         variant="outline"
@@ -95,7 +97,7 @@ function RefreshButton({ league }: { league: string }) {
         <RefreshCw aria-hidden className={refresh.isPending ? "animate-spin" : undefined} />
         {refresh.isPending ? "Actualizando…" : "Actualizar cuotas"}
       </Button>
-      <span className="text-xs text-muted-foreground">
+      <span className="num text-xs text-muted-foreground">
         {budget.data
           ? `Créditos: ${remaining ?? "sin datos"} (reserva ${budget.data.min_reserve}) · ~2 por liga`
           : "Créditos: …"}
@@ -105,7 +107,7 @@ function RefreshButton({ league }: { league: string }) {
       )}
       {refresh.isError && <RefreshError error={refresh.error} />}
       {refresh.isSuccess && (
-        <span role="status" className="text-xs text-positive">
+        <span role="status" className="text-xs text-muted-foreground">
           {refresh.data.events} partidos actualizados ({refresh.data.credits_used} créditos)
           {refresh.data.unmapped_teams.length > 0 &&
             ` · equipos sin mapear: ${refresh.data.unmapped_teams.join(", ")}`}
@@ -126,30 +128,25 @@ function RefreshError({ error }: { error: Error }) {
   return <ErrorBox error={error} />;
 }
 
-function OddsChip({ match, outcome }: { match: ComparatorMatch; outcome: Outcome }) {
+/** Best price for one outcome: the price leads, the house and the fair odds follow. */
+function OddsCell({ match, outcome }: { match: ComparatorMatch; outcome: Outcome }) {
   const best = match.best[outcome];
   return (
-    <div className="flex flex-col items-center gap-0.5 rounded-lg border bg-secondary/40 px-2 py-2 text-center transition-colors duration-150">
-      <span className="text-[0.7rem] font-medium tracking-wide text-muted-foreground uppercase">
-        {OUTCOME_LABEL[outcome]}
-      </span>
+    <div className="flex min-w-0 flex-col gap-0.5 px-3 py-2.5">
+      <span className="eyebrow">{OUTCOME_LABEL[outcome]}</span>
       {best ? (
         <>
-          <span className="text-lg leading-tight font-semibold tabular-nums">
-            {odds(best.odds)}
-          </span>
-          <span className="max-w-full truncate text-xs text-muted-foreground">
-            {best.bookmaker}
-          </span>
+          <span className="num text-lg leading-tight font-semibold">{odds(best.odds)}</span>
+          <span className="truncate text-xs text-muted-foreground">{best.bookmaker}</span>
           {match.fair && (
-            <span className="text-[0.7rem] text-muted-foreground">
+            <span className="num text-xs text-muted-foreground">
               justa {odds(match.fair.odds[outcome])}
             </span>
           )}
-          {best.ev !== null && <EvValue ev={best.ev} className="text-[0.7rem]" />}
+          {best.ev !== null && <EvValue ev={best.ev} className="text-xs" />}
         </>
       ) : (
-        <span className="text-muted-foreground">—</span>
+        <span className="text-lg leading-tight text-muted-foreground">—</span>
       )}
     </div>
   );
@@ -158,69 +155,56 @@ function OddsChip({ match, outcome }: { match: ComparatorMatch; outcome: Outcome
 function MatchCard({ match }: { match: ComparatorMatch }) {
   const signal = match.experimental_signal;
   const m = match.margins;
+  const name = `${match.home_team} – ${match.away_team}`;
   return (
-    <Card className="h-full gap-3 px-4 shadow-sm transition-shadow duration-150 hover:shadow-md">
-      <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
-        <Badge variant="secondary">{match.league}</Badge>
-        <span className="flex items-center gap-1">
-          <Clock aria-hidden className="size-3.5" />
-          {kickoff(match.kickoff)}
-        </span>
+    <Card className="h-full gap-0 py-0 transition-colors duration-150 hover:border-foreground/20">
+      <div className="flex flex-col gap-3 px-4 pt-4">
+        <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+          <span className="font-medium text-foreground">{match.league}</span>
+          <span className="num">{kickoff(match.kickoff)}</span>
+        </div>
+        <Link
+          to={`/match/${match.match_id}`}
+          className="group flex flex-col gap-2 rounded-md transition-colors duration-150"
+        >
+          <span className="sr-only">{name}</span>
+          {[match.home_team, match.away_team].map((team) => (
+            <span key={team} aria-hidden className="flex items-center gap-2.5 font-medium">
+              <TeamAvatar name={team} size="sm" />
+              <span className="truncate group-hover:underline">{team}</span>
+            </span>
+          ))}
+        </Link>
+        {match.warning && (
+          <p className="flex items-center gap-1.5 text-xs text-experimental">
+            <TriangleAlert aria-hidden className="size-3.5" />
+            {match.warning}
+          </p>
+        )}
       </div>
-      <Link
-        to={`/match/${match.match_id}`}
-        className="group flex flex-col gap-2 rounded-lg transition-colors duration-150"
-      >
-        <span className="sr-only">
-          {match.home_team} – {match.away_team}
-        </span>
-        {[match.home_team, match.away_team].map((team) => (
-          <span key={team} aria-hidden className="flex items-center gap-2 font-medium">
-            <TeamAvatar name={team} size="sm" />
-            <span className="group-hover:underline">{team}</span>
-          </span>
-        ))}
-      </Link>
-      {match.warning && (
-        <p className="flex items-center gap-1 text-xs text-experimental">
-          <TriangleAlert aria-hidden className="size-3.5" />
-          {match.warning}
-        </p>
-      )}
-      <div className="grid grid-cols-3 gap-2">
+      <div className="mx-4 mt-4 grid grid-cols-3 divide-x overflow-hidden rounded-lg border">
         {OUTCOMES.map((o) => (
-          <OddsChip key={o} match={match} outcome={o} />
+          <OddsCell key={o} match={match} outcome={o} />
         ))}
       </div>
-      <Link
-        to={analysisLink(match.home_team, match.away_team, match.match_id)}
-        className="inline-flex w-fit items-center gap-1 text-xs font-medium text-primary underline-offset-2 hover:underline"
-      >
-        <Sparkles aria-hidden className="size-3.5" />
-        Analizar
-        <span className="sr-only">
-          {" "}
-          {match.home_team} – {match.away_team}
-        </span>
-      </Link>
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+      <p className="num mx-4 mt-3 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
         <span>
-          Mejor combinación: <strong className="text-foreground">{pct(m.best_combined)}</strong>
+          Margen <strong className="font-medium text-foreground">{pct(m.best_combined)}</strong> con
+          las mejores · {pct(m.average)} promedio
         </span>
-        <span>Promedio: {pct(m.average)}</span>
         {m.best_vs_average_uplift !== null && (
           <span className="font-medium text-positive">
             Pagan {pct(m.best_vs_average_uplift, 1, true)} vs promedio
           </span>
         )}
-      </div>
+      </p>
       {signal && signal.bets.length > 0 && (
-        <div className="flex flex-col gap-2 rounded-lg border border-experimental-border bg-experimental-soft/60 p-2">
+        <div className="mx-4 mt-3 flex flex-col gap-2 rounded-lg bg-experimental-soft px-3 py-2.5">
           <ExperimentalBadge />
           {signal.bets.map((bet) => (
             <div key={bet.outcome} className="flex flex-wrap items-center gap-2 text-xs">
               <Link
-                className="inline-flex items-center gap-1 font-medium text-foreground underline-offset-2 hover:underline"
+                className="num inline-flex items-center gap-1 font-medium text-foreground underline-offset-2 hover:underline"
                 to={calculatorLink({
                   matchId: match.match_id,
                   outcome: bet.outcome,
@@ -238,6 +222,25 @@ function MatchCard({ match }: { match: ComparatorMatch }) {
           ))}
         </div>
       )}
+      {/* Actions pinned to the bottom so the cards of a row line up. */}
+      <div className="mt-auto pt-3">
+        <div className="flex items-center justify-between gap-2 border-t px-2 py-1.5">
+          <Button asChild variant="ghost" size="sm" className="text-primary hover:text-primary">
+            <Link to={analysisLink(match.home_team, match.away_team, match.match_id)}>
+              <Sparkles aria-hidden />
+              Analizar
+              <span className="sr-only"> {name}</span>
+            </Link>
+          </Button>
+          <Button asChild variant="ghost" size="sm" className="text-muted-foreground">
+            <Link to={`/match/${match.match_id}`}>
+              Cuotas por casa
+              <span className="sr-only"> de {name}</span>
+              <ArrowRight aria-hidden />
+            </Link>
+          </Button>
+        </div>
+      </div>
     </Card>
   );
 }
