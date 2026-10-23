@@ -1,6 +1,6 @@
 # Calidad de datos — competiciones europeas (spec 003)
 
-Generado: 2026-10-22T16:21:58+00:00
+Generado: 2026-10-23T00:55:03+00:00
 
 ## Resumen
 
