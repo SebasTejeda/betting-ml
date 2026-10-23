@@ -86,7 +86,7 @@ Una a la vez: implementar, tests (incluidos los negativos), `lint` y `test` en v
   - El refresco por evento exige sesión con CSRF o `X-API-Key`.
   - Cuenta en el cupo `ODDS_REFRESH_MAX_PER_HOUR` y deja un evento de seguridad (`ODDS_REFRESH`).
   - Tests de que no gasta créditos sin cupo ni por debajo de la reserva, y de que la clave no aparece en la caché, en los logs ni en los errores.
-- [ ] **I05** Juego responsable en todos los mercados.
+- [x] **I05** Juego responsable en todos los mercados.
   - Una apuesta real de cualquier mercado pasa por los mismos límites: pérdida mensual, stake máximo y `confirm`.
   - Las liquidaciones de los mercados nuevos quedan auditadas y la pérdida mensual las cuenta.
   - Tests de que `market`, `selection` o `line` no sirven para saltarse un límite.

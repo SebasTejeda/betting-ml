@@ -348,4 +348,8 @@ Plan: [`specs/004-match-analysis/integration.md`](specs/004-match-analysis/integ
   - Se descuenta solo justo antes de gastar créditos: la caché, la reserva baja y un evento desconocido no gastan cupo.
   - Deja el evento de seguridad ODDS_REFRESH.
   - La clave se redacta también en el cuerpo de las respuestas antes de cachear; un test de extremo a extremo comprueba que no aparece en la caché, los logs ni los errores.
+- 2026-10-22 · I05 · Juego responsable en los ocho mercados.
+  - Bloqueo mensual (confirm no lo levanta), stake máximo con confirm y pendientes vencidas: probados por mercado.
+  - Liquidaciones de mercados nuevos auditadas, y sus pérdidas cuentan en el límite mensual.
+  - Corregido un hueco: la evidencia de la señal experimental se mezclaba entre mercados; ahora es por mercado (US6).
 

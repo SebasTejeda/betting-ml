@@ -370,3 +370,17 @@ Formato:
   - Un test de extremo a extremo usa el cliente real contra una API falsa que repite la clave en un 401 y en el cuerpo de un evento. Comprueba que no aparece en la respuesta de error, en la caché ni en el log escrito.
 - Mutaciones comprobadas: quitar el cupo, tomarlo antes de la caché, quitar la redacción del cuerpo, bajar el evento a DEBUG o no pasar el cupo desde la ruta hace fallar algún test.
 
+## 2026-10-22 — I05: juego responsable en todos los mercados
+- **Los límites no dependen del mercado.** `check_bet`, `monthly_loss` y `overdue_pending` miran el tipo, el estado, el stake y el beneficio, nunca `market`, `selection` ni `line`. Una apuesta real de cualquier mercado pasa por:
+  - la pérdida mensual: bloqueo, que `confirm` no levanta;
+  - el stake máximo: aviso con `confirm`;
+  - las pendientes de partidos terminados, que cuentan como perdidas.
+
+  Los tests nuevos (`test_responsible_markets.py`) lo fijan para los ocho mercados. Las apuestas en papel nunca se bloquean.
+- **Hueco corregido: la evidencia de la señal experimental se mezclaba entre mercados.** `signal_progress` contaba las apuestas en papel de todos los mercados. Con 100 apuestas de 1X2 con CLV positivo, una apuesta real de `totals` marcada como señal experimental pasaba sin el aviso `EXPERIMENTAL_SIGNAL_UNPROVEN`. Eso contradice la US6 de esta spec: "un mercado deja de ser EXPERIMENTAL solo con ≥ 100 apuestas en papel con CLV medio > 0".
+  - Ahora `signal_progress(bets, market)` cuenta solo el mercado de la apuesta.
+  - El resumen general (`/bets/summary`) sigue contando todo. Las apuestas sin referencia (todas las de los mercados nuevos por ahora) quedan fuera de la señal, como antes.
+  - Mutación comprobada: volver a la cuenta mezclada hace fallar el test.
+- **Liquidaciones auditadas.** La liquidación automática de los mercados nuevos usa el guardado condicional y auditado (`BET_SETTLED`, con el `actor` de quien la lanza) desde I01. El test comprueba los eventos, que la cadena verifica y que la pérdida cuenta en el límite mensual. Mutación comprobada: una `monthly_loss` que ignore los mercados nuevos hace fallar el test.
+- No hay cambios en la API ni en el frontend: el registro y la liquidación ya pasaban por `ManageBets` y `SettleBets`.
+

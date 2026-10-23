@@ -249,7 +249,11 @@ class ManageBets:
             Decimal("0.00"),
         )
         overdue = overdue_pending(everything, now)
-        progress = signal_progress(everything) if request.from_experimental_signal else None
+        progress = (
+            signal_progress(everything, request.market)
+            if request.from_experimental_signal
+            else None
+        )
         return check_bet(
             request.stake,
             request.kind,
