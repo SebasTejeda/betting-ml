@@ -1,6 +1,6 @@
 import { ArrowLeft, ChevronDown, SearchX, Sparkles, TriangleAlert } from "lucide-react";
 import { useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import {
   CartesianGrid,
   Legend,
@@ -31,7 +31,7 @@ import {
   TableRow,
 } from "../components/ui/table";
 import { kickoff, odds, pct } from "../lib/format";
-import { OUTCOME_STROKE, OUTCOME_TONE } from "../lib/outcome";
+import { OUTCOME_DASH, OUTCOME_STROKE, OUTCOME_TONE } from "../lib/outcome";
 import { analysisLink, calculatorLink } from "../lib/links";
 import { cn } from "../lib/utils";
 
@@ -54,13 +54,7 @@ export function MatchPage() {
   const signal = match.experimental_signal;
   return (
     <div className="flex flex-col gap-5">
-      <Link
-        to="/"
-        className="inline-flex w-fit items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
-      >
-        <ArrowLeft aria-hidden className="size-4" />
-        Hoy
-      </Link>
+      <BackLink />
       <Scoreboard match={match} />
       <div className="grid gap-5 lg:grid-cols-5">
         <Panel title="Probabilidades 1X2" className="lg:col-span-2">
@@ -72,7 +66,7 @@ export function MatchPage() {
       </div>
       <div className="grid items-start gap-5 lg:grid-cols-5">
         <Panel title="Cuotas por casa" className="lg:col-span-3">
-          <BooksTable match={match} />
+          <BooksTable key={match.match_id} match={match} />
         </Panel>
         <div className="flex flex-col gap-5 lg:col-span-2">
           <Panel title="Calculadora rápida (casas peruanas)">
@@ -120,6 +114,26 @@ export function MatchPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+/** Back to where the user came from (Hoy or Top keep their filters); Hoy on a direct visit. */
+function BackLink() {
+  const navigate = useNavigate();
+  const fromApp = ((window.history.state as { idx?: number } | null)?.idx ?? 0) > 0;
+  return (
+    <Link
+      to="/"
+      onClick={(event) => {
+        if (!fromApp) return;
+        event.preventDefault();
+        navigate(-1);
+      }}
+      className="inline-flex min-h-10 w-fit items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+    >
+      <ArrowLeft aria-hidden className="size-4" />
+      {fromApp ? "Volver" : "Hoy"}
+    </Link>
   );
 }
 
@@ -188,10 +202,17 @@ function Scoreboard({ match }: { match: ComparatorDetail }) {
 
 function Team({ name, side, end = false }: { name: string; side: string; end?: boolean }) {
   return (
-    <div className={cn("flex min-w-0 items-center gap-3", end && "flex-row-reverse text-right")}>
+    <div
+      className={cn(
+        "flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:gap-3",
+        end && "items-end text-right sm:flex-row-reverse",
+      )}
+    >
       <TeamAvatar name={name} size="lg" />
       <div className={cn("flex min-w-0 flex-col gap-0.5", end && "items-end")}>
-        <span className="truncate text-lg font-semibold tracking-tight sm:text-xl">{name}</span>
+        <span className="line-clamp-2 text-base font-semibold tracking-tight break-words sm:text-xl">
+          {name}
+        </span>
         <span className="text-xs text-muted-foreground">{side}</span>
       </div>
     </div>
@@ -210,7 +231,7 @@ function ReferenceAndModel({ match }: { match: ComparatorDetail }) {
         <TableHeader>
           <TableRow>
             <TableHead>Resultado</TableHead>
-            <TableHead className="text-right">Cuota justa</TableHead>
+            <TableHead className="text-right">Cuota</TableHead>
             <TableHead className="text-right">Justa</TableHead>
             <TableHead className="text-right">Modelo</TableHead>
           </TableRow>
@@ -252,8 +273,13 @@ function BooksTable({ match }: { match: ComparatorDetail }) {
   // Houses you can use from Peru first; the rest are only a price reference.
   const accessible = match.bookmakers.filter((b) => b.accessible);
   const reference = match.bookmakers.filter((b) => !b.accessible);
-  const rows =
-    showReference || accessible.length === 0 ? [...accessible, ...reference] : accessible;
+  // A reference house that pays the best price stays visible, or the highlight would be hidden.
+  const bestKeys = new Set(OUTCOMES.map(bestKey));
+  const shown = showReference || accessible.length === 0;
+  const rows = shown
+    ? [...accessible, ...reference]
+    : [...accessible, ...reference.filter((b) => bestKeys.has(b.key))];
+  const folded = reference.length - (rows.length - accessible.length);
   return (
     <>
       <Table>
@@ -310,7 +336,7 @@ function BooksTable({ match }: { match: ComparatorDetail }) {
           Margen de la mejor combinación: {pct(match.margins.best_combined)} · promedio:{" "}
           {pct(match.margins.average)}
         </p>
-        {reference.length > 0 && accessible.length > 0 && (
+        {accessible.length > 0 && (showReference || folded > 0) && (
           <Button
             type="button"
             variant="ghost"
@@ -318,7 +344,7 @@ function BooksTable({ match }: { match: ComparatorDetail }) {
             aria-expanded={showReference}
             onClick={() => setShowReference((v) => !v)}
           >
-            {showReference ? "Ocultar" : "Ver"} {reference.length} casas de referencia
+            {showReference ? "Ocultar casas de referencia" : `Ver ${folded} casas de referencia`}
             <ChevronDown
               aria-hidden
               className={cn("transition-transform duration-150", showReference && "rotate-180")}
@@ -369,12 +395,14 @@ function ReferenceChart({ match }: { match: ComparatorDetail }) {
             }}
           />
           <Legend iconType="plainline" wrapperStyle={{ fontSize: 12 }} />
+          {/* Each line also has its own dash: the colours alone are too close (WCAG 1.4.1). */}
           {OUTCOMES.map((o) => (
             <Line
               key={o}
               type="monotone"
               dataKey={OUTCOME_LABEL[o]}
               stroke={OUTCOME_STROKE[o]}
+              strokeDasharray={OUTCOME_DASH[o]}
               strokeWidth={2}
               dot={false}
             />

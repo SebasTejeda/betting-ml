@@ -106,8 +106,10 @@ test("a selection without odds asks for the price; a 409 asks for confirmation",
     }),
   );
   renderApp(PAGE);
-  const row = (await screen.findByText("Más de 4.5 goles")).closest("tr") as HTMLElement;
-  await userEvent.click(within(row).getByRole("button", { name: "Registrar" }));
+  const row = (await screen.findByRole("cell", { name: "Más de 4.5 goles" })).closest(
+    "tr",
+  ) as HTMLElement;
+  await userEvent.click(within(row).getByRole("button", { name: /^Registrar / }));
   const form = screen.getByRole("form", { name: "Registrar apuesta" });
   await userEvent.type(within(form).getByLabelText("Stake"), "50");
   await userEvent.click(within(form).getByRole("button", { name: "Registrar apuesta" }));

@@ -156,7 +156,7 @@ export function ExperimentalBadge({ className }: { className?: string }) {
   return (
     <span
       className={cn(
-        "inline-flex w-fit items-center gap-1 rounded-full border border-experimental-border bg-experimental-soft px-2.5 py-0.5 text-[0.7rem] font-semibold tracking-wide text-experimental",
+        "inline-flex w-fit items-center gap-1 rounded-full border border-experimental-border bg-experimental-soft px-2.5 py-0.5 text-xs font-semibold tracking-wide text-experimental",
         className,
       )}
     >

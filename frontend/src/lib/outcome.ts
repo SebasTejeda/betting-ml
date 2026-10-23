@@ -11,3 +11,10 @@ export const OUTCOME_STROKE = {
   draw: "var(--muted-foreground)",
   away: "var(--chart-2)",
 } as const;
+
+/** Line patterns, so the 1X2 lines are told apart without colour (WCAG 1.4.1). */
+export const OUTCOME_DASH = {
+  home: undefined,
+  draw: "2 4",
+  away: "8 4",
+} as const;

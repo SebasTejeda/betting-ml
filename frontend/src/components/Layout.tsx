@@ -59,10 +59,17 @@ const desktopLink = ({ isActive }: { isActive: boolean }) =>
 export function Layout() {
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">
+      {/* Keyboard users skip the seven navigation links on every page (WCAG 2.4.1). */}
+      <a
+        href="#contenido"
+        className="sr-only z-50 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground focus:not-sr-only focus:fixed focus:top-3 focus:left-3"
+      >
+        Saltar al contenido
+      </a>
       <header className="sticky top-0 z-30 border-b bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/75">
-        <div className="mx-auto flex h-16 max-w-6xl items-center gap-6 px-4 sm:px-6">
+        <div className="mx-auto flex h-16 max-w-6xl items-center gap-3 px-4 sm:gap-6 sm:px-6">
           <Brand />
-          <nav aria-label="Principal" className="hidden flex-1 items-center md:flex">
+          <nav aria-label="Principal" className="hidden flex-1 items-center lg:flex">
             {PRIMARY.map((link) => (
               <NavLink key={link.to} to={link.to} end={link.end} className={desktopLink}>
                 {link.label}
@@ -76,34 +83,43 @@ export function Layout() {
             ))}
           </nav>
           <div className="ml-auto flex items-center gap-1">
-            {/* On phones the bottom bar holds the daily tasks; these two live up here. */}
-            {SECONDARY.map((link) => (
-              <NavLink
-                key={link.to}
-                to={link.to}
-                aria-label={link.label}
-                className={({ isActive }) =>
-                  cn(
-                    "flex size-10 items-center justify-center rounded-md transition-colors md:hidden",
-                    isActive ? "text-primary" : "text-muted-foreground hover:text-foreground",
-                  )
-                }
-              >
-                <link.icon aria-hidden className="size-[1.125rem]" />
-              </NavLink>
-            ))}
+            {/* Below lg the bottom bar holds the daily tasks; these two live up here. */}
+            <nav aria-label="Secundaria" className="flex items-center gap-1 lg:hidden">
+              {SECONDARY.map((link) => (
+                <NavLink
+                  key={link.to}
+                  to={link.to}
+                  aria-label={link.label}
+                  className={({ isActive }) =>
+                    cn(
+                      "flex size-10 items-center justify-center rounded-md transition-colors",
+                      // Active is a filled tile, not only a colour change.
+                      isActive
+                        ? "bg-secondary text-primary"
+                        : "text-muted-foreground hover:text-foreground",
+                    )
+                  }
+                >
+                  <link.icon aria-hidden className="size-[1.125rem]" />
+                </NavLink>
+              ))}
+            </nav>
             <ThemeToggle />
             <LogoutButton />
           </div>
         </div>
       </header>
-      <main className="mx-auto w-full max-w-6xl flex-1 px-4 pt-8 pb-10 sm:px-6">
+      <main
+        id="contenido"
+        tabIndex={-1}
+        className="mx-auto w-full max-w-6xl flex-1 px-4 pt-8 pb-10 outline-none sm:px-6"
+      >
         <Suspense fallback={<Loading what="la página" />}>
           <Outlet />
         </Suspense>
       </main>
       <footer className="border-t">
-        <p className="mx-auto flex max-w-6xl items-start gap-2 px-4 pt-4 pb-24 text-xs text-muted-foreground sm:px-6 md:pb-6">
+        <p className="mx-auto flex max-w-6xl items-start gap-2 px-4 pt-4 pb-24 text-xs text-muted-foreground sm:px-6 lg:pb-6">
           <ShieldCheck aria-hidden className="mt-px size-4 shrink-0" />
           <span>
             Juego responsable: apuesta solo lo que puedas perder. Los límites mensuales no se pueden
@@ -113,7 +129,7 @@ export function Layout() {
       </footer>
       <nav
         aria-label="Principal (móvil)"
-        className="fixed inset-x-0 bottom-0 z-30 border-t bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
+        className="fixed inset-x-0 bottom-0 z-30 border-t bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden"
       >
         <ul className="grid grid-cols-5">
           {PRIMARY.map((link) => (

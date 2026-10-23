@@ -7,4 +7,4 @@ Una tarea a la vez: implementar → `npm run lint && npm run typecheck && npm te
 - [x] **U02** Hoy, Top del día y Partido.
 - [x] **U03** Mis apuestas.
 - [x] **U04** Calculadora, Backtest, Ajustes y Login.
-- [ ] **U05** 🔍 Revisión final: accesibilidad (teclado, lector de pantalla y contraste), móvil, estados vacíos y de error, y documentación.
+- [x] **U05** 🔍 Revisión final: accesibilidad (teclado, lector de pantalla y contraste), móvil, estados vacíos y de error, y documentación.

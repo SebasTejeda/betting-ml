@@ -31,7 +31,7 @@
   --accent-foreground: oklch(0.32 0.09 250);
   --destructive: oklch(0.53 0.17 25);
   --border: oklch(0.2 0.01 260 / 10%);
-  --input: oklch(0.2 0.01 260 / 16%);
+  --input: oklch(0.64 0.01 260);
   --ring: oklch(0.55 0.13 250);
   --track: oklch(0.2 0.01 260 / 8%);
 
@@ -69,7 +69,7 @@
   --accent-foreground: oklch(0.9 0.06 245);
   --destructive: oklch(0.73 0.14 25);
   --border: oklch(1 0 0 / 8%);
-  --input: oklch(1 0 0 / 12%);
+  --input: oklch(0.52 0.01 260);
   --ring: oklch(0.74 0.12 245);
   --track: oklch(1 0 0 / 9%);
 
@@ -144,7 +144,7 @@
   }
   body {
     @apply bg-background text-foreground;
-    /* Inter: single-storey "a" off, open digits; figures are tabular where it matters (.num). */
+    /* Inter cv11: single-storey "a"; figures are tabular where it matters (.num). */
     font-feature-settings: "cv11" 1;
   }
   :focus-visible {
@@ -164,7 +164,7 @@
 /* Native form controls share the input look (native selects keep keyboard/screen-reader support). */
 @layer components {
   .field {
-    @apply h-10 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground transition-colors duration-150 outline-none hover:border-foreground/25 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30;
+    @apply h-10 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground transition-colors duration-150 outline-none hover:border-foreground/50 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30;
   }
   /* Small label above a figure or a section ("eyebrow"). */
   .eyebrow {

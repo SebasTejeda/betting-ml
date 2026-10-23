@@ -34,7 +34,10 @@ function Step({ n, done = false, children }: { n: number; done?: boolean; childr
       >
         {n}
       </span>
-      <span className="sr-only">Paso {n}: </span>
+      <span className="sr-only">
+        Paso {n}
+        {done ? " (hecho)" : ""}:{" "}
+      </span>
       {children}
     </span>
   );

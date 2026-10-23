@@ -99,7 +99,7 @@ function TopRow({ row, rank }: { row: Row; rank: number }) {
         </span>
       </Link>
       {/* On phones the three figures sit in a row with their own labels. */}
-      <dl className="grid grid-cols-3 gap-2 text-sm md:contents">
+      <dl className="grid grid-cols-3 gap-2 text-sm md:col-span-3 md:grid-cols-subgrid md:gap-4">
         <div className="min-w-0">
           <dt className="text-xs text-muted-foreground md:sr-only">Resultado</dt>
           <dd className="font-medium">{OUTCOME_LABEL[bet.outcome]}</dd>

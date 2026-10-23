@@ -71,3 +71,30 @@
 - **Ajustes.** Cada sección es una tarjeta: título y explicación a la izquierda, campos a la derecha. La explicación del límite recuerda que no se puede saltar desde la app y que el stake máximo avisa antes de una apuesta grande; no se cambió ninguna regla. "Guardar" va alineado a la derecha y la confirmación aparece a su lado.
 - **Login.** Lleva la misma marca "b" que la cabecera, una tarjeta con el formulario y el botón a todo el ancho. Debajo hay una nota: "Acceso privado. Tras varios intentos fallidos se bloquea un momento.", que corresponde al límite de intentos de la spec 003.
 - **Iconos.** Las páginas y los paneles ya no llevan iconos decorativos junto a los títulos. Los iconos se mantienen solo donde dan significado (estado, aviso, acción).
+
+## 2026-10-23 — U05: revisión final (accesibilidad, móvil, estados y documentación)
+- **Checkpoint 🔍 con `ml-reviewer`.** Veredicto: aprobado con observaciones. No hay regresiones de las reglas duras: EXPERIMENTAL siempre visible, nada de lenguaje de certeza, límite mensual intacto y nada de secretos en el navegador. Se corrigieron todas las observaciones salvo dos (ver abajo).
+- **Teclado y lector de pantalla.**
+  - Hay un enlace "Saltar al contenido" que aparece al recibir el foco y lleva a `<main>`.
+  - Los iconos secundarios de la cabecera móvil van en una `nav` "Secundaria"; el enlace activo tiene fondo, no solo color.
+  - Los botones "Registrar" de los mercados se anuncian con su selección (`aria-label`) y con `aria-expanded`.
+  - Las tablas de mercados y de evidencia llevan un título oculto que describe sus columnas.
+  - Los pasos completados de la Calculadora se anuncian como "Paso N (hecho)".
+- **Contraste.** El borde de los campos tenía menos de 3:1 contra la tarjeta (WCAG 1.4.11) y se oscureció o aclaró según el tema. Un test nuevo lo calcula en los dos temas, igual que el del texto.
+- **Color no como única señal.** En el gráfico de cuotas del Partido, las líneas del 1X2 tienen trazo continuo, punteado y discontinuo.
+- **Móvil (390 px).**
+  - Ninguna página tiene scroll horizontal.
+  - Los botones pequeños, los selectores y los segmentados miden al menos 40 px de alto en pantallas táctiles.
+  - Los nombres de equipo se apilan y cortan en dos líneas.
+  - La navegación de escritorio entra desde `lg`, porque entre `md` y `lg` no cabía.
+- **Partido.**
+  - Una casa de referencia que paga la mejor cuota ya no queda oculta al plegar las demás. El botón dice cuántas faltan ("Ver N casas de referencia"), y hay un test que lo cubre.
+  - "Volver" regresa a la página anterior si existe y, si no, a Hoy.
+  - La tabla de casas se reinicia al cambiar de partido.
+- **Detalles.**
+  - La etiqueta EXPERIMENTAL sube a 12 px.
+  - Las columnas del Top se alinean con `subgrid` en lugar de `contents`.
+  - Se eliminó `teamHue`, que no se usaba.
+- **No se cambia.**
+  - Las tarjetas de consejos mantienen la misma altura en su fila aunque una abra el formulario: alinearlas pesa más.
+  - "Borrar" sigue sin confirmación. Es el comportamiento de la spec 002, solo está permitido antes del inicio y no forma parte de un rediseño visual.

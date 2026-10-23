@@ -152,7 +152,7 @@ export function BetsPage() {
               type="button"
               aria-pressed={kind === value}
               className={cn(
-                "rounded-md px-3.5 py-1.5 text-sm transition-colors duration-150",
+                "min-h-10 rounded-md px-3.5 text-sm transition-colors duration-150 md:min-h-8",
                 kind === value
                   ? "bg-card font-medium text-foreground shadow-xs ring-1 ring-border"
                   : "text-muted-foreground hover:text-foreground",
@@ -186,7 +186,7 @@ export function BetsPage() {
             <label className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
               Estado
               <select
-                className="field h-8 w-36"
+                className="field h-10 w-36 md:h-8"
                 value={status ?? ""}
                 onChange={(event) => {
                   setStatus((event.target.value || undefined) as BetsParams["status"]);
@@ -234,7 +234,8 @@ function Kpi({
   hint?: string;
 }) {
   return (
-    <div className="flex flex-col gap-1 border-border px-4 py-4 sm:px-5">
+    // gap-px over a border-coloured grid: one hairline between figures, in every layout.
+    <div className="flex flex-col gap-1 bg-card px-4 py-4 sm:px-5">
       <dt className="eyebrow">{label}</dt>
       <dd className={cn("num text-2xl font-semibold tracking-tight", tone)}>{value}</dd>
       {hint && <dd className="text-xs text-muted-foreground">{hint}</dd>}
@@ -252,7 +253,7 @@ function SummaryFigures({ summary, currency }: { summary: Summary; currency: str
       <Card className="py-0">
         <dl
           aria-label="Indicadores"
-          className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 max-xl:[&>*]:border-b xl:[&>*+*]:border-l"
+          className="grid grid-cols-2 gap-px bg-border md:grid-cols-3 xl:grid-cols-6"
         >
           <Kpi label="Apuestas (liquidadas)" value={`${summary.bets} (${summary.settled})`} />
           <Kpi
@@ -376,6 +377,9 @@ function MarketsEvidence({ markets }: { markets: MarketSummary[] }) {
         <Empty>Aún no hay apuestas.</Empty>
       ) : (
         <Table>
+          <TableCaption className="sr-only">
+            Evidencia por mercado: apuestas, ROI y CLV
+          </TableCaption>
           <TableHeader>
             <TableRow>
               <TableHead>Mercado</TableHead>
@@ -694,7 +698,7 @@ function BetRow({
             </label>
             <select
               id={`settle-${bet.id}`}
-              className="field h-8 w-28 px-2 text-xs"
+              className="field h-10 w-28 px-2 text-xs md:h-8"
               value={choice}
               onChange={(event) => setChoice(event.target.value as typeof choice)}
             >

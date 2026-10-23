@@ -390,3 +390,23 @@ Plan: [`specs/004-match-analysis/integration.md`](specs/004-match-analysis/integ
 - 2026-10-23 · U02 · Hoy, Top del día y Partido rediseñados: filtros sin caja, tarjetas con las acciones alineadas, Top como lista de columnas alineadas, y Partido con el marcador de Análisis, las probabilidades en tabla y las casas de referencia plegadas. 74 tests frontend en verde.
 - 2026-10-23 · U03 · Mis apuestas rediseñada: cifras en una franja, límite mensual destacado con colores de uso, tabla de apuestas antes de los gráficos (y visible aunque falle el resumen), selecciones en español y "Borrar" discreto. 74 tests frontend en verde.
 - 2026-10-23 · U04 · Calculadora en tres pasos numerados (y arreglo de la casa precargada que no se mostraba), Backtest con la conclusión en cifras, Ajustes en secciones con su explicación y Login con la marca de la app. 75 tests frontend en verde.
+- 2026-10-23 · U05 · Revisión final con `ml-reviewer` (aprobado con observaciones, corregidas). Cambios: enlace para saltar al contenido; bordes de campo con contraste de 3:1 calculado; líneas del gráfico con trazo además de color; objetivos táctiles de 40 px; sin scroll horizontal a 390 px; las casas de referencia con la mejor cuota siempre visibles; títulos ocultos en las tablas. 79 tests frontend en verde.
+
+## Resumen final (spec 005)
+
+**Terminada** (2026-10-23). Rediseño de todo el frontend con estilo fintech sobrio y tema oscuro por defecto. No cambia la lógica ni el contrato de la API.
+- **Sistema de diseño.**
+  - Tokens OKLCH con contraste AA calculado en tests, en los dos temas.
+  - El verde y el rojo quedan solo para las cifras con signo y el ámbar solo para lo experimental.
+  - Las cifras usan dígitos tabulares.
+  - Los componentes comunes (paneles, estados vacío, de carga y de error, etiquetas) son compartidos.
+- **Páginas.**
+  - Hoy, Top, Partido, Análisis, Mis apuestas, Calculadora, Backtest, Ajustes y Login quedan rediseñadas.
+  - Dos fallos previos corregidos: la tabla de apuestas desaparecía si fallaba el resumen, y la casa precargada no se mostraba en la Calculadora.
+- **Accesibilidad y móvil.**
+  - Navegación por teclado con foco visible y enlace para saltar al contenido.
+  - Barra inferior en móvil.
+  - Objetivos táctiles de 40 px.
+  - Ninguna página tiene scroll horizontal a 390 px.
+- **Reglas que no cambian.** EXPERIMENTAL siempre visible, nada de lenguaje de certeza, límites de juego responsable intactos y nada de secretos en el navegador.
+- **Tests.** 79 tests frontend en verde (eran 74 al empezar la spec), lint y typecheck limpios, build correcto.

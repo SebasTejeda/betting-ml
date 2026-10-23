@@ -56,6 +56,7 @@ import { Card } from "../components/ui/card";
 import {
   Table,
   TableBody,
+  TableCaption,
   TableCell,
   TableHead,
   TableHeader,
@@ -367,10 +368,17 @@ function TeamSide({
 }) {
   const end = align === "end";
   return (
-    <div className={cn("flex min-w-0 items-center gap-3", end && "flex-row-reverse text-right")}>
+    <div
+      className={cn(
+        "flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:gap-3",
+        end && "items-end text-right sm:flex-row-reverse",
+      )}
+    >
       <TeamAvatar name={name} size="lg" />
       <div className={cn("flex min-w-0 flex-col gap-0.5", end && "items-end")}>
-        <span className="truncate text-lg font-semibold tracking-tight sm:text-xl">{name}</span>
+        <span className="line-clamp-2 text-base font-semibold tracking-tight break-words sm:text-xl">
+          {name}
+        </span>
         <span className="text-xs text-muted-foreground">
           {side}
           {rating !== undefined && (
@@ -446,7 +454,7 @@ function BestOptions({ data }: { data: Analysis }) {
   }
   // Disabled until there is evidence: one quiet line, not a half-empty panel.
   return (
-    <section className="flex flex-col gap-2 rounded-xl border border-dashed px-4 py-3 sm:flex-row sm:items-start sm:gap-4">
+    <section className="flex flex-col gap-2 rounded-xl border px-4 py-3 sm:flex-row sm:items-start sm:gap-4">
       <div className="flex shrink-0 items-center gap-2">
         <h2 className="text-sm font-semibold">Mejores opciones</h2>
         <ExperimentalBadge />
@@ -812,6 +820,9 @@ function MarketGroupTable({
         </Button>
       </div>
       <Table className="mb-3">
+        <TableCaption className="sr-only">
+          {market.name || MARKET_LABEL[market.market]}: probabilidad, cuota justa, mejor cuota y EV
+        </TableCaption>
         <TableHeader>
           <TableRow>
             <TableHead>Selección</TableHead>
@@ -888,7 +899,14 @@ function SelectionRow({
           <ConfidenceBadge level={s.confidence as Confidence} />
         </TableCell>
         <TableCell className="text-right">
-          <Button type="button" variant="ghost" size="sm" onClick={onRegister}>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            aria-expanded={form !== null}
+            aria-label={`Registrar ${s.label}`}
+            onClick={onRegister}
+          >
             <NotebookPen aria-hidden />
             Registrar
           </Button>
