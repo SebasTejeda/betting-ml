@@ -55,7 +55,9 @@ function TableHead({ className, ...props }: React.ComponentProps<"th">) {
     <th
       data-slot="table-head"
       className={cn(
-        "h-9 px-3 text-left align-middle text-[0.7rem] font-medium tracking-[0.06em] whitespace-nowrap text-muted-foreground uppercase [&:has([role=checkbox])]:pr-0",
+        "h-9 px-3 text-left align-middle font-medium whitespace-nowrap [&:has([role=checkbox])]:pr-0",
+        // Column headers are small caps; row headers (scope="row") read as normal text.
+        "[thead_&]:text-[0.7rem] [thead_&]:tracking-[0.06em] [thead_&]:text-muted-foreground [thead_&]:uppercase",
         className,
       )}
       {...props}

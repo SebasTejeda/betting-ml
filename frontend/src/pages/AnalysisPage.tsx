@@ -47,6 +47,7 @@ import {
   PageTitle,
   Panel,
 } from "../components/common";
+import { SplitBar } from "../components/OutcomeSplit";
 import { RegisterBetForm } from "../components/RegisterBetForm";
 import { TeamAvatar } from "../components/TeamAvatar";
 import { Badge } from "../components/ui/badge";
@@ -273,9 +274,9 @@ function Scoreboard({ data }: { data: Analysis }) {
   const h2h = data.markets.find((g) => g.market === "h2h")?.selections ?? [];
   const p = (key: string) => h2h.find((x) => x.selection === key)?.probability;
   const split = [
-    { key: "home", label: "Local", value: p("home"), tone: "bg-primary" },
-    { key: "draw", label: "Empate", value: p("draw"), tone: "bg-muted-foreground/45" },
-    { key: "away", label: "Visita", value: p("away"), tone: "bg-chart-2" },
+    { key: "home", label: "Local", value: p("home") },
+    { key: "draw", label: "Empate", value: p("draw") },
+    { key: "away", label: "Visita", value: p("away") },
   ];
   const hasSplit = split.every((x) => x.value !== undefined);
   return (
@@ -334,12 +335,7 @@ function Scoreboard({ data }: { data: Analysis }) {
               </div>
             ))}
           </div>
-          {/* Neutral tones: a probability is not a recommendation (constitution XIII). */}
-          <div aria-hidden className="flex h-2 gap-0.5 overflow-hidden rounded-full">
-            {split.map((x) => (
-              <div key={x.key} className={x.tone} style={{ width: `${(x.value ?? 0) * 100}%` }} />
-            ))}
-          </div>
+          <SplitBar values={{ home: p("home"), draw: p("draw"), away: p("away") }} />
         </div>
       )}
       {m.warnings.length > 0 && (

@@ -17,3 +17,24 @@
   - Las tarjetas de consejo tienen la misma altura y el botón siempre abajo.
   - Se mantienen todos los textos honestos (XII), el aviso EXPERIMENTAL y el "sin cuota".
 - **Pendiente.** No se pudo verificar el móvil en Chrome porque la ventana no se reduce a 400 px. Queda para U05 (con las DevTools o un viewport de prueba).
+
+## 2026-10-23 — U02: Hoy, Top del día y Partido
+- **Datos para revisar.** La base de prueba se llenó con la respuesta grabada de la Premier (`tests/fixtures/the_odds_api/soccer_epl_odds.json`), movida a la fecha de hoy y en tres snapshots con pequeñas variaciones. No se hizo ninguna llamada a The Odds API ni se gastaron créditos.
+- **Filtros.** Ya no van en una caja: son una barra sobre la página separada por una línea, para que el peso visual lo lleven los resultados.
+- **Hoy.**
+  - Cada tarjeta tiene, en orden: la liga y la hora, los equipos, y una tabla de tres columnas con la mejor cuota (cifra grande), la casa, la cuota justa y el EV.
+  - El margen se resume en una línea.
+  - Las acciones van abajo en todas las tarjetas: "Analizar" y "Cuotas por casa" (este enlace es nuevo, porque antes solo se llegaba al partido pulsando los nombres).
+- **Top del día.**
+  - Una sola lista ordenada dentro de una tarjeta, con cabecera de columnas fija y filas alineadas. Antes era una tarjeta por fila.
+  - En móvil, cada fila muestra sus propias etiquetas.
+  - El aviso EXPERIMENTAL es una franja compacta con el texto íntegro.
+- **Partido.**
+  - El marcador es igual que el de Análisis: la probabilidad justa 1X2 en grande con una barra repartida, y el modelo como segunda opinión.
+  - Las probabilidades pasan de tres cajas a una tabla: resultado, cuota justa, justa y modelo.
+  - La tabla de casas muestra primero las accesibles desde Perú; las de referencia se despliegan con un botón (`aria-expanded`). En el partido de prueba eran 39 filas de golpe.
+  - La mejor cuota se marca con el acento azul y ya no en verde, porque el verde queda solo para cifras con signo.
+  - La calculadora rápida va junto a la tabla de casas y se adapta a su contenedor (consulta de contenedor) en lugar de a la pantalla.
+- **1X2 compartido.** Los tonos de Local, Empate y Visita y la barra repartida viven en `lib/outcome.ts` y `components/OutcomeSplit.tsx`, y los usan Análisis y Partido. El empate pasa del ámbar (que significa experimental) a un gris neutro, también en el gráfico.
+- **Tablas.** Las cabeceras de fila (`scope="row"`) ya no heredan el estilo en mayúsculas de las cabeceras de columna.
+- **Test.** El test de Partido comprueba ahora las probabilidades en la tabla "Referencia y modelo" y localiza la tabla de casas por su nombre. La información comprobada es la misma.

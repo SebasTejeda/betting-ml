@@ -13,13 +13,15 @@ test("shows every bookmaker, highlights the best price and the margins", async (
   );
   renderApp(`/match/${MATCH_ID}`);
   expect(await screen.findByRole("heading", { name: "Arsenal – Chelsea" })).toBeInTheDocument();
-  const table = screen.getByRole("table");
+  const table = screen.getByRole("table", { name: /Cuotas de cada casa/ });
   const betsson = within(table).getByRole("row", { name: /betsson/ });
   expect(within(betsson).getAllByText("(mejor cuota)", { exact: false })).toHaveLength(2);
   expect(within(table).getByText("1.7 %")).toBeInTheDocument();
   expect(screen.getByRole("img", { name: /cuota de referencia/ })).toBeInTheDocument();
-  expect(screen.getByText("Justa (pinnacle): 4.35 · 23.0 %")).toBeInTheDocument();
-  expect(screen.getByText("Modelo (E12-test): 24.0 %")).toBeInTheDocument();
+  const probabilities = screen.getByRole("table", { name: "Referencia y modelo" });
+  const away = within(probabilities).getByRole("row", { name: /Visita/ });
+  expect(away).toHaveTextContent(/4\.35.*23\.0 %.*24\.0 %/);
+  expect(screen.getByText("Justa: pinnacle, sin margen · Modelo: E12-test")).toBeInTheDocument();
   expect(screen.getByText("EXPERIMENTAL — solo papel")).toBeInTheDocument();
 });
 

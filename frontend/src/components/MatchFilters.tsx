@@ -1,5 +1,3 @@
-import { CalendarDays, Filter } from "lucide-react";
-
 import { useLeagues } from "@/api/hooks";
 import { todayLima } from "@/lib/format";
 
@@ -12,21 +10,18 @@ type Props = {
   onAccessibleOnly: (value: boolean) => void;
 };
 
-/** Compact filter bar (date, league, accessible bookmakers) shared by Hoy and Top. */
+/** Filter toolbar (date, league, accessible bookmakers) shared by Hoy and Top. No box around
+ *  it: the filters sit on the page and the results carry the visual weight (spec 005). */
 export function MatchFilters(props: Props) {
   const leagues = useLeagues();
   return (
     <div
       role="group"
       aria-label="Filtros"
-      className="mb-5 flex flex-wrap items-end gap-3 rounded-xl border bg-card p-3 shadow-sm"
+      className="mb-6 flex flex-wrap items-end gap-x-3 gap-y-3 border-b pb-5"
     >
-      <Filter aria-hidden className="mb-2 hidden size-4 text-muted-foreground sm:block" />
-      <label className="flex min-w-36 flex-col gap-1 text-xs font-medium text-muted-foreground">
-        <span className="flex items-center gap-1">
-          <CalendarDays aria-hidden className="size-3.5" />
-          Fecha
-        </span>
+      <label className="flex w-40 flex-col gap-1.5 text-xs font-medium text-muted-foreground">
+        Fecha
         <input
           type="date"
           className="field"
@@ -34,7 +29,7 @@ export function MatchFilters(props: Props) {
           onChange={(event) => props.onDate(event.target.value || todayLima())}
         />
       </label>
-      <label className="flex min-w-40 flex-col gap-1 text-xs font-medium text-muted-foreground">
+      <label className="flex w-44 flex-col gap-1.5 text-xs font-medium text-muted-foreground">
         Liga
         <select
           className="field"
@@ -49,7 +44,7 @@ export function MatchFilters(props: Props) {
           ))}
         </select>
       </label>
-      <label className="flex h-9 cursor-pointer items-center gap-2 rounded-md px-2 text-sm transition-colors duration-150 hover:bg-secondary">
+      <label className="flex h-10 cursor-pointer items-center gap-2 rounded-md px-2 text-sm transition-colors duration-150 hover:bg-secondary">
         <input
           type="checkbox"
           className="size-4 accent-(--primary)"

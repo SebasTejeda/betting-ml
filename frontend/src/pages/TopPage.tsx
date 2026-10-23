@@ -1,4 +1,4 @@
-import { Clock, Info, ListOrdered, NotebookPen, SearchX } from "lucide-react";
+import { NotebookPen, SearchX } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 
@@ -14,13 +14,15 @@ import {
   PageTitle,
 } from "../components/common";
 import { MatchFilters } from "../components/MatchFilters";
-import { TeamAvatar } from "../components/TeamAvatar";
-import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
 import { Card } from "../components/ui/card";
 import { kickoff, odds, todayLima } from "../lib/format";
 import { calculatorLink } from "../lib/links";
 import { topRows, type TopRow as Row } from "../lib/top";
+
+// Rank · match · pick · house · odds · EV · action: one grid so every row lines up.
+const COLUMNS =
+  "md:grid md:grid-cols-[2rem_minmax(0,2.2fr)_minmax(0,0.8fr)_minmax(0,0.9fr)_4rem_minmax(0,1.4fr)_9.5rem] md:items-center md:gap-4";
 
 export function TopPage() {
   const [date, setDate] = useState(todayLima());
@@ -31,21 +33,15 @@ export function TopPage() {
 
   return (
     <>
-      <PageTitle
-        icon={ListOrdered}
-        description="Todas las cuotas con EV positivo de la señal para la fecha elegida, de todas las ligas, ordenadas por EV."
-      >
+      <PageTitle description="Las cuotas con EV positivo de la señal para la fecha elegida, de todas las ligas, ordenadas por EV.">
         Top del día
       </PageTitle>
-      <div className="mb-5 flex flex-col gap-2 rounded-xl border border-experimental-border bg-experimental-soft/60 p-4">
-        <ExperimentalBadge className="text-sm" />
-        <p className="flex items-start gap-2 text-sm text-foreground">
-          <Info aria-hidden className="mt-0.5 size-4 shrink-0 text-experimental" />
-          <span>
-            Esta lista no tiene evidencia de ventaja: el backtest no la validó. Sirve para anotar
-            apuestas <strong>en papel</strong> y medir su CLV hasta llegar a 100. Un EV alto con
-            cuotas altas suele ser ruido.
-          </span>
+      <div className="mt-4 mb-6 flex flex-col gap-2 rounded-lg bg-experimental-soft px-4 py-3 sm:flex-row sm:items-start sm:gap-3">
+        <ExperimentalBadge className="shrink-0" />
+        <p className="text-sm text-foreground">
+          Esta lista no tiene evidencia de ventaja: el backtest no la validó. Sirve para anotar
+          apuestas <strong>en papel</strong> y medir su CLV hasta llegar a 100. Un EV alto con
+          cuotas altas suele ser ruido.
         </p>
       </div>
       <MatchFilters
@@ -66,13 +62,22 @@ export function TopPage() {
           Hoy.
         </Empty>
       ) : (
-        <ol aria-label="Top del día" className="flex flex-col gap-3">
-          {rows.map((row, index) => (
-            <li key={`${row.match.match_id}-${row.bet.outcome}`}>
-              <TopRow row={row} rank={index + 1} />
-            </li>
-          ))}
-        </ol>
+        <Card className="gap-0 py-0">
+          <div aria-hidden className={`${COLUMNS} hidden border-b px-4 py-2.5 md:grid`}>
+            {["#", "Partido", "Resultado", "Casa", "Cuota", "EV", ""].map((label, i) => (
+              <span key={i} className={`eyebrow ${label === "Cuota" ? "text-right" : ""}`}>
+                {label}
+              </span>
+            ))}
+          </div>
+          <ol aria-label="Top del día" className="divide-y">
+            {rows.map((row, index) => (
+              <li key={`${row.match.match_id}-${row.bet.outcome}`}>
+                <TopRow row={row} rank={index + 1} />
+              </li>
+            ))}
+          </ol>
+        </Card>
       )}
     </>
   );
@@ -81,43 +86,38 @@ export function TopPage() {
 function TopRow({ row, rank }: { row: Row; rank: number }) {
   const { match, bet } = row;
   return (
-    <Card className="flex flex-col gap-3 px-4 shadow-sm md:grid md:grid-cols-[2.5rem_minmax(0,2fr)_minmax(0,1.3fr)_auto_auto] md:items-center md:gap-4">
-      <span className="hidden text-lg font-semibold text-muted-foreground tabular-nums md:block">
-        {rank}
-      </span>
-      <Link to={`/match/${match.match_id}`} className="group flex min-w-0 flex-col gap-1">
-        <span className="flex items-center gap-2 text-xs text-muted-foreground">
-          <Badge variant="secondary">{match.league}</Badge>
-          <Clock aria-hidden className="size-3.5" />
-          {kickoff(match.kickoff)}
+    <div
+      className={`${COLUMNS} flex flex-col gap-3 px-4 py-3.5 transition-colors duration-150 hover:bg-muted/40`}
+    >
+      <span className="num hidden text-sm text-muted-foreground md:block">{rank}</span>
+      <Link to={`/match/${match.match_id}`} className="group flex min-w-0 flex-col gap-0.5">
+        <span className="truncate font-medium group-hover:underline">
+          {match.home_team} – {match.away_team}
         </span>
-        <span className="flex items-center gap-2 font-medium">
-          <TeamAvatar name={match.home_team} size="sm" />
-          <span className="truncate group-hover:underline">
-            {match.home_team} – {match.away_team}
-          </span>
-          <TeamAvatar name={match.away_team} size="sm" />
+        <span className="num text-xs text-muted-foreground">
+          {match.league} · {kickoff(match.kickoff)}
         </span>
       </Link>
-      <dl className="grid grid-cols-3 gap-2 text-sm">
-        <div>
-          <dt className="text-xs text-muted-foreground">Resultado</dt>
+      {/* On phones the three figures sit in a row with their own labels. */}
+      <dl className="grid grid-cols-3 gap-2 text-sm md:contents">
+        <div className="min-w-0">
+          <dt className="text-xs text-muted-foreground md:sr-only">Resultado</dt>
           <dd className="font-medium">{OUTCOME_LABEL[bet.outcome]}</dd>
         </div>
-        <div>
-          <dt className="text-xs text-muted-foreground">Casa</dt>
+        <div className="min-w-0">
+          <dt className="text-xs text-muted-foreground md:sr-only">Casa</dt>
           <dd className="truncate">{bet.bookmaker}</dd>
         </div>
-        <div>
-          <dt className="text-xs text-muted-foreground">Cuota</dt>
-          <dd className="font-semibold tabular-nums">{odds(bet.odds)}</dd>
+        <div className="md:text-right">
+          <dt className="text-xs text-muted-foreground md:sr-only">Cuota</dt>
+          <dd className="num font-semibold">{odds(bet.odds)}</dd>
         </div>
       </dl>
       <div className="flex flex-wrap items-center gap-2">
         <EvValue ev={bet.ev} className="font-semibold" />
         <ModelBadge agrees={bet.model_agrees} />
       </div>
-      <Button asChild variant="outline" size="sm">
+      <Button asChild variant="outline" size="sm" className="w-fit">
         <Link
           to={calculatorLink({
             matchId: match.match_id,
@@ -131,6 +131,6 @@ function TopRow({ row, rank }: { row: Row; rank: number }) {
           Registrar en papel
         </Link>
       </Button>
-    </Card>
+    </div>
   );
 }
