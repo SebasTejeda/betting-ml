@@ -90,7 +90,7 @@ Una a la vez: implementar, tests (incluidos los negativos), `lint` y `test` en v
   - Una apuesta real de cualquier mercado pasa por los mismos límites: pérdida mensual, stake máximo y `confirm`.
   - Las liquidaciones de los mercados nuevos quedan auditadas y la pérdida mensual las cuenta.
   - Tests de que `market`, `selection` o `line` no sirven para saltarse un límite.
-- [ ] **I06** Frontend y contrato.
+- [x] **I06** Frontend y contrato.
   - Página Análisis bajo sesión: un 401 lleva al login, el refresco y el registro llevan CSRF, sin secretos en el almacenamiento y CSP compatible.
   - Se regeneran `openapi.json` y `schema.d.ts`.
   - Tests MSW de las dos ramas en verde, más un test de 401 en Análisis.

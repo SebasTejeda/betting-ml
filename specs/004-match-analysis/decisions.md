@@ -384,3 +384,21 @@ Formato:
 - **Liquidaciones auditadas.** La liquidación automática de los mercados nuevos usa el guardado condicional y auditado (`BET_SETTLED`, con el `actor` de quien la lanza) desde I01. El test comprueba los eventos, que la cadena verifica y que la pérdida cuenta en el límite mensual. Mutación comprobada: una `monthly_loss` que ignore los mercados nuevos hace fallar el test.
 - No hay cambios en la API ni en el frontend: el registro y la liquidación ya pasaban por `ManageBets` y `SettleBets`.
 
+## 2026-10-22 — I06: frontend y contrato
+- **La página Análisis ya estaba bajo la sesión desde I01.** La ruta va dentro de `RequireAuth`, y todos sus hooks usan el cliente común (`api/client.ts`), que:
+  - añade `X-CSRF-Token` a las escrituras;
+  - avisa a la sesión ante un 401, y eso lleva al login con "Tu sesión expiró";
+  - renueva el token ante un `CSRF_FAILED`.
+
+  No hay `fetch` propio, ni secretos en `localStorage` o `sessionStorage` (allí solo se guarda el tema).
+- **CSP.** La página no carga nada externo ni ejecuta scripts inline. Sus `style={{…}}` se aplican por CSSOM, como ya hacía `MatchPage`, y la política de `security-headers.ts` y del `Caddyfile` los admite. La prueba en el navegador con el build real queda para I08, al actualizar el despliegue local.
+- **Tests nuevos en `AnalysisPage.test.tsx`.**
+  - Un 401 en el análisis lleva al login.
+  - El refresco y el registro llevan el token CSRF de la sesión, que no queda en el almacenamiento del navegador. Mutación comprobada: si el cliente deja de enviar el token, el test falla.
+  - Un `429 RATE_LIMITED` del cupo por hora (I04) se muestra con su mensaje.
+- **Contrato.** Se regeneraron `openapi.json` y `schema.d.ts`: sin cambios desde I03, porque I04 y I05 no tocaron el contrato.
+- **Postman.**
+  - La carpeta de análisis ya usaba `{{appApiKey}}` desde I01.
+  - El refresco con clave deja de aceptar un 401 como respuesta válida, y un 429 debe ser `RATE_LIMITED` u `ODDS_BUDGET_LOW`.
+  - Petición nueva: "match_id inválido (422 sin eco)".
+

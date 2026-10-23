@@ -352,4 +352,9 @@ Plan: [`specs/004-match-analysis/integration.md`](specs/004-match-analysis/integ
   - Bloqueo mensual (confirm no lo levanta), stake máximo con confirm y pendientes vencidas: probados por mercado.
   - Liquidaciones de mercados nuevos auditadas, y sus pérdidas cuentan en el límite mensual.
   - Corregido un hueco: la evidencia de la señal experimental se mezclaba entre mercados; ahora es por mercado (US6).
+- 2026-10-22 · I06 · Página Análisis bajo la sesión.
+  - Tests nuevos: un 401 lleva al login; el refresco y el registro llevan el CSRF, sin guardarlo en el navegador; el 429 del cupo se muestra.
+  - CSP compatible (nada externo ni inline). Contrato regenerado sin cambios.
+  - Postman: el refresco con clave ya no acepta 401, y hay un caso de 422 sin eco.
+  - 75 tests de frontend en verde.
 

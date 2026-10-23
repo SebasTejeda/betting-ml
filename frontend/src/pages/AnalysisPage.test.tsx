@@ -4,7 +4,7 @@ import { http, HttpResponse } from "msw";
 
 import { analysis, bet, MOST_LIKELY } from "../test/fixtures";
 import { API, renderApp } from "../test/render";
-import { server } from "../test/server";
+import { server, TEST_CSRF } from "../test/server";
 
 const PAGE = "/analysis?home=Real%20Madrid&away=Barcelona&date=2026-10-26";
 
@@ -259,4 +259,83 @@ test("search: autocomplete, fixture lookup and an empty start", async () => {
     await screen.findByRole("heading", { name: "Real Madrid – Barcelona" }),
   ).toBeInTheDocument();
   expect(requests[0]).toContain("match_id=SP1-2026-10-26-real-madrid-barcelona");
+});
+
+// --- integration I06: the analysis page under the session of spec 003
+
+function stored(storage: Storage): string {
+  const values: string[] = [];
+  for (let i = 0; i < storage.length; i += 1) {
+    const key = storage.key(i);
+    if (key !== null) values.push(`${key}=${storage.getItem(key) ?? ""}`);
+  }
+  return values.join("\n");
+}
+
+test("an expired session (401) on the analysis leads to the login page", async () => {
+  base();
+  server.use(
+    http.get(`${API}/analysis`, () =>
+      apiError(401, "UNAUTHORIZED", "Credenciales inválidas o ausentes"),
+    ),
+  );
+  renderApp(PAGE);
+  expect(await screen.findByRole("form", { name: "Iniciar sesión" })).toBeInTheDocument();
+  expect(screen.getByRole("status")).toHaveTextContent("Tu sesión expiró");
+});
+
+test("refresh and registration carry the session's CSRF token, never stored", async () => {
+  base();
+  const tokens: (string | null)[] = [];
+  server.use(
+    http.post(`${API}/analysis/:matchId/odds/refresh`, ({ request }) => {
+      tokens.push(request.headers.get("X-CSRF-Token"));
+      return HttpResponse.json({
+        match_id: "SP1-2026-10-26-real-madrid-barcelona",
+        markets: ["h2h"],
+        credits_used: 0,
+        credits_remaining: 480,
+        fetched_at: "2026-10-22T10:00:00+00:00",
+        from_cache: true,
+      });
+    }),
+    http.post(`${API}/bets`, ({ request }) => {
+      tokens.push(request.headers.get("X-CSRF-Token"));
+      return HttpResponse.json(
+        bet({ id: 9, kind: "paper", market: "btts", outcome: null, selection: "yes" }),
+        { status: 201 },
+      );
+    }),
+  );
+  renderApp(PAGE);
+  await userEvent.click(
+    await screen.findByRole("button", { name: "Actualizar cuotas de este partido" }),
+  );
+  expect(await screen.findByText(/no se gastaron créditos/)).toBeInTheDocument();
+  const card = screen.getByRole("article");
+  await userEvent.click(within(card).getByRole("button", { name: "Registrar en papel" }));
+  const form = within(card).getByRole("form", { name: "Registrar apuesta" });
+  await userEvent.type(within(form).getByLabelText("Stake"), "5");
+  await userEvent.click(within(form).getByRole("button", { name: "Registrar apuesta" }));
+  expect(await screen.findByText(/Apuesta en papel registrada \(#9\)/)).toBeInTheDocument();
+  expect(tokens).toEqual([TEST_CSRF, TEST_CSRF]);
+  // nothing secret in the browser (spec 003): the token lives in memory only
+  expect(stored(window.localStorage)).not.toContain(TEST_CSRF);
+  expect(stored(window.sessionStorage)).not.toContain(TEST_CSRF);
+});
+
+test("the hourly quota of paid refreshes (429) is reported", async () => {
+  base();
+  server.use(
+    http.post(`${API}/analysis/:matchId/odds/refresh`, () =>
+      apiError(429, "RATE_LIMITED", "Máximo 6 refrescos de cuotas por hora.", {
+        retry_after: 1200,
+      }),
+    ),
+  );
+  renderApp(PAGE);
+  await userEvent.click(
+    await screen.findByRole("button", { name: "Actualizar cuotas de este partido" }),
+  );
+  expect(await screen.findByText(/Máximo 6 refrescos de cuotas por hora/)).toBeInTheDocument();
 });
