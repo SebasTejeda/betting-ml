@@ -110,7 +110,7 @@ export function Loading({
   );
 }
 
-/** Shows an API error with its message (and a hint for the write key). */
+/** Shows an API error with its message (and a hint when retrying is enough). */
 export function ErrorBox({ error }: { error: unknown }) {
   const message =
     error instanceof ApiError
@@ -118,10 +118,6 @@ export function ErrorBox({ error }: { error: unknown }) {
       : error instanceof Error
         ? error.message
         : "Error inesperado";
-  const hint =
-    error instanceof ApiError && error.code === "UNAUTHORIZED"
-      ? " Configura la clave de escritura (botón arriba a la derecha)."
-      : "";
   return (
     <div
       role="alert"
@@ -130,7 +126,7 @@ export function ErrorBox({ error }: { error: unknown }) {
       <CircleAlert aria-hidden className="mt-0.5 size-4 shrink-0 text-negative" />
       <span>
         {message}
-        {hint}
+        {error instanceof ApiError && error.code === "CSRF_FAILED" && " Vuelve a intentarlo."}
       </span>
     </div>
   );

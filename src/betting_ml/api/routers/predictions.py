@@ -1,19 +1,21 @@
 from __future__ import annotations
 
-from typing import Any
-
 from fastapi import APIRouter, Depends
 
-from betting_ml.api.dependencies import get_container
-from betting_ml.api.routers.mapping import match_out
+from betting_ml.api.dependencies import ServicesApi, get_services
+from betting_ml.api.mappers.predictions import match_out
 from betting_ml.api.schemas import PredictionRequest, PredictionResponse
+from betting_ml.api.security import require_read
 from betting_ml.domain.entities import OddsTriple
 
-router = APIRouter(prefix="/api/v1", tags=["predictions"])
+# Computes without changing state: authenticated like a read (no CSRF).
+router = APIRouter(prefix="/api/v1", tags=["predictions"], dependencies=[Depends(require_read)])
 
 
 @router.post("/predictions", response_model=PredictionResponse)
-def predict(body: PredictionRequest, container: Any = Depends(get_container)) -> PredictionResponse:
+def predict(
+    body: PredictionRequest, container: ServicesApi = Depends(get_services)
+) -> PredictionResponse:
     odds = None if body.odds is None else OddsTriple(body.odds.home, body.odds.draw, body.odds.away)
     prediction = container.predictor.predict_one(
         body.league, body.home_team, body.away_team, body.match_date, odds

@@ -1,10 +1,10 @@
 # Reporte de calidad de datos
 
-Generado: 2026-09-26T23:13:01+00:00
+Generado: 2026-10-22T22:54:40+00:00
 
 ## Resumen
 
-- Partidos totales: **21839** (entrenamiento 19837, holdout 1752, temporada en curso 250).
+- Partidos totales: **21935** (entrenamiento 19837, holdout 1752, temporada en curso 346).
 - Emparejamiento con xG: **100.00%** de los partidos jugados.
 - Duplicados eliminados (liga + fecha + local + visita): 0.
 - Filas sin resultado eliminadas: 0.
@@ -15,7 +15,7 @@ Generado: 2026-09-26T23:13:01+00:00
 - Resultados adjudicados en mesa (goles de Understat distintos de football-data; se usa el marcador del campo y `result_awarded=True`): 2.
 - xG emparejado en segunda pasada (liga + temporada + equipos; partidos reprogramados, `xg_date_mismatch=True`): 4.
 - Partidos con cuotas de cierre anuladas por `configs/data_overrides.yaml`: 1.
-- xG tomado de football-data (respaldo): 1.
+- xG tomado de football-data (respaldo): 2.
 - Fallos de la fuente de xG: 0.
 
 ## Partidos por liga y temporada
@@ -34,7 +34,7 @@ Generado: 2026-09-26T23:13:01+00:00
 | 2023-24 | 306 | 380 | 306 | 380 | 380 |
 | 2024-25 | 306 | 380 | 306 | 380 | 380 |
 | 2025-26 | 306 | 380 | 306 | 380 | 380 |
-| 2026-27 | 36 | 50 | 45 | 50 | 69 |
+| 2026-27 | 54 | 70 | 63 | 70 | 89 |
 
 ## Emparejamiento con xG por liga
 
@@ -64,40 +64,41 @@ Ninguno.
 
 | columna | % nulos |
 |---|---|
-| fd_home_xg | 98.86 |
-| fd_away_xg | 98.86 |
-| ps_over25 | 47.26 |
-| ps_under25 | 47.26 |
-| psc_over25 | 47.19 |
-| psc_under25 | 47.19 |
-| b365c_odds_a | 41.82 |
-| b365c_odds_d | 41.82 |
-| b365c_odds_h | 41.82 |
-| avgc_over25 | 41.82 |
-| avgc_odds_h | 41.81 |
-| avgc_odds_a | 41.81 |
-| avgc_odds_d | 41.81 |
-| maxc_odds_a | 41.81 |
-| maxc_odds_d | 41.81 |
-| avgc_under25 | 41.81 |
-| maxc_odds_h | 41.81 |
-| ps_odds_a | 5.14 |
-| ps_odds_h | 5.14 |
-| ps_odds_d | 5.14 |
-| psc_odds_d | 5.07 |
-| psc_odds_a | 5.07 |
-| psc_odds_h | 5.07 |
-| max_odds_a | 1.09 |
-| max_odds_d | 1.09 |
-| max_odds_h | 1.09 |
+| fd_home_xg | 98.42 |
+| fd_away_xg | 98.42 |
+| ps_under25 | 47.49 |
+| ps_over25 | 47.49 |
+| psc_under25 | 47.42 |
+| psc_over25 | 47.42 |
+| b365c_odds_d | 41.63 |
+| b365c_odds_h | 41.63 |
+| maxc_odds_a | 41.63 |
+| maxc_odds_d | 41.63 |
+| avgc_odds_h | 41.63 |
+| avgc_odds_d | 41.63 |
+| avgc_odds_a | 41.63 |
+| maxc_odds_h | 41.63 |
+| avgc_over25 | 41.63 |
+| b365c_odds_a | 41.63 |
+| avgc_under25 | 41.63 |
+| ps_odds_h | 5.55 |
+| ps_odds_d | 5.55 |
+| ps_odds_a | 5.55 |
+| psc_odds_d | 5.48 |
+| psc_odds_h | 5.48 |
+| psc_odds_a | 5.48 |
+| max_odds_h | 1.08 |
+| max_odds_a | 1.08 |
+| max_odds_d | 1.08 |
 | b365_odds_a | 0.03 |
-| b365_odds_h | 0.03 |
 | b365_odds_d | 0.03 |
-| away_sot | 0.01 |
-| home_sot | 0.01 |
+| b365_odds_h | 0.03 |
 | away_shots | 0.01 |
+| home_sot | 0.01 |
+| away_sot | 0.01 |
 | home_shots | 0.01 |
-| avg_under25 | 0.01 |
 | avg_over25 | 0.01 |
 | max_over25 | 0.01 |
+| avg_under25 | 0.01 |
 | max_under25 | 0.01 |
+| understat_id | 0.01 |

@@ -11,12 +11,18 @@ from sqlalchemy.pool import StaticPool
 from betting_ml.config import PROJECT_ROOT
 
 MIGRATIONS_DIR = PROJECT_ROOT / "migrations"
+MEMORY_URL = "sqlite:///:memory:"
+BUSY_TIMEOUT_MS = 5000
+
+
+class DatabaseConfigError(RuntimeError):
+    """The SQLite connection does not have the pragmas the app relies on (spec 003, US5)."""
 
 
 def resolve_url(url: str) -> str:
     """Relative SQLite paths are resolved against the project root."""
     prefix = "sqlite:///"
-    if url.startswith(prefix) and url != "sqlite:///:memory:":
+    if url.startswith(prefix) and url != MEMORY_URL:
         path = Path(url[len(prefix) :])
         if not path.is_absolute():
             path = PROJECT_ROOT / path
@@ -31,18 +37,44 @@ def make_engine(url: str) -> Engine:
     if resolved.startswith("sqlite"):
         # FastAPI runs endpoints in a thread pool; an in-memory DB must be one shared connection.
         kwargs["connect_args"] = {"check_same_thread": False}
-        if resolved == "sqlite:///:memory:":
+        if resolved == MEMORY_URL:
             kwargs["poolclass"] = StaticPool
     engine = create_engine(resolved, future=True, **kwargs)  # type: ignore[arg-type]
     if engine.dialect.name == "sqlite":
+        in_memory = resolved == MEMORY_URL
 
         @event.listens_for(engine, "connect")
-        def _foreign_keys(dbapi_connection, _):  # type: ignore[no-untyped-def]
+        def _pragmas(dbapi_connection, _):  # type: ignore[no-untyped-def]
             cursor = dbapi_connection.cursor()
             cursor.execute("PRAGMA foreign_keys=ON")
+            cursor.execute(f"PRAGMA busy_timeout={BUSY_TIMEOUT_MS}")
+            if not in_memory:  # readers do not block the writer; persists in the file
+                cursor.execute("PRAGMA journal_mode=WAL")
             cursor.close()
 
     return engine
+
+
+def check_pragmas(engine: Engine) -> dict[str, object]:
+    """Read the pragmas back from a live connection and fail fast if one did not apply."""
+    if engine.dialect.name != "sqlite":
+        return {}
+    with engine.connect() as connection:
+        found: dict[str, object] = {
+            name: connection.exec_driver_sql(f"PRAGMA {name}").scalar()
+            for name in ("journal_mode", "busy_timeout", "foreign_keys")
+        }
+    expected: dict[str, object] = {
+        "journal_mode": "memory" if engine.url.database in (None, "", ":memory:") else "wal",
+        "busy_timeout": BUSY_TIMEOUT_MS,
+        "foreign_keys": 1,
+    }
+    wrong = {k: v for k, v in found.items() if str(v).lower() != str(expected[k])}
+    if wrong:
+        raise DatabaseConfigError(
+            f"SQLite sin la configuración esperada: {wrong} (esperado {expected})"
+        )
+    return found
 
 
 def session_factory(engine: Engine) -> sessionmaker[Session]:
@@ -78,9 +110,11 @@ def prepare(url: str) -> Engine:
     """Engine ready to use: an in-memory DB gets the tables directly; a file DB is migrated."""
     from betting_ml.adapters.sql.models import Base
 
-    if resolve_url(url) == "sqlite:///:memory:":
+    if resolve_url(url) == MEMORY_URL:
         engine = make_engine(url)
         Base.metadata.create_all(engine)
-        return engine
-    upgrade(url)
-    return make_engine(url)
+    else:
+        upgrade(url)
+        engine = make_engine(url)
+    check_pragmas(engine)
+    return engine

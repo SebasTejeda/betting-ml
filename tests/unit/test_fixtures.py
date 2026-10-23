@@ -8,6 +8,7 @@ from betting_ml.adapters.fixtures import FootballDataFixtures, fixtures_on, pars
 from betting_ml.adapters.http import HttpClient
 from betting_ml.adapters.team_names import TeamNameResolver
 from betting_ml.config import load_team_aliases
+from tests.http_fakes import StreamedBody
 
 SAMPLE = Path(__file__).parents[1] / "fixtures" / "fixtures_sample.csv"
 CODES = {"E0": "E0", "SP1": "SP1", "D1": "D1", "I1": "I1", "F1": "F1"}
@@ -48,7 +49,7 @@ def test_no_supported_league(resolver: TeamNameResolver) -> None:
     assert parse_fixtures(content, CODES, resolver) == ([], set())
 
 
-class _Resp:
+class _Resp(StreamedBody):
     status_code = 200
 
     def __init__(self, content: bytes) -> None:

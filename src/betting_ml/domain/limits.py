@@ -145,13 +145,15 @@ def overdue_pending(bets: Iterable[Bet], now: datetime) -> Decimal:
     return total
 
 
-def signal_progress(bets: Iterable[Bet]) -> SignalProgress:
+def signal_progress(bets: Iterable[Bet], market: str | None = None) -> SignalProgress:
     """Settled paper bets from the experimental signal with a CLV (bets registered without a
-    reference price are not part of the signal)."""
+    reference price are not part of the signal). With ``market``, only that market's: the
+    evidence of one market never vouches for another (spec 004, US6)."""
     clvs = [
         b.clv
         for b in bets
         if b.kind is BetKind.PAPER
+        and (market is None or b.market == market)
         and b.from_experimental_signal
         and not b.no_reference
         and b.clv is not None

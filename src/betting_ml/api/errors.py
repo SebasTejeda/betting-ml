@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import math
+from collections.abc import Sequence
 from typing import Any
 
 from fastapi import FastAPI, Request
@@ -11,6 +13,7 @@ from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from betting_ml.adapters.the_odds_api import OddsApiError
+from betting_ml.application.authenticate import InvalidCredentialsError, LoginDisabledError
 from betting_ml.application.compare_matches import (
     BookmakerNotFoundError,
     MatchNotFoundError,
@@ -26,34 +29,86 @@ from betting_ml.application.manage_bets import (
 from betting_ml.application.predict_matches import (
     InvalidMatchError,
     ModelNotAvailableError,
+    ModelNotVerifiedError,
     UnknownLeagueError,
     UnknownTeamError,
 )
+from betting_ml.application.read_backtest import BacktestReportNotFoundError
 from betting_ml.application.refresh_odds import OddsBudgetLowError
+from betting_ml.application.throttle import RateLimitedError, TooManyAttemptsError
+from betting_ml.domain.journal import VersionConflictError
+from betting_ml.domain.security import PasswordCheckBusyError
+from betting_ml.logging_config import security_event
 
 
 class ApiError(Exception):
     def __init__(
-        self, status: int, code: str, message: str, details: dict[str, Any] | None = None
+        self,
+        status: int,
+        code: str,
+        message: str,
+        details: dict[str, Any] | None = None,
+        headers: dict[str, str] | None = None,
     ) -> None:
         super().__init__(message)
         self.status = status
         self.code = code
         self.message = message
         self.details = details or {}
+        self.headers = headers
 
 
 def error_response(
-    status: int, code: str, message: str, details: dict[str, Any] | None = None
+    status: int,
+    code: str,
+    message: str,
+    details: dict[str, Any] | None = None,
+    headers: dict[str, str] | None = None,
 ) -> JSONResponse:
     body = {"error": {"code": code, "message": message, "details": jsonable_encoder(details or {})}}
-    return JSONResponse(status_code=status, content=body)
+    return JSONResponse(status_code=status, content=body, headers=headers)
+
+
+def retry_after(seconds: float) -> dict[str, str]:
+    """``Retry-After`` header in whole seconds (at least 1)."""
+    return {"Retry-After": str(max(1, math.ceil(seconds)))}
+
+
+def safe_validation_errors(errors: Sequence[Any]) -> list[dict[str, Any]]:
+    """Field and problem only (spec 003, US4): never the received value (``input``) nor the
+    constraint context, which could echo a password, a token or the offending text."""
+    return [
+        {
+            "loc": list(error.get("loc", ())),
+            "msg": str(error.get("msg", "")),
+            "type": error.get("type"),
+        }
+        for error in errors
+    ]
+
+
+def rate_limited_response(exc: RateLimitedError) -> JSONResponse:
+    return error_response(
+        429,
+        "RATE_LIMITED",
+        str(exc),
+        {"retry_after": exc.retry_after},
+        retry_after(exc.retry_after),
+    )
+
+
+def _who(request: Request) -> dict[str, str]:
+    from betting_ml.api.security import client_ip  # it imports this module
+
+    return {"method": request.method, "path": request.url.path, "client": client_ip(request.scope)}
 
 
 def register_error_handlers(app: FastAPI) -> None:
     @app.exception_handler(ApiError)
-    async def _api_error(_: Request, exc: ApiError) -> JSONResponse:
-        return error_response(exc.status, exc.code, exc.message, exc.details)
+    async def _api_error(request: Request, exc: ApiError) -> JSONResponse:
+        if exc.status in (401, 403):  # missing or wrong credentials, CSRF
+            security_event("ACCESS_DENIED", **_who(request), status=exc.status, code=exc.code)
+        return error_response(exc.status, exc.code, exc.message, exc.details, exc.headers)
 
     @app.exception_handler(UnknownLeagueError)
     async def _league(_: Request, exc: UnknownLeagueError) -> JSONResponse:
@@ -72,6 +127,10 @@ def register_error_handlers(app: FastAPI) -> None:
     @app.exception_handler(ModelNotAvailableError)
     async def _model(_: Request, exc: ModelNotAvailableError) -> JSONResponse:
         return error_response(503, "MODEL_NOT_AVAILABLE", str(exc))
+
+    @app.exception_handler(ModelNotVerifiedError)  # the most specific handler wins
+    async def _model_integrity(_: Request, exc: ModelNotVerifiedError) -> JSONResponse:
+        return error_response(503, "MODEL_INTEGRITY_ERROR", str(exc), {"version": exc.version})
 
     @app.exception_handler(OddsBudgetLowError)
     async def _budget(_: Request, exc: OddsBudgetLowError) -> JSONResponse:
@@ -98,6 +157,16 @@ def register_error_handlers(app: FastAPI) -> None:
         }
         return error_response(409, code, " ".join(exc.check.messages), details)
 
+    @app.exception_handler(VersionConflictError)
+    async def _version_conflict(_: Request, exc: VersionConflictError) -> JSONResponse:
+        what = "Los ajustes cambiaron" if exc.entity == "settings" else "La apuesta cambió"
+        return error_response(
+            409,
+            "VERSION_CONFLICT",
+            f"{what} mientras los editabas: se recargaron los datos actuales.",
+            {"current_version": exc.current_version},
+        )
+
     @app.exception_handler(BetNotFoundError)
     async def _bet_missing(_: Request, exc: BetNotFoundError) -> JSONResponse:
         return error_response(404, "BET_NOT_FOUND", str(exc), {"id": exc.bet_id})
@@ -122,13 +191,52 @@ def register_error_handlers(app: FastAPI) -> None:
     async def _no_reference(_: Request, exc: NoReferenceError) -> JSONResponse:
         return error_response(422, "NO_REFERENCE", str(exc), {"match_id": exc.match_id})
 
+    @app.exception_handler(InvalidCredentialsError)
+    async def _credentials(request: Request, exc: InvalidCredentialsError) -> JSONResponse:
+        security_event("LOGIN_FAILED", **_who(request))
+        return error_response(401, "INVALID_CREDENTIALS", str(exc))
+
+    @app.exception_handler(TooManyAttemptsError)
+    async def _too_many(request: Request, exc: TooManyAttemptsError) -> JSONResponse:
+        security_event("LOGIN_LOCKED", **_who(request), retry_after=exc.retry_after)
+        return error_response(
+            429,
+            "TOO_MANY_ATTEMPTS",
+            str(exc),
+            {"retry_after": exc.retry_after},
+            retry_after(exc.retry_after),
+        )
+
+    @app.exception_handler(RateLimitedError)
+    async def _rate_limited(_: Request, exc: RateLimitedError) -> JSONResponse:
+        return rate_limited_response(exc)
+
+    @app.exception_handler(PasswordCheckBusyError)
+    async def _login_busy(_: Request, exc: PasswordCheckBusyError) -> JSONResponse:
+        return error_response(
+            503, "LOGIN_BUSY", str(exc), {}, retry_after(PasswordCheckBusyError.retry_after)
+        )
+
+    @app.exception_handler(LoginDisabledError)
+    async def _login_disabled(_: Request, exc: LoginDisabledError) -> JSONResponse:
+        return error_response(503, "LOGIN_DISABLED", str(exc))
+
+    @app.exception_handler(BacktestReportNotFoundError)
+    async def _backtest_missing(_: Request, exc: BacktestReportNotFoundError) -> JSONResponse:
+        return error_response(404, "BACKTEST_NOT_FOUND", str(exc))
+
     @app.exception_handler(RequestValidationError)
     async def _validation(_: Request, exc: RequestValidationError) -> JSONResponse:
         return error_response(
-            422, "VALIDATION_ERROR", "Parámetros de entrada inválidos", {"errors": exc.errors()}
+            422,
+            "VALIDATION_ERROR",
+            "Parámetros de entrada inválidos",
+            {"errors": safe_validation_errors(exc.errors())},
         )
 
     @app.exception_handler(StarletteHTTPException)
     async def _http(_: Request, exc: StarletteHTTPException) -> JSONResponse:
-        code = {404: "NOT_FOUND", 405: "METHOD_NOT_ALLOWED"}.get(exc.status_code, "HTTP_ERROR")
+        code = {404: "NOT_FOUND", 405: "METHOD_NOT_ALLOWED", 413: "PAYLOAD_TOO_LARGE"}.get(
+            exc.status_code, "HTTP_ERROR"
+        )
         return error_response(exc.status_code, code, str(exc.detail))

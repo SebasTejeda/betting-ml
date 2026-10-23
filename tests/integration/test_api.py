@@ -10,6 +10,7 @@ from fastapi.testclient import TestClient
 from betting_ml.api.main import create_app
 from betting_ml.application.catalog import RefreshData
 from betting_ml.container import ApiServices
+from tests.clients import ReaderClient
 from tests.serving import FIXTURE_DAY, ServingEnv, build_serving_env, leagues
 
 API_KEY = "test-key"
@@ -38,14 +39,14 @@ def client(env: ServingEnv, refreshed: list[str]) -> Iterator[TestClient]:
         tracking=env.tracking,
         leagues=leagues(),
         read_experiments=lambda: experiments,
-        admin_api_key=API_KEY,
+        app_api_key=API_KEY,
         refresher=RefreshData(
             refresh_fixtures=lambda: len(env.fixtures.fetch_fixtures(force_refresh=True)),
             rebuild=lambda: refreshed.append("rebuilt"),
             on_done=env.predictor.reset,
         ),
     )
-    with TestClient(create_app(services)) as test_client:
+    with ReaderClient(create_app(services), API_KEY) as test_client:
         yield test_client
 
 
@@ -226,7 +227,7 @@ def test_model_not_available_returns_503(tmp_path: Path) -> None:
         API_KEY,
         RefreshData(lambda: 0, lambda: None, env.predictor.reset),
     )
-    with TestClient(create_app(services)) as client:
+    with ReaderClient(create_app(services), API_KEY) as client:
         assert client.get("/health").json()["model_loaded"] is False
         _assert_error(client.get("/api/v1/matches"), 503, "MODEL_NOT_AVAILABLE")
         _assert_error(client.get("/api/v1/model"), 503, "MODEL_NOT_AVAILABLE")
@@ -238,11 +239,12 @@ def test_unknown_route_and_cors(client: TestClient) -> None:
     _assert_error(client.get("/api/v1/nothing"), 404, "NOT_FOUND")
     preflight = client.options(
         "/api/v1/leagues",
-        headers={"Origin": "http://localhost:3000", "Access-Control-Request-Method": "GET"},
+        headers={"Origin": "http://localhost:5173", "Access-Control-Request-Method": "GET"},
     )
-    assert preflight.headers["access-control-allow-origin"] == "http://localhost:3000"
-    foreign = client.get("/api/v1/leagues", headers={"Origin": "https://evil.example"})
-    assert "access-control-allow-origin" not in foreign.headers
+    assert preflight.headers["access-control-allow-origin"] == "http://localhost:5173"
+    for origin in ("https://evil.example", "http://localhost:3000"):  # only CORS_ORIGINS
+        foreign = client.get("/api/v1/leagues", headers={"Origin": origin})
+        assert "access-control-allow-origin" not in foreign.headers
     assert client.get("/openapi.json").status_code == 200
 
 
@@ -280,6 +282,6 @@ def test_admin_disabled_with_default_key(env: ServingEnv) -> None:
         "cambia-esto",
         RefreshData(lambda: 0, lambda: None, env.predictor.reset),
     )
-    with TestClient(create_app(services)) as client:
+    with ReaderClient(create_app(services), "cambia-esto") as client:
         response = client.post("/api/v1/admin/refresh", headers={"X-API-Key": "cambia-esto"})
-        _assert_error(response, 503, "ADMIN_DISABLED")
+        _assert_error(response, 503, "WRITES_DISABLED")

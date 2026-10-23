@@ -2,21 +2,25 @@ Responde siempre al usuario en español.
 
 # CLAUDE.md — Guía para el agente
 
-Proyecto: modelo de ML para predecir partidos de fútbol (1X2), detectar value bets y servirlo con una API REST; comparador de cuotas con referencia Pinnacle, diario de apuestas y frontend. Se construye con **Spec-Driven Development (SDD)**.
+Proyecto: modelo de ML para predecir partidos de fútbol (1X2), detectar value bets y servirlo con una API REST; comparador de cuotas con referencia Pinnacle, diario de apuestas y frontend; análisis de partido con mercados derivados y consejos explicados. Se construye con **Spec-Driven Development (SDD)**.
 
-**Spec activa: `specs/002-odds-comparator/`** (la spec 001, `specs/001-prediction-model/`, está terminada; su código y resultados se mantienen).
+**Spec activa: `specs/004-match-analysis/`** — integración de la rama `Sebastian` (análisis de partido) siguiendo [`integration.md`](specs/004-match-analysis/integration.md). Las specs 001 (`specs/001-prediction-model/`), 002 (`specs/002-odds-comparator/`) y 003 (`specs/003-security-hardening/`) están terminadas; su código y resultados se mantienen.
 
 ## Lee en este orden antes de hacer nada
 
-1. `specs/constitution.md` — reglas no negociables (I–XI).
-2. `specs/002-odds-comparator/spec.md` — qué se construye y criterio de éxito (spec activa).
-3. `specs/002-odds-comparator/plan.md` — cómo se construye.
-4. `specs/002-odds-comparator/contracts/api.md` — extensión del contrato de la API (se suma a `specs/001-prediction-model/contracts/api.md`).
-5. `specs/002-odds-comparator/tasks.md` — lista de tareas a ejecutar.
-6. `specs/002-odds-comparator/decisions.md` — decisiones de la spec activa.
-7. `PROGRESS.md` — dónde se quedó el trabajo (sección "Spec 002").
+1. `specs/constitution.md` — reglas no negociables (I–XII).
+2. `SECURITY.md` — modelo de amenazas y controles que ningún cambio puede debilitar.
+3. `specs/004-match-analysis/integration.md` — plan y tareas (I00–I08) de la spec activa.
+4. `PROGRESS.md` — estado del proyecto (resúmenes finales de cada spec; sección "Spec 004").
 
-Referencia de la spec 001 (terminada): `specs/001-prediction-model/{spec,plan,experiments,decisions}.md` y `reports/REPORT.md`.
+Referencia de las specs terminadas:
+- `specs/001-prediction-model/{spec,plan,experiments,decisions}.md` con `reports/REPORT.md`.
+- `specs/002-odds-comparator/{spec,plan,decisions}.md` con su `contracts/api.md` y `reports/REPORT_002_backtest.md`.
+- `specs/003-security-hardening/{spec,plan,decisions}.md` con su `contracts/api.md`, `reports/SECURITY_BASELINE.md`, `reports/SECURITY_AUDIT_003.md` y `docs/deploy.md`.
+
+Spec 004 (análisis de partido, hecha en la rama `Sebastian` como "spec 003"): `specs/004-match-analysis/{spec,plan,tasks,decisions}.md` con su `contracts/api.md`, `reports/REPORT_003_markets.md` y `reports/REPORT_003_europe.md`.
+
+El contrato de la API es la suma de los cuatro `contracts/api.md`.
 
 ## Forma de trabajar
 
@@ -27,30 +31,38 @@ Referencia de la spec 001 (terminada): `specs/001-prediction-model/{spec,plan,ex
 - Si un resultado es sospechosamente bueno, asume fuga de información y revísalo antes de celebrarlo.
 - En los checkpoints 🔍 usa el subagente `ml-reviewer`.
 - No preguntes al usuario salvo que estés bloqueado de verdad (credenciales, decisión irreversible). Para todo lo demás, decide con criterio y documenta.
+- **Confirmación por paso (pedida por el dueño en la spec 003):** al terminar cada tarea (con su commit), presenta el resultado y pide confirmación antes de empezar la siguiente, salvo que el dueño diga otra cosa para una spec nueva. El trabajo va en la rama `Daniel`.
+- **Procesos:** si levantas servidores para probar o tomar capturas, hazlo en segundo plano dentro de tu sesión, reutiliza el que ya esté corriendo y ciérralos todos al terminar. No abras ventanas de consola nuevas.
 
 ## Reglas duras (resumen de la constitución)
 
 - Nada de fuga: features solo con información previa al partido; cuotas de cierre nunca como feature.
-- El holdout (2025-26) no se toca hasta T029, y solo una vez.
+- Cada holdout (2025-26) se usa una sola vez y con su propio lock (spec 003: `reports/HOLDOUT_003_USED.lock`).
 - Validación temporal walk-forward; nada de splits aleatorios.
 - Arquitectura hexagonal: `domain` sin dependencias de infraestructura; la API solo llama a `application`.
 - Código en inglés, documentos y reportes en español.
 - Conventional Commits, un commit por tarea. **Nunca `git push`.** Nunca commitear `data/`, `.env` ni `*.joblib`.
-- **Juego responsable:** nada que incentive perseguir pérdidas; los límites de US6 no se pueden saltar desde la API ni el frontend.
-- **No scraping** de casas de apuestas; las APIs se usan dentro de sus límites. Cuidar los créditos de The Odds API: los tests usan siempre respuestas grabadas en `tests/fixtures/`.
-- **Evidencia antes de construir:** ninguna estrategia llega al frontend sin backtest que la respalde (puerta T008 de la spec 002).
+- **Juego responsable:** nada que incentive perseguir pérdidas; los límites de US6 de la spec 002 no se pueden saltar desde la API ni el frontend.
+- **No scraping** de casas de apuestas; las APIs se usan dentro de sus límites. Cuidar los créditos de The Odds API (spec 003: como máximo 3 llamadas con coste en toda la spec): los tests usan siempre respuestas grabadas en `tests/fixtures/`.
+- **Evidencia antes de construir:** ninguna estrategia llega al frontend sin backtest que la respalde (puertas T008 de la spec 002 y T010 de la spec 003).
+- **Consejos honestos (XII):** probabilidad, precio y porqué con datos trazables; nunca lenguaje de certeza.
 - **Dinero con `Decimal`**, nunca `float` (montos, stakes, bankroll, beneficios).
 - **Las API keys** (`ODDS_API_KEY`, `APP_API_KEY`) viven solo en `.env`: nunca en el frontend del repo, en fixtures grabados ni en logs.
+- **Seguridad (spec 003):** toda ruta de la API exige autenticación salvo `/health` y el login; nada de secretos en el navegador (`localStorage` incluido); contraseñas solo como hash Argon2id; escrituras con sesión exigen CSRF; la auditoría es de solo inserción; cada control de seguridad lleva tests negativos; las migraciones nunca borran ni corrigen datos en silencio.
 
 ## Comandos
 
 ```
 make setup | lint | test | data | baselines | exp ID=E05 | select | holdout | report | train-prod | serve | track | all
 make backtest-002 | backtest-002-final | db-upgrade | odds | settle | web | web-test | dev     (spec 002)
+make security | backup | restore FILE=... | verify-integrity                                   (spec 003)
+make data-europe | validate-markets | validate-markets-final | analyze HOME=... AWAY=... (spec 004; los `-final` son de una sola vez y ya se usaron)
 ```
+
+En esta máquina no hay `make`: usa los equivalentes `uv run ...` / `npm run ...` del `Makefile`.
 
 Comandos del agente en `.claude/commands/`: `/next` (siguiente tarea), `/exp E07` (correr un experimento según protocolo), `/review` (checkpoint), `/status` (resumen del avance).
 
 ## Si se acaba el contexto o se reinicia la sesión
 
-Lee `PROGRESS.md` y la primera tarea sin `[x]` en el `tasks.md` de la spec activa, verifica con `git log --oneline -5` y `git status` que no haya trabajo a medias, y continúa desde ahí.
+Lee `PROGRESS.md` y verifica con `git log --oneline -5` y `git status` que no haya trabajo a medias. Si hay una spec activa, continúa desde la primera tarea sin `[x]` de su `tasks.md`; si no la hay, pregunta al dueño qué sigue.

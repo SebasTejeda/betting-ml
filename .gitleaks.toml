@@ -1,0 +1,16 @@
+# gitleaks (spec 003, T002): reglas por defecto + rutas de terceros excluidas en `gitleaks dir`.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Dependencias instaladas y artefactos generados"
+paths = [
+  '''(^|/)\.venv/''',
+  '''(^|/)node_modules/''',
+  '''(^|/)frontend/dist/''',
+  '''(^|/)__pycache__/''',  # bytecode of the tests' fake secrets (never committed)
+]
+# Exact fake values of the tests, never real keys (one entry each, never a pattern).
+regexes = [
+  '''^secret-key-0123456789$''',  # tests/unit/test_event_odds.py (spec 004, I04)
+]

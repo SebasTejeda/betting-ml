@@ -1,0 +1,55 @@
+{
+  "_note": "SINTÉTICO (spec 003, T014): construido a mano con el formato documentado de la v4; reemplazar por una respuesta grabada real con la llamada pendiente de T004.",
+  "id": "evt-001",
+  "sport_key": "soccer_uefa_champs_league",
+  "commence_time": "2026-10-28T20:00:00Z",
+  "home_team": "Real Madrid",
+  "away_team": "RB Leipzig",
+  "bookmakers": [
+    {
+      "key": "betsson",
+      "title": "Betsson",
+      "markets": [
+        {"key": "h2h", "outcomes": [
+          {"name": "Real Madrid", "price": 1.55}, {"name": "Draw", "price": 4.6}, {"name": "RB Leipzig", "price": 5.5}]},
+        {"key": "totals", "outcomes": [
+          {"name": "Over", "price": 1.62, "point": 2.5}, {"name": "Under", "price": 2.30, "point": 2.5},
+          {"name": "Over", "price": 1.02, "point": 0.75}]},
+        {"key": "btts", "outcomes": [{"name": "Yes", "price": 1.70}, {"name": "No", "price": 2.10}]},
+        {"key": "team_totals", "outcomes": [
+          {"name": "Over", "description": "Real Madrid", "price": 1.95, "point": 1.5},
+          {"name": "Under", "description": "Real Madrid", "price": 1.80, "point": 1.5},
+          {"name": "Over", "description": "RB Leipzig", "price": 2.40, "point": 1.5}]},
+        {"key": "double_chance", "outcomes": [
+          {"name": "Real Madrid or Draw", "price": 1.15}, {"name": "Draw or RB Leipzig", "price": 2.40},
+          {"name": "Real Madrid or RB Leipzig", "price": 1.25}]},
+        {"key": "draw_no_bet", "outcomes": [{"name": "Real Madrid", "price": 1.20}, {"name": "RB Leipzig", "price": 4.40}]}
+      ]
+    },
+    {
+      "key": "coolbet",
+      "title": "Coolbet",
+      "markets": [
+        {"key": "h2h", "outcomes": [
+          {"name": "Real Madrid", "price": 1.58}, {"name": "Draw", "price": 4.5}, {"name": "RB Leipzig", "price": 5.2}]},
+        {"key": "totals", "outcomes": [{"name": "Over", "price": 1.66, "point": 2.5}, {"name": "Under", "price": 2.20, "point": 2.5}]}
+      ]
+    },
+    {
+      "key": "betfair_ex_eu",
+      "title": "Betfair",
+      "markets": [
+        {"key": "h2h", "outcomes": [
+          {"name": "Real Madrid", "price": 1.70}, {"name": "Draw", "price": 4.9}, {"name": "RB Leipzig", "price": 6.0}]}
+      ]
+    },
+    {
+      "key": "onexbet",
+      "title": "1xBet",
+      "markets": [
+        {"key": "h2h", "outcomes": [
+          {"name": "Real Madrid", "price": 1.80}, {"name": "Draw", "price": 5.0}, {"name": "RB Leipzig", "price": 6.5}]}
+      ]
+    }
+  ]
+}

@@ -2,6 +2,7 @@ import "@testing-library/jest-dom/vitest";
 import { cleanup, configure } from "@testing-library/react";
 import { afterAll, afterEach, beforeAll } from "vitest";
 
+import { setCsrfToken } from "../lib/session";
 import { server } from "./server";
 
 // lazily loaded pages (charts) can take more than the default 1 s on a busy machine
@@ -16,6 +17,7 @@ afterEach(() => {
   cleanup();
   server.resetHandlers();
   window.localStorage.clear();
+  setCsrfToken(null);
 });
 afterAll(() => server.close());
 

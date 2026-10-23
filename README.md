@@ -1,6 +1,6 @@
 # betting-ml
 
-Modelo de machine learning que estima las probabilidades 1X2 (local / empate / visita) de los partidos de las 5 grandes ligas europeas, las compara con las cuotas del mercado y las sirve con una API REST (la spec 001 buscaba *value bets*; no encontró ventaja). La spec 002 le suma un **comparador de mejor cuota** con Pinnacle como referencia, una calculadora para casas peruanas, un **diario de apuestas con límites de juego responsable** y un frontend web. Construido con **Spec-Driven Development** (especificaciones en [`specs/`](specs/), bitácora en [`PROGRESS.md`](PROGRESS.md), decisiones en [`decisions.md`](specs/001-prediction-model/decisions.md)).
+Modelo de machine learning que estima las probabilidades 1X2 (local / empate / visita) de los partidos de las 5 grandes ligas europeas, las compara con las cuotas del mercado y las sirve con una API REST (la spec 001 buscaba *value bets*; no encontró ventaja). La spec 002 le suma un **comparador de mejor cuota** con Pinnacle como referencia, una calculadora para casas peruanas, un **diario de apuestas con límites de juego responsable** y un frontend web. La spec 004 agrega el **análisis de un partido**: probabilidades de muchos mercados (goles, ambos marcan, goles de cada equipo, doble oportunidad…), lo más probable con su precio honesto y la forma reciente de los dos equipos; la spec 003 lo endurece todo (login, auditoría, copias). Construido con **Spec-Driven Development** (especificaciones en [`specs/`](specs/), bitácora en [`PROGRESS.md`](PROGRESS.md), decisiones en [`decisions.md`](specs/001-prediction-model/decisions.md)).
 
 > **Juego responsable.** Proyecto educativo. Apostar implica riesgo de pérdida. Este modelo **no** muestra ventaja frente al mercado: no lo uses para apostar dinero real.
 
@@ -58,7 +58,12 @@ Requisitos: Python ≥ 3.11 y [uv](https://docs.astral.sh/uv/). GNU make es opci
 make setup
 ```
 
-Sin make: `uv sync --extra dev`, seguido de `uv run pre-commit install`. Después copia `.env.example` a `.env` y cambia `ADMIN_API_KEY`.
+Sin make: `uv sync --extra dev`, seguido de `uv run pre-commit install`. Después copia `.env.example` a `.env` y rellena:
+
+- `APP_API_KEY`: una clave larga e inventada (32 caracteres o más), para Postman y la CLI;
+- `APP_PASSWORD_HASH`: la salida de `uv run betting-ml hash-password` (la contraseña con la que entras al frontend).
+
+Para producción hacen falta además `APP_ENV=prod`, `SESSION_SECRET`, `ALLOWED_HOSTS` y `CORS_ORIGINS`: ver los comentarios de `.env.example` y [`docs/deploy.md`](docs/deploy.md).
 
 ## Cómo correr
 
@@ -75,7 +80,7 @@ Sin make: `uv sync --extra dev`, seguido de `uv run pre-commit install`. Despué
 | `make train-prod` | `uv run betting-ml train-prod` | Re-entrena los modelos de producción con todos los datos |
 | `make serve` | `uv run betting-ml serve` | API en `http://localhost:8000` (Swagger en `/docs`) |
 | `make track` | `uv run betting-ml track` | Califica las predicciones servidas con los resultados reales |
-| `make docker` | `docker build -t betting-ml:latest .` | Imagen de la API (ver comentario en el [`Dockerfile`](Dockerfile); aún no se construyó porque la máquina de desarrollo no tiene Docker) |
+| `make docker` | `docker build -t betting-ml:latest .` | Imagen endurecida de la API (la construye el job `docker` de CI). Despliegue con Caddy y TLS: [`docs/deploy.md`](docs/deploy.md) |
 | `make all` | — | data → baselines → experimentos (omite los ya registrados) → select y holdout (si ya existe el lock, se validan y se omiten) → report → train-prod |
 
 Para servir en una máquina limpia: `make data && make train-prod && make serve`. `train-prod` necesita el lock del holdout, que está versionado.
@@ -84,17 +89,17 @@ Para servir en una máquina limpia: `make data && make train-prod && make serve`
 
 1. Levanta la API con `make serve`.
 2. Importa [`postman/betting-ml.postman_collection.json`](postman/betting-ml.postman_collection.json).
-3. Ajusta las variables de la colección: `baseUrl` (por defecto `http://localhost:8000`), `date` y `adminApiKey` (la de tu `.env`).
+3. Ajusta las variables de la colección: `baseUrl` (por defecto `http://localhost:8000`), `date` y `appApiKey` (el `APP_API_KEY` de tu `.env`). Todas las rutas salvo `/health` exigen la cabecera `X-API-Key`.
 4. Ejecuta la colección con el *Runner*. Cada request trae tests: status, suma de probabilidades ≈ 1 y formato de error.
 
 Contrato completo: [`contracts/api.md`](specs/001-prediction-model/contracts/api.md). Ejemplos:
 
 ```bash
-curl "http://localhost:8000/api/v1/matches?date=2026-10-03&league=E0"
+curl -H "X-API-Key: $APP_API_KEY" "http://localhost:8000/api/v1/matches?date=2026-10-03&league=E0"
 ```
 
 ```bash
-curl -X POST http://localhost:8000/api/v1/predictions -H "Content-Type: application/json" -d "{\"league\":\"E0\",\"home_team\":\"Arsenal\",\"away_team\":\"Chelsea\",\"odds\":{\"home\":1.98,\"draw\":3.9,\"away\":4.5}}"
+curl -X POST http://localhost:8000/api/v1/predictions -H "X-API-Key: $APP_API_KEY" -H "Content-Type: application/json" -d "{\"league\":\"E0\",\"home_team\":\"Arsenal\",\"away_team\":\"Chelsea\",\"odds\":{\"home\":1.98,\"draw\":3.9,\"away\":4.5}}"
 ```
 
 `fixtures.csv` de football-data se actualiza unas dos veces por semana. Si no hay partidos de las 5 ligas para la fecha pedida, `/matches` responde `200` con una lista vacía y un mensaje.
@@ -151,9 +156,85 @@ Especificación en [`specs/002-odds-comparator/`](specs/002-odds-comparator/) y 
 
 La app usa tema oscuro por defecto; el botón de sol/luna de la barra superior cambia al tema claro y lo recuerda en el navegador. En el celular la navegación está en una barra inferior.
 
-La primera vez, pulsa **Configurar clave** (arriba a la derecha) y pega tu `APP_API_KEY`: sin ella no se puede escribir (refrescar, registrar, liquidar ni guardar ajustes). La clave se guarda solo en el `localStorage` de tu navegador, porque es una herramienta personal que corre en tu máquina. No uses la app en un equipo compartido.
+La app pide **iniciar sesión** con la contraseña del dueño (su hash Argon2id va en `APP_PASSWORD_HASH`; se genera con `betting-ml hash-password`). La sesión vive en una cookie `HttpOnly` que el navegador no puede leer y caduca tras 30 minutos sin uso o 12 horas en total; el botón **Salir** la cierra. El navegador no guarda ninguna clave ni contraseña: `APP_API_KEY` queda solo para Postman y la línea de comandos.
 
 > **Juego responsable.** Apuesta solo lo que puedas perder. Esta app no encontró una ventaja que permita ganar apostando: su valor es ahorrar margen eligiendo la mejor cuota y **medir** con honestidad. Los límites mensuales existen para que no persigas pérdidas. Si sientes que pierdes el control, pide ayuda.
+
+## Spec 004 — Análisis de partido con mercados
+
+Especificación en [`specs/004-match-analysis/`](specs/004-match-analysis/) (escrita como "spec 003" en la rama `Sebastian`) y decisiones en [`decisions.md`](specs/004-match-analysis/decisions.md). Informes: [`REPORT_003_markets.md`](reports/REPORT_003_markets.md) (ligas) y [`REPORT_003_europe.md`](reports/REPORT_003_europe.md) (partidos entre ligas).
+
+**Qué hace.** Eliges dos equipos (por ejemplo, Real Madrid y RB Leipzig) y la página **Análisis** muestra:
+
+- **Goles esperados** de cada equipo (λ) y, a partir de ellos, la probabilidad de cada resultado exacto. Con esa "matriz de marcadores" se calculan todos los mercados: 1X2, doble oportunidad, empate no apuesta, Más/Menos 0.5–4.5, ambos marcan, goles de cada equipo, hándicap europeo y los 5 marcadores más probables.
+- Para cada selección: probabilidad, **cuota justa** (1/p), mejor cuota disponible, EV y nivel de confianza.
+- **Lo más probable**, con un comentario honesto del precio ("Muy probable (82 %), pero la cuota 1.15 paga menos de lo justo (1.22): EV −5.6 %. No conviene.") y razones basadas en datos ("El modelo espera 2.1 goles de Real Madrid…").
+- La **forma reciente** (últimos 6 partidos, promedios de goles y xG, % de partidos con más de 2.5 goles, ambos marcan, racha) y los enfrentamientos directos, que tienen poco poder predictivo.
+
+**Cómo se calcula.** Dos equipos de la misma liga usan Dixon-Coles sobre xG (el mejor modelo de goles de la spec 001). Los partidos entre ligas (Champions, Europa League) usan un **Elo propio entre ligas** sobre resultados de openfootball, porque ClubElo estuvo caído, con un desplazamiento de fuerza por liga estimado con los partidos europeos. Todo usa solo información anterior al partido.
+
+**Cómo leer el nivel de confianza.** Mide si las probabilidades de ese mercado acertaron en el pasado (calibración), no si conviene apostar:
+
+| Nivel | Qué significa |
+|---|---|
+| **Alta** | Calibración muy buena (ECE < 0.02), sesgo menor al 5 %, mejor que la frecuencia histórica y al menos 400 casos |
+| **Media** | Calibración aceptable o muestra insuficiente para certificar más |
+| **Baja** | Calibración mala o un sesgo grande y significativo: **solo información**, nunca se destaca |
+
+Resultado actual: en ligas, **0 alta, 9 media y 9 baja**. Los mercados de muchos goles (Más/Menos 1.5–4.5, hándicaps, marcador exacto) salen `baja` porque el modelo espera más goles de los que hay. En partidos entre ligas, 1X2 y Más/Menos 2.5 salen `baja`: ese análisis es solo información.
+
+**Por qué "lo más probable" no es "lo mejor".** Que algo sea probable no significa que la cuota lo pague bien: las casas ya lo saben y pagan menos de lo justo. Una apuesta solo tiene valor si la cuota es mayor que la cuota justa, y aun así hay que medirlo. El backtest de Más/Menos 2.5 **no encontró valor**: las selecciones que el modelo veía con "valor" tuvieron un CLV de −5.7 % en la prueba 2025-26, igual que apostar a ciegas. Por eso la sección **"Mejores opciones" está desactivada** (decisión del dueño) y todo lo que se registre desde el análisis va **en papel por defecto**, con la etiqueta EXPERIMENTAL — solo papel.
+
+**Cuotas por evento.** El botón "Actualizar cuotas de este partido" baja de The Odds API los mercados adicionales del partido. Muestra antes el costo (mercados × regiones: unos 12 créditos con `eu,uk`) y guarda la respuesta 30 minutos, así que un segundo refresco no gasta créditos. Sin `ODDS_API_KEY` el análisis usa las cuotas 1X2 del comparador o solo cuotas justas.
+
+**Evidencia por mercado.** Mis apuestas tiene un panel con el CLV de cada mercado, **separando** el CLV contra Pinnacle del CLV contra el cierre promedio del mercado (una referencia más débil, la única que hay en 2026-27 para Más/Menos 2.5), y el progreso hacia 100 apuestas en papel con CLV positivo. Solo con esa evidencia un mercado deja de ser experimental (cambio manual en `configs/markets.yaml`).
+
+### Comandos (spec 004)
+
+| make | sin make | Qué hace |
+|---|---|---|
+| `make data-europe` | `uv run betting-ml data-europe` | Descarga ligas y Champions/Europa League de openfootball, calcula el Elo propio entre ligas y arma el dataset europeo |
+| `make analyze HOME="Real Madrid" AWAY="Barcelona"` | `uv run betting-ml analyze "Real Madrid" "Barcelona" --date 2026-10-26` | Análisis por consola (`--competition UCL` para partidos europeos) |
+| `make validate-markets` | `uv run betting-ml validate-markets` | Calibración de los mercados y backtest de Más/Menos 2.5 en validación |
+| `make validate-markets-final` | `uv run betting-ml validate-markets --final` | Prueba única en 2025-26 (ya hecha: el lock impide repetirla) |
+| `make validate-cross-league` | `uv run betting-ml validate-cross-league` | Validación walk-forward del ajuste entre ligas (`--final`: prueba europea única, ya hecha) |
+
+Antes del análisis hacen falta los datos: `uv run betting-ml data` (ligas) y `uv run betting-ml data-europe` (Europa y Elo).
+
+### Cómo usar la página Análisis
+
+- Como el resto de la app, la página exige iniciar sesión. Desde **Hoy** o **Partido**, pulsa **Analizar**; o entra a **Análisis** (`/analysis`), escribe el local y la visita (el autocompletado sugiere nombres) y, si quieres, la fecha y la competición. Si hay un partido próximo entre los dos, se usa solo.
+- Arriba verás los goles esperados y los avisos (partido entre ligas, cuotas viejas, forma desactualizada). Léelos antes que nada.
+- **Lo más probable**: cada tarjeta dice la probabilidad, si la cuota la paga bien o mal y por qué. "Registrar en papel" la anota en el diario.
+- **Mercados**: abre cada grupo; puedes ordenar por EV. Lo marcado como "Solo información" no está suficientemente calibrado.
+- Para registrar una selección sin cuota, escribe la cuota que te ofrece tu casa.
+
+## Seguridad (spec 003)
+
+Especificación en [`specs/003-security-hardening/`](specs/003-security-hardening/). El modelo de amenazas, los controles y lo que queda fuera están en [`SECURITY.md`](SECURITY.md).
+
+- **Acceso.** Toda ruta exige autenticación salvo `/health` y el login:
+  - el frontend usa una sesión con cookie `HttpOnly` y token CSRF;
+  - Postman y la CLI usan `X-API-Key`.
+
+  El navegador no guarda ningún secreto. La contraseña solo existe como hash Argon2id.
+- **Abuso.** Límite de intentos de login con bloqueo progresivo, límite de peticiones por IP, cuerpo máximo de 64 KiB, `Host` permitido, CSP estricta y cabeceras de seguridad. En prod, `/docs` está desactivado y la API no arranca con claves débiles.
+- **Integridad de los datos.**
+  - `CHECK` en la base y concurrencia optimista: una edición simultánea da 409.
+  - Auditoría de solo inserción encadenada con SHA-256.
+  - Copias verificadas con `.sha256`.
+  - Hash de los modelos antes de cargarlos.
+- **Fuentes externas y créditos (spec 004).** Descargas con tope de tamaño y de tiempo; un solo saldo de créditos de The Odds API para el comparador y el análisis, con su reserva y su cupo por hora.
+
+| make | sin make | Qué hace |
+|---|---|---|
+| `make security` | ver el objetivo `security` del `Makefile` | ruff S, pip-audit, npm audit y gitleaks (falla ante cualquier hallazgo, igual que en CI) |
+| `make verify-integrity` | `uv run betting-ml verify-integrity` | Comprueba la cadena de auditoría, los datos actuales frente a su último evento, los PRAGMA y los triggers |
+| `make backup` | `uv run betting-ml backup` | Copia consistente de `data/app.db` con su `.sha256` y rotación |
+| `make restore FILE=…` | `uv run betting-ml restore <copia> --yes` | Verifica la copia y solo entonces reemplaza la base (guarda antes la actual) |
+| — | `uv run betting-ml hash-password` | Genera el hash Argon2id de la contraseña para `APP_PASSWORD_HASH` |
+
+Despliegue en producción (Docker, Caddy con TLS, copias externas, rotación de claves): [`docs/deploy.md`](docs/deploy.md). Estado final de los hallazgos: [`reports/SECURITY_BASELINE.md`](reports/SECURITY_BASELINE.md) y [`reports/SECURITY_AUDIT_003.md`](reports/SECURITY_AUDIT_003.md).
 
 ## Limitaciones
 
@@ -166,5 +247,10 @@ La primera vez, pulsa **Configurar clave** (arriba a la derecha) y pega tu `APP_
 
 - Spec 002: la señal de valor no tiene evidencia (ver arriba). Las cuotas de Betsson y Coolbet que llegan de The Odds API (región eu) pueden no coincidir con las de su web peruana. Las casas peruanas se ingresan a mano.
 - Spec 002: el CLV de 2026-27 sale casi siempre del último snapshot de Pinnacle antes del inicio, no de su cierre real, porque football-data ya no publica Pinnacle.
+- Spec 004: ningún mercado llegó a confianza alta en la prueba 2025-26, y no hay evidencia de valor en Más/Menos 2.5. El modelo de goles sobreestima los partidos con muchos goles (se ajusta sobre xG); recalibrarlo queda como experimento futuro.
+- Spec 004: el Elo entre ligas es propio (ClubElo estuvo caído) y cubre 11 países; los clubes de otros países no tienen análisis entre ligas (`503 RATINGS_UNAVAILABLE`). openfootball va con semanas de retraso en las ligas medianas y aún no tiene la Champions 2026-27, así que la forma de esos clubes puede estar atrasada (la app lo avisa).
+- Spec 004: las cuotas por evento se implementaron con el formato documentado de The Odds API y un fixture sintético; falta verificarlas con una respuesta real (decisions.md).
+- Spec 004: las apuestas de partidos europeos no se liquidan solas (football-data solo trae ligas): hay que liquidarlas a mano. Solo 1X2 y Más/Menos 2.5 de liga tienen CLV.
+- Spec 004: córners y tarjetas (US7, opcional) quedaron pospuestos.
 
 Más detalle en [`reports/REPORT.md`](reports/REPORT.md) §9.

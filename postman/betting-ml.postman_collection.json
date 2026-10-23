@@ -14,12 +14,16 @@
       "value": "2026-09-27"
     },
     {
-      "key": "adminApiKey",
+      "key": "appApiKey",
       "value": "cambia-esto"
     },
     {
-      "key": "appApiKey",
-      "value": "cambia-esto"
+      "key": "ownerPassword",
+      "value": ""
+    },
+    {
+      "key": "csrfToken",
+      "value": ""
     },
     {
       "key": "matchId",
@@ -28,6 +32,14 @@
     {
       "key": "betId",
       "value": ""
+    },
+    {
+      "key": "betVersion",
+      "value": "1"
+    },
+    {
+      "key": "settingsVersion",
+      "value": "0"
     }
   ],
   "item": [
@@ -84,7 +96,12 @@
           ],
           "request": {
             "method": "GET",
-            "header": [],
+            "header": [
+              {
+                "key": "X-API-Key",
+                "value": "{{appApiKey}}"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/api/v1/leagues",
               "host": [
@@ -115,7 +132,12 @@
           ],
           "request": {
             "method": "GET",
-            "header": [],
+            "header": [
+              {
+                "key": "X-API-Key",
+                "value": "{{appApiKey}}"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/api/v1/leagues/E0/teams",
               "host": [
@@ -148,7 +170,12 @@
           ],
           "request": {
             "method": "GET",
-            "header": [],
+            "header": [
+              {
+                "key": "X-API-Key",
+                "value": "{{appApiKey}}"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/api/v1/leagues/XX/teams",
               "host": [
@@ -187,7 +214,12 @@
           ],
           "request": {
             "method": "GET",
-            "header": [],
+            "header": [
+              {
+                "key": "X-API-Key",
+                "value": "{{appApiKey}}"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/api/v1/matches",
               "host": [
@@ -218,7 +250,12 @@
           ],
           "request": {
             "method": "GET",
-            "header": [],
+            "header": [
+              {
+                "key": "X-API-Key",
+                "value": "{{appApiKey}}"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/api/v1/matches?date={{date}}",
               "host": [
@@ -255,7 +292,12 @@
           ],
           "request": {
             "method": "GET",
-            "header": [],
+            "header": [
+              {
+                "key": "X-API-Key",
+                "value": "{{appApiKey}}"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/api/v1/matches?date={{date}}&league=E0&only_value=true&min_edge=0.05",
               "host": [
@@ -304,7 +346,12 @@
           ],
           "request": {
             "method": "GET",
-            "header": [],
+            "header": [
+              {
+                "key": "X-API-Key",
+                "value": "{{appApiKey}}"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/api/v1/matches?date=2026-07-01",
               "host": [
@@ -341,7 +388,12 @@
           ],
           "request": {
             "method": "GET",
-            "header": [],
+            "header": [
+              {
+                "key": "X-API-Key",
+                "value": "{{appApiKey}}"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/api/v1/matches?date=27-09-2026",
               "host": [
@@ -388,6 +440,10 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "X-API-Key",
+                "value": "{{appApiKey}}"
               }
             ],
             "url": {
@@ -434,6 +490,10 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "X-API-Key",
+                "value": "{{appApiKey}}"
               }
             ],
             "url": {
@@ -480,6 +540,10 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "X-API-Key",
+                "value": "{{appApiKey}}"
               }
             ],
             "url": {
@@ -525,6 +589,10 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "X-API-Key",
+                "value": "{{appApiKey}}"
               }
             ],
             "url": {
@@ -571,7 +639,12 @@
           ],
           "request": {
             "method": "GET",
-            "header": [],
+            "header": [
+              {
+                "key": "X-API-Key",
+                "value": "{{appApiKey}}"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/api/v1/model",
               "host": [
@@ -602,7 +675,12 @@
           ],
           "request": {
             "method": "GET",
-            "header": [],
+            "header": [
+              {
+                "key": "X-API-Key",
+                "value": "{{appApiKey}}"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/api/v1/experiments",
               "host": [
@@ -638,7 +716,12 @@
           ],
           "request": {
             "method": "GET",
-            "header": [],
+            "header": [
+              {
+                "key": "X-API-Key",
+                "value": "{{appApiKey}}"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/api/v1/tracking/summary",
               "host": [
@@ -681,7 +764,7 @@
               },
               {
                 "key": "X-API-Key",
-                "value": "{{adminApiKey}}"
+                "value": "{{appApiKey}}"
               }
             ],
             "url": {
@@ -761,7 +844,12 @@
               ],
               "request": {
                 "method": "GET",
-                "header": [],
+                "header": [
+                  {
+                    "key": "X-API-Key",
+                    "value": "{{appApiKey}}"
+                  }
+                ],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/bookmakers",
                   "host": [
@@ -792,7 +880,12 @@
               ],
               "request": {
                 "method": "GET",
-                "header": [],
+                "header": [
+                  {
+                    "key": "X-API-Key",
+                    "value": "{{appApiKey}}"
+                  }
+                ],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/odds/budget",
                   "host": [
@@ -904,7 +997,12 @@
               ],
               "request": {
                 "method": "GET",
-                "header": [],
+                "header": [
+                  {
+                    "key": "X-API-Key",
+                    "value": "{{appApiKey}}"
+                  }
+                ],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/comparator?date={{date}}",
                   "host": [
@@ -940,7 +1038,12 @@
               ],
               "request": {
                 "method": "GET",
-                "header": [],
+                "header": [
+                  {
+                    "key": "X-API-Key",
+                    "value": "{{appApiKey}}"
+                  }
+                ],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/comparator?date={{date}}&accessible_only=false",
                   "host": [
@@ -980,7 +1083,12 @@
               ],
               "request": {
                 "method": "GET",
-                "header": [],
+                "header": [
+                  {
+                    "key": "X-API-Key",
+                    "value": "{{appApiKey}}"
+                  }
+                ],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/comparator/{{matchId}}",
                   "host": [
@@ -1012,7 +1120,12 @@
               ],
               "request": {
                 "method": "GET",
-                "header": [],
+                "header": [
+                  {
+                    "key": "X-API-Key",
+                    "value": "{{appApiKey}}"
+                  }
+                ],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/comparator/E0-2030-01-01-a-b",
                   "host": [
@@ -1044,7 +1157,12 @@
               ],
               "request": {
                 "method": "GET",
-                "header": [],
+                "header": [
+                  {
+                    "key": "X-API-Key",
+                    "value": "{{appApiKey}}"
+                  }
+                ],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/comparator?date=10-10-2026",
                   "host": [
@@ -1180,7 +1298,8 @@
                     "type": "text/javascript",
                     "exec": [
                       "pm.test(\"status 201\", function () { pm.response.to.have.status(201); });",
-                      "pm.collectionVariables.set(\"betId\", pm.response.json().id);"
+                      "pm.collectionVariables.set(\"betId\", pm.response.json().id);",
+                      "pm.collectionVariables.set(\"betVersion\", pm.response.json().version);"
                     ]
                   }
                 }
@@ -1378,7 +1497,12 @@
               ],
               "request": {
                 "method": "GET",
-                "header": [],
+                "header": [
+                  {
+                    "key": "X-API-Key",
+                    "value": "{{appApiKey}}"
+                  }
+                ],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/bets?kind=paper",
                   "host": [
@@ -1407,7 +1531,8 @@
                   "script": {
                     "type": "text/javascript",
                     "exec": [
-                      "pm.test(\"status 200\", function () { pm.response.to.have.status(200); });"
+                      "pm.test(\"status 200\", function () { pm.response.to.have.status(200); });",
+                      "pm.collectionVariables.set(\"betVersion\", pm.response.json().version);"
                     ]
                   }
                 }
@@ -1439,7 +1564,57 @@
                 "description": "",
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"note\": \"desde Postman\"\n}",
+                  "raw": "{\n  \"note\": \"desde Postman\",\n  \"version\": {{betVersion}}\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "name": "PATCH versión vieja (409)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status 409\", function () { pm.response.to.have.status(409); });",
+                      "pm.test(\"conflicto de versión\", function () { pm.expect(pm.response.json().error.code).to.eql(\"VERSION_CONFLICT\"); });"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "X-API-Key",
+                    "value": "{{appApiKey}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/bets/{{betId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "bets",
+                    "{{betId}}"
+                  ]
+                },
+                "description": "",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"note\": \"edición vieja\",\n  \"version\": 1\n}",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -1573,7 +1748,12 @@
               ],
               "request": {
                 "method": "GET",
-                "header": [],
+                "header": [
+                  {
+                    "key": "X-API-Key",
+                    "value": "{{appApiKey}}"
+                  }
+                ],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/bets/summary",
                   "host": [
@@ -1587,6 +1767,38 @@
                   ]
                 },
                 "description": ""
+              }
+            },
+            {
+              "name": "GET diario sin clave (401)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status 401\", function () { pm.response.to.have.status(401); });",
+                      "pm.test(\"las lecturas también exigen credencial\", function () {",
+                      "    pm.expect(pm.response.json().error.code).to.eql(\"UNAUTHORIZED\");",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/bets",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "bets"
+                  ]
+                }
               }
             }
           ]
@@ -1602,14 +1814,20 @@
                   "script": {
                     "type": "text/javascript",
                     "exec": [
-                      "pm.test(\"status 200\", function () { pm.response.to.have.status(200); });"
+                      "pm.test(\"status 200\", function () { pm.response.to.have.status(200); });",
+                      "pm.collectionVariables.set(\"settingsVersion\", pm.response.json().version);"
                     ]
                   }
                 }
               ],
               "request": {
                 "method": "GET",
-                "header": [],
+                "header": [
+                  {
+                    "key": "X-API-Key",
+                    "value": "{{appApiKey}}"
+                  }
+                ],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/settings",
                   "host": [
@@ -1632,7 +1850,8 @@
                   "script": {
                     "type": "text/javascript",
                     "exec": [
-                      "pm.test(\"status 200\", function () { pm.response.to.have.status(200); });"
+                      "pm.test(\"status 200\", function () { pm.response.to.have.status(200); });",
+                      "pm.collectionVariables.set(\"settingsVersion\", pm.response.json().version);"
                     ]
                   }
                 }
@@ -1663,7 +1882,7 @@
                 "description": "",
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"bankroll_initial\": 500.0,\n  \"currency\": \"PEN\",\n  \"monthly_loss_limit\": 100.0,\n  \"max_stake_pct\": 0.02,\n  \"kelly_fraction\": 0.25,\n  \"min_edge\": 0.02\n}",
+                  "raw": "{\n  \"bankroll_initial\": 500.0,\n  \"currency\": \"PEN\",\n  \"monthly_loss_limit\": 100.0,\n  \"max_stake_pct\": 0.02,\n  \"kelly_fraction\": 0.25,\n  \"min_edge\": 0.02,\n  \"version\": {{settingsVersion}}\n}",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -1736,7 +1955,12 @@
               ],
               "request": {
                 "method": "GET",
-                "header": [],
+                "header": [
+                  {
+                    "key": "X-API-Key",
+                    "value": "{{appApiKey}}"
+                  }
+                ],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/backtest/pinnacle",
                   "host": [
@@ -1747,6 +1971,762 @@
                     "v1",
                     "backtest",
                     "pinnacle"
+                  ]
+                },
+                "description": ""
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Spec 003 — Autenticación",
+      "description": "Login del dueño con sesión de servidor (cookie HttpOnly bml_session, que Postman guarda solo) y token CSRF para las escrituras con sesión. Pon tu contraseña en la variable ownerPassword (nunca la guardes en el repo). Postman y los scripts pueden seguir usando X-API-Key = {{appApiKey}} en lugar de la sesión.",
+      "item": [
+        {
+          "name": "POST login con contraseña incorrecta (401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 401\", function () { pm.response.to.have.status(401); });",
+                  "pm.test(\"código INVALID_CREDENTIALS\", function () { pm.expect(pm.response.json().error.code).to.eql(\"INVALID_CREDENTIALS\"); });",
+                  "pm.test(\"sin cookie de sesión\", function () { pm.expect(pm.response.headers.has(\"Set-Cookie\")).to.be.false; });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"password\": \"no-es-la-contraseña\"}"
+            }
+          }
+        },
+        {
+          "name": "POST login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"cookie HttpOnly y SameSite=Strict\", function () { var c = pm.response.headers.get(\"Set-Cookie\").toLowerCase(); pm.expect(c).to.include(\"httponly\"); pm.expect(c).to.include(\"samesite=strict\"); });",
+                  "pm.test(\"el token no viaja en el cuerpo\", function () { pm.expect(Object.keys(pm.response.json()).sort()).to.eql([\"csrf_token\", \"expires_at\", \"idle_minutes\"]); });",
+                  "pm.collectionVariables.set(\"csrfToken\", pm.response.json().csrf_token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"password\": \"{{ownerPassword}}\"}"
+            }
+          }
+        },
+        {
+          "name": "GET me (sesión)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"sesión del dueño\", function () { pm.expect(pm.response.json().kind).to.eql(\"session\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "me"
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "POST logout sin token CSRF (403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 403\", function () { pm.response.to.have.status(403); });",
+                  "pm.test(\"código CSRF_FAILED\", function () { pm.expect(pm.response.json().error.code).to.eql(\"CSRF_FAILED\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "logout"
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "POST logout",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 204\", function () { pm.response.to.have.status(204); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "logout"
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "GET me tras logout (401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 401\", function () { pm.response.to.have.status(401); });",
+                  "pm.test(\"código UNAUTHORIZED\", function () { pm.expect(pm.response.json().error.code).to.eql(\"UNAUTHORIZED\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "me"
+              ]
+            },
+            "description": ""
+          }
+        }
+      ]
+    },
+    {
+      "name": "Spec 004 — Análisis de partido",
+      "description": "Análisis de un partido: mercados derivados, lo más probable con su precio, forma y cuotas por evento. 'Mejores opciones' está desactivada hasta tener evidencia (decisions.md).",
+      "item": [
+        {
+          "name": "Equipos y partido",
+          "item": [
+            {
+              "name": "GET buscar equipos (madr)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status 200\", function () { pm.response.to.have.status(200); });",
+                      "pm.test(\"rating propio\", function () { pm.expect(pm.response.json()[0].rating_source).to.eql(\"elo_propio\"); });"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "X-API-Key",
+                    "value": "{{appApiKey}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/teams/search?q=madr",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "teams",
+                    "search"
+                  ],
+                  "query": [
+                    {
+                      "key": "q",
+                      "value": "madr"
+                    }
+                  ]
+                },
+                "description": ""
+              }
+            },
+            {
+              "name": "GET próximo partido entre dos equipos",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status 200\", function () { pm.response.to.have.status(200); });",
+                      "pm.test(\"found es booleano\", function () { pm.expect(pm.response.json().found).to.be.a(\"boolean\"); });",
+                      "if (pm.response.json().found) { pm.collectionVariables.set(\"matchId\", pm.response.json().match_id); }"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "X-API-Key",
+                    "value": "{{appApiKey}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/analysis/fixture?home=Real Madrid&away=Barcelona",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "analysis",
+                    "fixture"
+                  ],
+                  "query": [
+                    {
+                      "key": "home",
+                      "value": "Real Madrid"
+                    },
+                    {
+                      "key": "away",
+                      "value": "Barcelona"
+                    }
+                  ]
+                },
+                "description": ""
+              }
+            }
+          ]
+        },
+        {
+          "name": "Análisis",
+          "item": [
+            {
+              "name": "GET análisis de liga (Real Madrid – Barcelona)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status 200\", function () { pm.response.to.have.status(200); });",
+                      "var j = pm.response.json();",
+                      "pm.test(\"sin mejores opciones (desactivada)\", function () { pm.expect(j.best_options).to.eql([]); pm.expect(j.best_options_note).to.be.a(\"string\"); });",
+                      "pm.test(\"lo más probable con comentario de precio\", function () { j.most_likely.forEach(function (i) { pm.expect(i.price_comment).to.be.a(\"string\"); }); });",
+                      "pm.test(\"sin lenguaje de certeza\", function () { pm.expect(JSON.stringify(j).toLowerCase()).to.not.match(/ segura| fija |garantizad|no falla/); });"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "X-API-Key",
+                    "value": "{{appApiKey}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/analysis?home=Real Madrid&away=Barcelona&date={{date}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "analysis"
+                  ],
+                  "query": [
+                    {
+                      "key": "home",
+                      "value": "Real Madrid"
+                    },
+                    {
+                      "key": "away",
+                      "value": "Barcelona"
+                    },
+                    {
+                      "key": "date",
+                      "value": "{{date}}"
+                    }
+                  ]
+                },
+                "description": ""
+              }
+            },
+            {
+              "name": "GET análisis entre ligas (Real Madrid – RB Leipzig)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"200 o 503\", function () { pm.expect(pm.response.code).to.be.oneOf([200, 503]); });",
+                      "if (pm.response.code === 200) { pm.test(\"entre ligas\", function () { pm.expect(pm.response.json().match.cross_league).to.be.true; }); }"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "X-API-Key",
+                    "value": "{{appApiKey}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/analysis?home=Real Madrid&away=RB Leipzig&competition=UCL&date={{date}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "analysis"
+                  ],
+                  "query": [
+                    {
+                      "key": "home",
+                      "value": "Real Madrid"
+                    },
+                    {
+                      "key": "away",
+                      "value": "RB Leipzig"
+                    },
+                    {
+                      "key": "competition",
+                      "value": "UCL"
+                    },
+                    {
+                      "key": "date",
+                      "value": "{{date}}"
+                    }
+                  ]
+                },
+                "description": ""
+              }
+            },
+            {
+              "name": "GET análisis — equipo inexistente (404)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status 404\", function () { pm.response.to.have.status(404); });",
+                      "pm.test(\"código TEAM_NOT_FOUND\", function () { pm.expect(pm.response.json().error.code).to.eql(\"TEAM_NOT_FOUND\"); });"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "X-API-Key",
+                    "value": "{{appApiKey}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/analysis?home=Equipo Inventado&away=Barcelona",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "analysis"
+                  ],
+                  "query": [
+                    {
+                      "key": "home",
+                      "value": "Equipo Inventado"
+                    },
+                    {
+                      "key": "away",
+                      "value": "Barcelona"
+                    }
+                  ]
+                },
+                "description": ""
+              }
+            },
+            {
+              "name": "GET análisis — mismo equipo (422)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status 422\", function () { pm.response.to.have.status(422); });",
+                      "pm.test(\"código SAME_TEAM\", function () { pm.expect(pm.response.json().error.code).to.eql(\"SAME_TEAM\"); });"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "X-API-Key",
+                    "value": "{{appApiKey}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/analysis?home=Getafe&away=Getafe",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "analysis"
+                  ],
+                  "query": [
+                    {
+                      "key": "home",
+                      "value": "Getafe"
+                    },
+                    {
+                      "key": "away",
+                      "value": "Getafe"
+                    }
+                  ]
+                },
+                "description": ""
+              }
+            },
+            {
+              "name": "GET análisis — match_id inválido (422 sin eco)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status 422\", function () { pm.response.to.have.status(422); });",
+                      "pm.test(\"VALIDATION_ERROR sin repetir la entrada\", function () { var j = pm.response.json(); pm.expect(j.error.code).to.eql(\"VALIDATION_ERROR\"); pm.expect(pm.response.text()).to.not.include(\"2026-13-45\"); });"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "X-API-Key",
+                    "value": "{{appApiKey}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/analysis?home=Real Madrid&away=Barcelona&match_id=SP1-2026-13-45-real-madrid-barcelona",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "analysis"
+                  ],
+                  "query": [
+                    {
+                      "key": "home",
+                      "value": "Real Madrid"
+                    },
+                    {
+                      "key": "away",
+                      "value": "Barcelona"
+                    },
+                    {
+                      "key": "match_id",
+                      "value": "SP1-2026-13-45-real-madrid-barcelona"
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cuotas por evento",
+          "item": [
+            {
+              "name": "GET costo estimado de refrescar el evento",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status 200\", function () { pm.response.to.have.status(200); });",
+                      "pm.test(\"créditos estimados\", function () { pm.expect(pm.response.json().estimated_credits).to.be.above(0); });"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "X-API-Key",
+                    "value": "{{appApiKey}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/analysis/{{matchId}}/odds/estimate",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "analysis",
+                    "{{matchId}}",
+                    "odds",
+                    "estimate"
+                  ]
+                },
+                "description": ""
+              }
+            },
+            {
+              "name": "POST refrescar cuotas del evento (≈12 créditos)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"200, 404, 429 o 503 (con clave nunca 401)\", function () { pm.expect(pm.response.code).to.be.oneOf([200, 404, 429, 503]); });",
+                      "pm.test(\"un 429 es el cupo por hora (RATE_LIMITED) o la reserva de créditos (ODDS_BUDGET_LOW)\", function () { if (pm.response.code === 429) { pm.expect(pm.response.json().error.code).to.be.oneOf([\"RATE_LIMITED\", \"ODDS_BUDGET_LOW\"]); } });"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "X-API-Key",
+                    "value": "{{appApiKey}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/analysis/{{matchId}}/odds/refresh?home=Real Madrid&away=RB Leipzig",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "analysis",
+                    "{{matchId}}",
+                    "odds",
+                    "refresh"
+                  ],
+                  "query": [
+                    {
+                      "key": "home",
+                      "value": "Real Madrid"
+                    },
+                    {
+                      "key": "away",
+                      "value": "RB Leipzig"
+                    }
+                  ]
+                },
+                "description": "CONSUME CRÉDITOS de The Odds API (mercados × regiones). La spec 003 permite como máximo 3 llamadas con coste. Requiere matchId del partido."
+              }
+            },
+            {
+              "name": "POST refrescar sin clave (401)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"sin credenciales: 401 y no gasta créditos\", function () { pm.response.to.have.status(401); });"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/analysis/{{matchId}}/odds/refresh?home=Real Madrid&away=RB Leipzig",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "analysis",
+                    "{{matchId}}",
+                    "odds",
+                    "refresh"
+                  ],
+                  "query": [
+                    {
+                      "key": "home",
+                      "value": "Real Madrid"
+                    },
+                    {
+                      "key": "away",
+                      "value": "RB Leipzig"
+                    }
+                  ]
+                },
+                "description": ""
+              }
+            }
+          ]
+        },
+        {
+          "name": "Calibración",
+          "item": [
+            {
+              "name": "GET calibración de mercados",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status 200\", function () { pm.response.to.have.status(200); });",
+                      "pm.test(\"niveles de ligas\", function () { pm.expect(pm.response.json().leagues.levels).to.be.an(\"object\"); });"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "X-API-Key",
+                    "value": "{{appApiKey}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/markets/calibration",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "markets",
+                    "calibration"
                   ]
                 },
                 "description": ""

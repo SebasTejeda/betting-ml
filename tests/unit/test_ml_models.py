@@ -11,6 +11,7 @@ from betting_ml.ml.models.calibration import (
     TemperatureScaler,
 )
 from betting_ml.ml.models.ensemble import BlendModel, StackingModel, optimal_blend_weights
+from betting_ml.ml.models.factory import XiTunedGoalModel
 from betting_ml.ml.models.poisson import PoissonModel
 from betting_ml.ml.models.sklearn_models import (
     OptunaLightGBM,
@@ -129,3 +130,14 @@ def test_blend_and_stacking_models(frame: pd.DataFrame) -> None:
     assert stack.uses_odds
     np.testing.assert_allclose(stack.predict_proba(valid).sum(axis=1), 1.0)
     assert len(stack.describe()["members"]) == 2  # type: ignore[arg-type]
+
+
+def test_unfitted_models_refuse_to_predict_even_without_asserts() -> None:
+    """Explicit checks (not ``assert``): they hold under ``python -O`` too (spec 003, T019)."""
+    frame = pd.DataFrame()
+    with pytest.raises(RuntimeError, match="not fitted"):
+        BlendModel([FrequencyBaseline()]).predict_proba(frame)
+    tuned = XiTunedGoalModel(xi_grid=[0.0])
+    for predict in (tuned.predict_proba, tuned.predict_goal_matrix):
+        with pytest.raises(RuntimeError, match="not fitted"):
+            predict(frame)

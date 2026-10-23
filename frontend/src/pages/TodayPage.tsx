@@ -5,6 +5,7 @@ import {
   NotebookPen,
   RefreshCw,
   TriangleAlert,
+  Sparkles,
 } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
@@ -27,7 +28,7 @@ import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
 import { Card } from "../components/ui/card";
 import { kickoff, odds, pct, todayLima } from "../lib/format";
-import { calculatorLink } from "../lib/links";
+import { analysisLink, calculatorLink } from "../lib/links";
 
 export function TodayPage() {
   const [date, setDate] = useState(todayLima());
@@ -191,6 +192,17 @@ function MatchCard({ match }: { match: ComparatorMatch }) {
           <OddsChip key={o} match={match} outcome={o} />
         ))}
       </div>
+      <Link
+        to={analysisLink(match.home_team, match.away_team, match.match_id)}
+        className="inline-flex w-fit items-center gap-1 text-xs font-medium text-primary underline-offset-2 hover:underline"
+      >
+        <Sparkles aria-hidden className="size-3.5" />
+        Analizar
+        <span className="sr-only">
+          {" "}
+          {match.home_team} – {match.away_team}
+        </span>
+      </Link>
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
         <span>
           Mejor combinación: <strong className="text-foreground">{pct(m.best_combined)}</strong>

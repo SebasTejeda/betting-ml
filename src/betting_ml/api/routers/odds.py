@@ -1,0 +1,54 @@
+"""Spec-002 odds: refresh from The Odds API (write) and credit budget."""
+
+from __future__ import annotations
+
+from fastapi import APIRouter, Depends, Query
+
+from betting_ml.api.dependencies import JournalApi, ServicesApi, get_journal, get_services
+from betting_ml.api.errors import ApiError
+from betting_ml.api.schemas_002 import BudgetOut, RefreshOut
+from betting_ml.api.security import require_read, require_write
+from betting_ml.api.validation import LeagueCode
+from betting_ml.domain.security import Principal
+
+writes = APIRouter(prefix="/api/v1", tags=["spec-002"], dependencies=[Depends(require_write)])
+reads = APIRouter(prefix="/api/v1", tags=["spec-002"], dependencies=[Depends(require_read)])
+
+
+def refresh_quota(services: ServicesApi = Depends(get_services)) -> None:
+    """ODDS_REFRESH_MAX_PER_HOUR manual refreshes in any rolling hour: each one spends credits
+    of The Odds API (spec 003, US2). Counted only once authenticated."""
+    if services.rate_limits is not None:
+        services.rate_limits.take_odds_refresh()
+
+
+@writes.post(
+    "/odds/refresh",
+    status_code=202,
+    response_model=RefreshOut,
+    dependencies=[Depends(refresh_quota)],
+)
+def refresh_odds(
+    league: LeagueCode | None = Query(None),
+    journal: JournalApi = Depends(get_journal),
+    principal: Principal = Depends(require_write),
+) -> RefreshOut:
+    try:
+        result = journal.refresh_odds.refresh([league] if league else None, actor=principal.actor)
+    except KeyError as exc:
+        raise ApiError(
+            404, "LEAGUE_NOT_FOUND", f"Liga '{league}' no soportada", {"league": league}
+        ) from exc
+    return RefreshOut(**{k: getattr(result, k) for k in RefreshOut.model_fields})
+
+
+@reads.get("/odds/budget", response_model=BudgetOut)
+def odds_budget(journal: JournalApi = Depends(get_journal)) -> BudgetOut:
+    budget = journal.refresh_odds.budget()
+    return BudgetOut(
+        credits_remaining=budget.credits_remaining,
+        credits_used_month=budget.credits_used_month,
+        min_reserve=budget.min_reserve,
+        last_refresh=budget.last_refresh,
+        low=budget.low,
+    )

@@ -31,3 +31,10 @@ export function readDraft(params: URLSearchParams): BetDraft | null {
     fromSignal: params.get("signal") === "1",
   };
 }
+
+/** Link to the match analysis (spec 003); with the match id the analysis uses its date. */
+export function analysisLink(home: string, away: string, matchId?: string): string {
+  const params = new URLSearchParams({ home, away });
+  if (matchId) params.set("match", matchId);
+  return `/analysis?${params.toString()}`;
+}

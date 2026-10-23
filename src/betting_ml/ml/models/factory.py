@@ -47,11 +47,13 @@ class XiTunedGoalModel(BaseProbabilisticModel):
         return self
 
     def predict_proba(self, matches: pd.DataFrame) -> np.ndarray:
-        assert self.model is not None, "model not fitted"
+        if self.model is None:
+            raise RuntimeError("model not fitted")
         return self.model.predict_proba(matches)
 
     def predict_goal_matrix(self, matches: pd.DataFrame) -> np.ndarray | None:
-        assert self.model is not None, "model not fitted"
+        if self.model is None:
+            raise RuntimeError("model not fitted")
         return self.model.predict_goal_matrix(matches)
 
     def describe(self) -> dict[str, object]:

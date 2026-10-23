@@ -14,7 +14,13 @@ import pandas as pd
 from betting_ml.config import SourceName, TeamAliases
 from betting_ml.domain.entities import slugify
 
-SOURCES: tuple[SourceName, ...] = ("football_data", "understat", "the_odds_api")
+SOURCES: tuple[SourceName, ...] = (
+    "football_data",
+    "understat",
+    "the_odds_api",
+    "clubelo",
+    "openfootball",
+)
 
 
 class UnknownTeamError(ValueError):
@@ -91,6 +97,11 @@ class TeamNameResolver:
                 for league, name in zip(out["league"], out[column], strict=True)
             ]
         return out
+
+    def aliases(self, league: str, canonical: str, source: SourceName) -> list[str]:
+        """Aliases of a canonical team for one source (excluding the canonical name)."""
+        mapping = self._exact.get((league, source), {})
+        return [name for name, team in mapping.items() if team == canonical and name != canonical]
 
     def lookup(self, league: str, name: str) -> str | None:
         """Lenient lookup for user input (any alias, case/punctuation-insensitive)."""

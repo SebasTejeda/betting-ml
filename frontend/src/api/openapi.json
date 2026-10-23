@@ -27,6 +27,154 @@
         }
       }
     },
+    "/api/v1/auth/login": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Login",
+        "operationId": "login_api_v1_auth_login_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/me": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Me",
+        "operationId": "me_api_v1_auth_me_get",
+        "parameters": [
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/logout": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Logout",
+        "operationId": "logout_api_v1_auth_logout_post",
+        "parameters": [
+          {
+            "name": "x-csrf-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/leagues": {
       "get": {
         "tags": [
@@ -34,17 +182,45 @@
         ],
         "summary": "Leagues",
         "operationId": "leagues_api_v1_leagues_get",
+        "parameters": [
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
+                  "type": "array",
                   "items": {
                     "$ref": "#/components/schemas/League"
                   },
-                  "type": "array",
                   "title": "Response Leagues Api V1 Leagues Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -66,7 +242,26 @@
             "required": true,
             "schema": {
               "type": "string",
+              "minLength": 1,
+              "maxLength": 8,
+              "pattern": "^[A-Za-z0-9]+$",
               "title": "Code"
+            }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
             }
           }
         ],
@@ -132,7 +327,10 @@
             "schema": {
               "anyOf": [
                 {
-                  "type": "string"
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 8,
+                  "pattern": "^[A-Za-z0-9]+$"
                 },
                 {
                   "type": "null"
@@ -168,6 +366,22 @@
               "title": "Min Edge"
             },
             "description": "Umbral de valor esperado"
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
           }
         ],
         "responses": {
@@ -201,15 +415,33 @@
         ],
         "summary": "Predict",
         "operationId": "predict_api_v1_predictions_post",
+        "parameters": [
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/PredictionRequest"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "200": {
@@ -242,6 +474,24 @@
         ],
         "summary": "Model",
         "operationId": "model_api_v1_model_get",
+        "parameters": [
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -249,6 +499,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ModelInfo"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -264,18 +524,46 @@
         "summary": "Experiments",
         "description": "Contenido de reports/experiments.csv ordenado por log loss de validación.",
         "operationId": "experiments_api_v1_experiments_get",
+        "parameters": [
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
-                  "items": {
-                    "additionalProperties": true,
-                    "type": "object"
-                  },
                   "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": true
+                  },
                   "title": "Response Experiments Api V1 Experiments Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -290,6 +578,24 @@
         ],
         "summary": "Summary",
         "operationId": "summary_api_v1_tracking_summary_get",
+        "parameters": [
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -297,6 +603,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/TrackingSummaryOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -312,6 +628,22 @@
         "summary": "Refresh",
         "operationId": "refresh_api_v1_admin_refresh_post",
         "parameters": [
+          {
+            "name": "x-csrf-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          },
           {
             "name": "x-api-key",
             "in": "header",
@@ -368,13 +700,32 @@
             "schema": {
               "anyOf": [
                 {
-                  "type": "string"
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 8,
+                  "pattern": "^[A-Za-z0-9]+$"
                 },
                 {
                   "type": "null"
                 }
               ],
               "title": "League"
+            }
+          },
+          {
+            "name": "x-csrf-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
             }
           },
           {
@@ -425,6 +776,24 @@
         ],
         "summary": "Odds Budget",
         "operationId": "odds_budget_api_v1_odds_budget_get",
+        "parameters": [
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -432,6 +801,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/BudgetOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -446,17 +825,45 @@
         ],
         "summary": "Bookmakers",
         "operationId": "bookmakers_api_v1_bookmakers_get",
+        "parameters": [
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
+                  "type": "array",
                   "items": {
                     "$ref": "#/components/schemas/BookmakerOut"
                   },
-                  "type": "array",
                   "title": "Response Bookmakers Api V1 Bookmakers Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -498,7 +905,10 @@
             "schema": {
               "anyOf": [
                 {
-                  "type": "string"
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 8,
+                  "pattern": "^[A-Za-z0-9]+$"
                 },
                 {
                   "type": "null"
@@ -546,6 +956,22 @@
               "default": true,
               "title": "Accessible Only"
             }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
           }
         ],
         "responses": {
@@ -586,7 +1012,26 @@
             "required": true,
             "schema": {
               "type": "string",
+              "minLength": 14,
+              "maxLength": 160,
+              "pattern": "^[A-Za-z0-9]{1,8}-\\d{4}-\\d{2}-\\d{2}-[a-z0-9-]{1,140}$",
               "title": "Match Id"
+            }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
             }
           }
         ],
@@ -622,6 +1067,22 @@
         "summary": "Calculator",
         "operationId": "calculator_api_v1_calculator_post",
         "parameters": [
+          {
+            "name": "x-csrf-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          },
           {
             "name": "x-api-key",
             "in": "header",
@@ -681,6 +1142,22 @@
         "summary": "Create Bet",
         "operationId": "create_bet_api_v1_bets_post",
         "parameters": [
+          {
+            "name": "x-csrf-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          },
           {
             "name": "x-api-key",
             "in": "header",
@@ -777,7 +1254,10 @@
             "schema": {
               "anyOf": [
                 {
-                  "type": "string"
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 8,
+                  "pattern": "^[A-Za-z0-9]+$"
                 },
                 {
                   "type": "null"
@@ -826,6 +1306,7 @@
             "required": false,
             "schema": {
               "type": "integer",
+              "maximum": 10000,
               "minimum": 1,
               "default": 1,
               "title": "Page"
@@ -841,6 +1322,22 @@
               "minimum": 1,
               "default": 50,
               "title": "Size"
+            }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
             }
           }
         ],
@@ -877,6 +1374,22 @@
         "operationId": "settle_api_v1_bets_settle_post",
         "parameters": [
           {
+            "name": "x-csrf-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          },
+          {
             "name": "x-api-key",
             "in": "header",
             "required": false,
@@ -903,6 +1416,159 @@
                 }
               }
             }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/bets/{bet_id}": {
+      "patch": {
+        "tags": [
+          "spec-002"
+        ],
+        "summary": "Patch Bet",
+        "operationId": "patch_bet_api_v1_bets__bet_id__patch",
+        "parameters": [
+          {
+            "name": "bet_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "maximum": 2147483647,
+              "minimum": 1,
+              "title": "Bet Id"
+            }
+          },
+          {
+            "name": "x-csrf-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BetPatch"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BetOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "spec-002"
+        ],
+        "summary": "Delete Bet",
+        "operationId": "delete_bet_api_v1_bets__bet_id__delete",
+        "parameters": [
+          {
+            "name": "bet_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "maximum": 2147483647,
+              "minimum": 1,
+              "title": "Bet Id"
+            }
+          },
+          {
+            "name": "x-csrf-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
           },
           "422": {
             "description": "Validation Error",
@@ -969,6 +1635,22 @@
               ],
               "title": "To"
             }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
           }
         ],
         "responses": {
@@ -995,123 +1677,6 @@
         }
       }
     },
-    "/api/v1/bets/{bet_id}": {
-      "patch": {
-        "tags": [
-          "spec-002"
-        ],
-        "summary": "Patch Bet",
-        "operationId": "patch_bet_api_v1_bets__bet_id__patch",
-        "parameters": [
-          {
-            "name": "bet_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "title": "Bet Id"
-            }
-          },
-          {
-            "name": "x-api-key",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/BetPatch"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BetOut"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "spec-002"
-        ],
-        "summary": "Delete Bet",
-        "operationId": "delete_bet_api_v1_bets__bet_id__delete",
-        "parameters": [
-          {
-            "name": "bet_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "title": "Bet Id"
-            }
-          },
-          {
-            "name": "x-api-key",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "Successful Response"
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/v1/settings": {
       "get": {
         "tags": [
@@ -1119,6 +1684,24 @@
         ],
         "summary": "Get Settings",
         "operationId": "get_settings_api_v1_settings_get",
+        "parameters": [
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -1126,6 +1709,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/SettingsOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -1139,6 +1732,22 @@
         "summary": "Put Settings",
         "operationId": "put_settings_api_v1_settings_put",
         "parameters": [
+          {
+            "name": "x-csrf-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          },
           {
             "name": "x-api-key",
             "in": "header",
@@ -1197,15 +1806,557 @@
         ],
         "summary": "Backtest",
         "operationId": "backtest_api_v1_backtest_pinnacle_get",
+        "parameters": [
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
                   "type": "object",
+                  "additionalProperties": true,
                   "title": "Response Backtest Api V1 Backtest Pinnacle Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/teams/search": {
+      "get": {
+        "tags": [
+          "spec-004"
+        ],
+        "summary": "Search Teams",
+        "operationId": "search_teams_api_v1_teams_search_get",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 60,
+              "pattern": "^[^\\x00-\\x1f\\x7f<>]*$",
+              "title": "Q"
+            }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TeamOut"
+                  },
+                  "title": "Response Search Teams Api V1 Teams Search Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/analysis/fixture": {
+      "get": {
+        "tags": [
+          "spec-004"
+        ],
+        "summary": "Find Fixture",
+        "operationId": "find_fixture_api_v1_analysis_fixture_get",
+        "parameters": [
+          {
+            "name": "home",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 60,
+              "pattern": "^[^\\x00-\\x1f\\x7f<>]*$",
+              "title": "Home"
+            }
+          },
+          {
+            "name": "away",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 60,
+              "pattern": "^[^\\x00-\\x1f\\x7f<>]*$",
+              "title": "Away"
+            }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FixtureOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/analysis": {
+      "get": {
+        "tags": [
+          "spec-004"
+        ],
+        "summary": "Analyze",
+        "operationId": "analyze_api_v1_analysis_get",
+        "parameters": [
+          {
+            "name": "home",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 60,
+              "pattern": "^[^\\x00-\\x1f\\x7f<>]*$",
+              "title": "Home"
+            }
+          },
+          {
+            "name": "away",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 60,
+              "pattern": "^[^\\x00-\\x1f\\x7f<>]*$",
+              "title": "Away"
+            }
+          },
+          {
+            "name": "match_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 14,
+                  "maxLength": 160,
+                  "pattern": "^[A-Za-z0-9]{1,8}-\\d{4}-\\d{2}-\\d{2}-[a-z0-9-]{1,140}$"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Match Id"
+            }
+          },
+          {
+            "name": "date",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Date"
+            }
+          },
+          {
+            "name": "competition",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 8,
+                  "pattern": "^[A-Za-z0-9]+$"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Competition"
+            }
+          },
+          {
+            "name": "kickoff",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 16,
+                  "maxLength": 32,
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}(:\\d{2}(\\.\\d{1,6})?)?(Z|[+-]\\d{2}:\\d{2})?$"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Kickoff"
+            }
+          },
+          {
+            "name": "min_edge",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "maximum": 1,
+                  "minimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Min Edge"
+            }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalysisOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/analysis/{match_id}/odds/estimate": {
+      "get": {
+        "tags": [
+          "spec-004"
+        ],
+        "summary": "Estimate Event Odds",
+        "operationId": "estimate_event_odds_api_v1_analysis__match_id__odds_estimate_get",
+        "parameters": [
+          {
+            "name": "match_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 14,
+              "maxLength": 160,
+              "pattern": "^[A-Za-z0-9]{1,8}-\\d{4}-\\d{2}-\\d{2}-[a-z0-9-]{1,140}$",
+              "title": "Match Id"
+            }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EstimateOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/markets/calibration": {
+      "get": {
+        "tags": [
+          "spec-004"
+        ],
+        "summary": "Market Calibration",
+        "operationId": "market_calibration_api_v1_markets_calibration_get",
+        "parameters": [
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalibrationOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/analysis/{match_id}/odds/refresh": {
+      "post": {
+        "tags": [
+          "spec-004"
+        ],
+        "summary": "Refresh Event Odds",
+        "operationId": "refresh_event_odds_api_v1_analysis__match_id__odds_refresh_post",
+        "parameters": [
+          {
+            "name": "match_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 14,
+              "maxLength": 160,
+              "pattern": "^[A-Za-z0-9]{1,8}-\\d{4}-\\d{2}-\\d{2}-[a-z0-9-]{1,140}$",
+              "title": "Match Id"
+            }
+          },
+          {
+            "name": "home",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 60,
+              "pattern": "^[^\\x00-\\x1f\\x7f<>]*$",
+              "title": "Home"
+            }
+          },
+          {
+            "name": "away",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 60,
+              "pattern": "^[^\\x00-\\x1f\\x7f<>]*$",
+              "title": "Away"
+            }
+          },
+          {
+            "name": "x-csrf-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventRefreshOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -1216,6 +2367,297 @@
   },
   "components": {
     "schemas": {
+      "AdviceItemOut": {
+        "properties": {
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "market": {
+            "type": "string",
+            "enum": [
+              "h2h",
+              "double_chance",
+              "draw_no_bet",
+              "totals",
+              "btts",
+              "team_totals",
+              "european_handicap",
+              "correct_score"
+            ],
+            "title": "Market"
+          },
+          "selection": {
+            "type": "string",
+            "title": "Selection"
+          },
+          "line": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Line"
+          },
+          "probability": {
+            "type": "number",
+            "title": "Probability"
+          },
+          "fair_odds": {
+            "type": "number",
+            "title": "Fair Odds"
+          },
+          "best_odds": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Best Odds"
+          },
+          "bookmaker": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bookmaker"
+          },
+          "ev": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ev"
+          },
+          "verdict": {
+            "type": "string",
+            "enum": [
+              "valor",
+              "justo",
+              "evitar",
+              "sin_cuota"
+            ],
+            "title": "Verdict"
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "alta",
+              "media",
+              "baja"
+            ],
+            "title": "Confidence"
+          },
+          "experimental": {
+            "type": "boolean",
+            "title": "Experimental"
+          },
+          "price_comment": {
+            "type": "string",
+            "title": "Price Comment"
+          },
+          "reasons": {
+            "items": {
+              "$ref": "#/components/schemas/ReasonOut"
+            },
+            "type": "array",
+            "title": "Reasons"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Warnings"
+          }
+        },
+        "type": "object",
+        "required": [
+          "label",
+          "market",
+          "selection",
+          "line",
+          "probability",
+          "fair_odds",
+          "best_odds",
+          "bookmaker",
+          "ev",
+          "verdict",
+          "confidence",
+          "experimental",
+          "price_comment",
+          "reasons",
+          "warnings"
+        ],
+        "title": "AdviceItemOut"
+      },
+      "AnalysisMatchOut": {
+        "properties": {
+          "match_id": {
+            "type": "string",
+            "title": "Match Id"
+          },
+          "competition": {
+            "type": "string",
+            "title": "Competition"
+          },
+          "kickoff": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kickoff"
+          },
+          "date": {
+            "type": "string",
+            "title": "Date"
+          },
+          "home_team": {
+            "type": "string",
+            "title": "Home Team"
+          },
+          "away_team": {
+            "type": "string",
+            "title": "Away Team"
+          },
+          "cross_league": {
+            "type": "boolean",
+            "title": "Cross League"
+          },
+          "ratings": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RatingsOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "expected_goals": {
+            "$ref": "#/components/schemas/ExpectedGoalsOut"
+          },
+          "model": {
+            "type": "string",
+            "title": "Model"
+          },
+          "odds_snapshot_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Odds Snapshot At"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Warnings"
+          }
+        },
+        "type": "object",
+        "required": [
+          "match_id",
+          "competition",
+          "kickoff",
+          "date",
+          "home_team",
+          "away_team",
+          "cross_league",
+          "ratings",
+          "expected_goals",
+          "model",
+          "warnings"
+        ],
+        "title": "AnalysisMatchOut"
+      },
+      "AnalysisOut": {
+        "properties": {
+          "match": {
+            "$ref": "#/components/schemas/AnalysisMatchOut"
+          },
+          "best_options": {
+            "items": {
+              "$ref": "#/components/schemas/AdviceItemOut"
+            },
+            "type": "array",
+            "title": "Best Options"
+          },
+          "best_options_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Best Options Note"
+          },
+          "most_likely": {
+            "items": {
+              "$ref": "#/components/schemas/AdviceItemOut"
+            },
+            "type": "array",
+            "title": "Most Likely"
+          },
+          "no_value_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "No Value Message"
+          },
+          "markets": {
+            "items": {
+              "$ref": "#/components/schemas/MarketOut"
+            },
+            "type": "array",
+            "title": "Markets"
+          },
+          "form": {
+            "$ref": "#/components/schemas/FormOut"
+          }
+        },
+        "type": "object",
+        "required": [
+          "match",
+          "best_options",
+          "best_options_note",
+          "most_likely",
+          "no_value_message",
+          "markets",
+          "form"
+        ],
+        "title": "AnalysisOut"
+      },
       "BankrollOut": {
         "properties": {
           "initial": {
@@ -1276,21 +2718,72 @@
         "properties": {
           "match_id": {
             "type": "string",
-            "minLength": 3,
+            "maxLength": 160,
+            "minLength": 14,
+            "pattern": "^[A-Za-z0-9]{1,8}-\\d{4}-\\d{2}-\\d{2}-[a-z0-9-]{1,140}$",
             "title": "Match Id"
           },
           "outcome": {
-            "type": "string",
-            "enum": [
-              "home",
-              "draw",
-              "away"
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "home",
+                  "draw",
+                  "away"
+                ]
+              },
+              {
+                "type": "null"
+              }
             ],
             "title": "Outcome"
           },
+          "market": {
+            "type": "string",
+            "enum": [
+              "h2h",
+              "double_chance",
+              "draw_no_bet",
+              "totals",
+              "btts",
+              "team_totals",
+              "european_handicap",
+              "correct_score"
+            ],
+            "title": "Market",
+            "default": "h2h"
+          },
+          "selection": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(home|draw|away|1X|X2|12|over|under|yes|no|home_over|home_under|away_over|away_under|[0-9]{1,2}-[0-9]{1,2})$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Selection"
+          },
+          "line": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 10.0,
+                "minimum": -10.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Line"
+          },
           "bookmaker": {
             "type": "string",
+            "maxLength": 40,
             "minLength": 1,
+            "pattern": "^[a-z0-9_]+$",
             "title": "Bookmaker"
           },
           "odds": {
@@ -1336,7 +2829,8 @@
             "anyOf": [
               {
                 "type": "string",
-                "maxLength": 500
+                "maxLength": 500,
+                "pattern": "^[^\\x00-\\x08\\x0b\\x0c\\x0e-\\x1f\\x7f]*$"
               },
               {
                 "type": "null"
@@ -1350,10 +2844,10 @@
             "default": false
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "required": [
           "match_id",
-          "outcome",
           "bookmaker",
           "odds",
           "stake",
@@ -1409,13 +2903,57 @@
             "title": "Kickoff"
           },
           "outcome": {
-            "type": "string",
-            "enum": [
-              "home",
-              "draw",
-              "away"
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "home",
+                  "draw",
+                  "away"
+                ]
+              },
+              {
+                "type": "null"
+              }
             ],
             "title": "Outcome"
+          },
+          "market": {
+            "type": "string",
+            "enum": [
+              "h2h",
+              "double_chance",
+              "draw_no_bet",
+              "totals",
+              "btts",
+              "team_totals",
+              "european_handicap",
+              "correct_score"
+            ],
+            "title": "Market",
+            "default": "h2h"
+          },
+          "selection": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Selection"
+          },
+          "line": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Line"
           },
           "bookmaker": {
             "type": "string",
@@ -1534,6 +3072,10 @@
             ],
             "title": "Result Source"
           },
+          "version": {
+            "type": "integer",
+            "title": "Version"
+          },
           "sin_referencia": {
             "type": "boolean",
             "title": "Sin Referencia",
@@ -1570,6 +3112,7 @@
           "clv_source",
           "profit",
           "settled_at",
+          "version",
           "warnings"
         ],
         "title": "BetOut"
@@ -1607,11 +3150,19 @@
       },
       "BetPatch": {
         "properties": {
+          "version": {
+            "type": "integer",
+            "maximum": 2147483647.0,
+            "minimum": 1.0,
+            "title": "Version",
+            "description": "La versión que se editó (409 si es vieja)"
+          },
           "note": {
             "anyOf": [
               {
                 "type": "string",
-                "maxLength": 500
+                "maxLength": 500,
+                "pattern": "^[^\\x00-\\x08\\x0b\\x0c\\x0e-\\x1f\\x7f]*$"
               },
               {
                 "type": "null"
@@ -1637,7 +3188,11 @@
             "title": "Status"
           }
         },
+        "additionalProperties": false,
         "type": "object",
+        "required": [
+          "version"
+        ],
         "title": "BetPatch"
       },
       "BetStatus": {
@@ -1782,7 +3337,9 @@
         "properties": {
           "match_id": {
             "type": "string",
-            "minLength": 3,
+            "maxLength": 160,
+            "minLength": 14,
+            "pattern": "^[A-Za-z0-9]{1,8}-\\d{4}-\\d{2}-\\d{2}-[a-z0-9-]{1,140}$",
             "title": "Match Id"
           },
           "outcome": {
@@ -1796,15 +3353,19 @@
           },
           "bookmaker": {
             "type": "string",
+            "maxLength": 40,
             "minLength": 1,
+            "pattern": "^[a-z0-9_]+$",
             "title": "Bookmaker"
           },
           "odds": {
             "type": "number",
+            "maximum": 1000.0,
             "exclusiveMinimum": 1.0,
             "title": "Odds"
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "required": [
           "match_id",
@@ -1901,6 +3462,33 @@
           "best_available"
         ],
         "title": "CalculatorOut"
+      },
+      "CalibrationOut": {
+        "properties": {
+          "leagues": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Leagues"
+          },
+          "europe": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Europe"
+          }
+        },
+        "type": "object",
+        "required": [
+          "leagues",
+          "europe"
+        ],
+        "title": "CalibrationOut"
       },
       "ComparatorDetailOut": {
         "properties": {
@@ -2171,6 +3759,107 @@
         ],
         "title": "ComparatorOut"
       },
+      "EstimateOut": {
+        "properties": {
+          "markets": {
+            "type": "integer",
+            "title": "Markets"
+          },
+          "regions": {
+            "type": "integer",
+            "title": "Regions"
+          },
+          "estimated_credits": {
+            "type": "integer",
+            "title": "Estimated Credits"
+          },
+          "credits_remaining": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Credits Remaining"
+          }
+        },
+        "type": "object",
+        "required": [
+          "markets",
+          "regions",
+          "estimated_credits",
+          "credits_remaining"
+        ],
+        "title": "EstimateOut"
+      },
+      "EventRefreshOut": {
+        "properties": {
+          "match_id": {
+            "type": "string",
+            "title": "Match Id"
+          },
+          "markets": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Markets"
+          },
+          "credits_used": {
+            "type": "integer",
+            "title": "Credits Used"
+          },
+          "credits_remaining": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Credits Remaining"
+          },
+          "fetched_at": {
+            "type": "string",
+            "title": "Fetched At"
+          },
+          "from_cache": {
+            "type": "boolean",
+            "title": "From Cache"
+          }
+        },
+        "type": "object",
+        "required": [
+          "match_id",
+          "markets",
+          "credits_used",
+          "credits_remaining",
+          "fetched_at",
+          "from_cache"
+        ],
+        "title": "EventRefreshOut"
+      },
+      "ExpectedGoalsOut": {
+        "properties": {
+          "home": {
+            "type": "number",
+            "title": "Home"
+          },
+          "away": {
+            "type": "number",
+            "title": "Away"
+          }
+        },
+        "type": "object",
+        "required": [
+          "home",
+          "away"
+        ],
+        "title": "ExpectedGoalsOut"
+      },
       "FairOut": {
         "properties": {
           "source": {
@@ -2191,6 +3880,327 @@
           "odds"
         ],
         "title": "FairOut"
+      },
+      "FixtureOut": {
+        "properties": {
+          "found": {
+            "type": "boolean",
+            "title": "Found"
+          },
+          "match_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Match Id"
+          },
+          "competition": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Competition"
+          },
+          "kickoff": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kickoff"
+          },
+          "date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date"
+          }
+        },
+        "type": "object",
+        "required": [
+          "found",
+          "match_id",
+          "competition",
+          "kickoff",
+          "date"
+        ],
+        "title": "FixtureOut"
+      },
+      "FormMatchOut": {
+        "properties": {
+          "date": {
+            "type": "string",
+            "title": "Date"
+          },
+          "opponent": {
+            "type": "string",
+            "title": "Opponent"
+          },
+          "competition": {
+            "type": "string",
+            "title": "Competition"
+          },
+          "venue": {
+            "type": "string",
+            "enum": [
+              "home",
+              "away"
+            ],
+            "title": "Venue"
+          },
+          "goals_for": {
+            "type": "integer",
+            "title": "Goals For"
+          },
+          "goals_against": {
+            "type": "integer",
+            "title": "Goals Against"
+          },
+          "xg_for": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Xg For"
+          },
+          "xg_against": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Xg Against"
+          },
+          "result": {
+            "type": "string",
+            "enum": [
+              "W",
+              "D",
+              "L"
+            ],
+            "title": "Result"
+          }
+        },
+        "type": "object",
+        "required": [
+          "date",
+          "opponent",
+          "competition",
+          "venue",
+          "goals_for",
+          "goals_against",
+          "xg_for",
+          "xg_against",
+          "result"
+        ],
+        "title": "FormMatchOut"
+      },
+      "FormOut": {
+        "properties": {
+          "home": {
+            "$ref": "#/components/schemas/TeamFormOut"
+          },
+          "away": {
+            "$ref": "#/components/schemas/TeamFormOut"
+          },
+          "h2h": {
+            "$ref": "#/components/schemas/H2HOut"
+          }
+        },
+        "type": "object",
+        "required": [
+          "home",
+          "away",
+          "h2h"
+        ],
+        "title": "FormOut"
+      },
+      "FormSummaryOut": {
+        "properties": {
+          "n": {
+            "type": "integer",
+            "title": "N"
+          },
+          "goals_for_avg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Goals For Avg"
+          },
+          "goals_against_avg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Goals Against Avg"
+          },
+          "xg_for_avg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Xg For Avg"
+          },
+          "xg_against_avg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Xg Against Avg"
+          },
+          "over25_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Over25 Pct"
+          },
+          "btts_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Btts Pct"
+          },
+          "scored_2plus": {
+            "type": "integer",
+            "title": "Scored 2Plus"
+          },
+          "failed_to_score": {
+            "type": "integer",
+            "title": "Failed To Score"
+          },
+          "clean_sheets": {
+            "type": "integer",
+            "title": "Clean Sheets"
+          },
+          "streak": {
+            "type": "string",
+            "title": "Streak"
+          }
+        },
+        "type": "object",
+        "required": [
+          "n",
+          "goals_for_avg",
+          "goals_against_avg",
+          "xg_for_avg",
+          "xg_against_avg",
+          "over25_pct",
+          "btts_pct",
+          "scored_2plus",
+          "failed_to_score",
+          "clean_sheets",
+          "streak"
+        ],
+        "title": "FormSummaryOut"
+      },
+      "H2HMatchOut": {
+        "properties": {
+          "date": {
+            "type": "string",
+            "title": "Date"
+          },
+          "competition": {
+            "type": "string",
+            "title": "Competition"
+          },
+          "home_team": {
+            "type": "string",
+            "title": "Home Team"
+          },
+          "away_team": {
+            "type": "string",
+            "title": "Away Team"
+          },
+          "home_goals": {
+            "type": "integer",
+            "title": "Home Goals"
+          },
+          "away_goals": {
+            "type": "integer",
+            "title": "Away Goals"
+          }
+        },
+        "type": "object",
+        "required": [
+          "date",
+          "competition",
+          "home_team",
+          "away_team",
+          "home_goals",
+          "away_goals"
+        ],
+        "title": "H2HMatchOut"
+      },
+      "H2HOut": {
+        "properties": {
+          "matches": {
+            "items": {
+              "$ref": "#/components/schemas/H2HMatchOut"
+            },
+            "type": "array",
+            "title": "Matches"
+          },
+          "note": {
+            "type": "string",
+            "title": "Note"
+          }
+        },
+        "type": "object",
+        "required": [
+          "matches",
+          "note"
+        ],
+        "title": "H2HOut"
       },
       "HTTPValidationError": {
         "properties": {
@@ -2295,6 +4305,46 @@
         ],
         "title": "League"
       },
+      "LoginIn": {
+        "properties": {
+          "password": {
+            "type": "string",
+            "maxLength": 1024,
+            "minLength": 1,
+            "title": "Password"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "password"
+        ],
+        "title": "LoginIn"
+      },
+      "LoginOut": {
+        "properties": {
+          "csrf_token": {
+            "type": "string",
+            "title": "Csrf Token"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Expires At"
+          },
+          "idle_minutes": {
+            "type": "integer",
+            "title": "Idle Minutes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "csrf_token",
+          "expires_at",
+          "idle_minutes"
+        ],
+        "title": "LoginOut"
+      },
       "MarginsOut": {
         "properties": {
           "best_combined": {
@@ -2384,6 +4434,181 @@
           "implied_probabilities"
         ],
         "title": "Market"
+      },
+      "MarketOut": {
+        "properties": {
+          "market": {
+            "type": "string",
+            "enum": [
+              "h2h",
+              "double_chance",
+              "draw_no_bet",
+              "totals",
+              "btts",
+              "team_totals",
+              "european_handicap",
+              "correct_score"
+            ],
+            "title": "Market"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "alta",
+              "media",
+              "baja"
+            ],
+            "title": "Confidence"
+          },
+          "experimental": {
+            "type": "boolean",
+            "title": "Experimental"
+          },
+          "selections": {
+            "items": {
+              "$ref": "#/components/schemas/SelectionOut"
+            },
+            "type": "array",
+            "title": "Selections"
+          }
+        },
+        "type": "object",
+        "required": [
+          "market",
+          "name",
+          "confidence",
+          "experimental",
+          "selections"
+        ],
+        "title": "MarketOut"
+      },
+      "MarketSummaryOut": {
+        "properties": {
+          "market": {
+            "type": "string",
+            "enum": [
+              "h2h",
+              "double_chance",
+              "draw_no_bet",
+              "totals",
+              "btts",
+              "team_totals",
+              "european_handicap",
+              "correct_score"
+            ],
+            "title": "Market"
+          },
+          "bets": {
+            "type": "integer",
+            "title": "Bets"
+          },
+          "settled": {
+            "type": "integer",
+            "title": "Settled"
+          },
+          "roi": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Roi"
+          },
+          "clv_mean_pinnacle": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Clv Mean Pinnacle"
+          },
+          "clv_n_pinnacle": {
+            "type": "integer",
+            "title": "Clv N Pinnacle"
+          },
+          "clv_mean_market_average": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Clv Mean Market Average"
+          },
+          "clv_n_market_average": {
+            "type": "integer",
+            "title": "Clv N Market Average"
+          },
+          "clv_mean_other": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Clv Mean Other"
+          },
+          "clv_n_other": {
+            "type": "integer",
+            "title": "Clv N Other"
+          },
+          "paper_with_clv": {
+            "type": "integer",
+            "title": "Paper With Clv"
+          },
+          "paper_clv_mean": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Paper Clv Mean"
+          },
+          "evidence_target": {
+            "type": "integer",
+            "title": "Evidence Target"
+          },
+          "evidence_met": {
+            "type": "boolean",
+            "title": "Evidence Met"
+          }
+        },
+        "type": "object",
+        "required": [
+          "market",
+          "bets",
+          "settled",
+          "roi",
+          "clv_mean_pinnacle",
+          "clv_n_pinnacle",
+          "clv_mean_market_average",
+          "clv_n_market_average",
+          "clv_mean_other",
+          "clv_n_other",
+          "paper_with_clv",
+          "paper_clv_mean",
+          "evidence_target",
+          "evidence_met"
+        ],
+        "title": "MarketSummaryOut",
+        "description": "Spec 003 US6: one market of the journal."
       },
       "MatchOut": {
         "properties": {
@@ -2507,6 +4732,53 @@
           "matches"
         ],
         "title": "MatchesResponse"
+      },
+      "MeOut": {
+        "properties": {
+          "authenticated": {
+            "type": "boolean",
+            "title": "Authenticated"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "session",
+              "api_key"
+            ],
+            "title": "Kind"
+          },
+          "csrf_token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Csrf Token"
+          },
+          "expires_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expires At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "authenticated",
+          "kind",
+          "csrf_token",
+          "expires_at"
+        ],
+        "title": "MeOut"
       },
       "ModelInfo": {
         "properties": {
@@ -2653,6 +4925,7 @@
             "title": "Away"
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "required": [
           "home",
@@ -2665,7 +4938,9 @@
         "properties": {
           "league": {
             "type": "string",
+            "maxLength": 8,
             "minLength": 1,
+            "pattern": "^[A-Za-z0-9]+$",
             "title": "League",
             "examples": [
               "E0"
@@ -2673,7 +4948,9 @@
           },
           "home_team": {
             "type": "string",
+            "maxLength": 60,
             "minLength": 1,
+            "pattern": "^[^\\x00-\\x1f\\x7f<>]*$",
             "title": "Home Team",
             "examples": [
               "Arsenal"
@@ -2681,7 +4958,9 @@
           },
           "away_team": {
             "type": "string",
+            "maxLength": 60,
             "minLength": 1,
+            "pattern": "^[^\\x00-\\x1f\\x7f<>]*$",
             "title": "Away Team",
             "examples": [
               "Chelsea"
@@ -2710,6 +4989,7 @@
             ]
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "required": [
           "league",
@@ -2799,6 +5079,63 @@
         ],
         "title": "PredictionResponse"
       },
+      "RatingsOut": {
+        "properties": {
+          "home": {
+            "type": "number",
+            "title": "Home"
+          },
+          "away": {
+            "type": "number",
+            "title": "Away"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "date": {
+            "type": "string",
+            "title": "Date"
+          }
+        },
+        "type": "object",
+        "required": [
+          "home",
+          "away",
+          "source",
+          "date"
+        ],
+        "title": "RatingsOut"
+      },
+      "ReasonOut": {
+        "properties": {
+          "stance": {
+            "type": "string",
+            "enum": [
+              "for",
+              "against",
+              "context"
+            ],
+            "title": "Stance"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "evidence": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Evidence"
+          }
+        },
+        "type": "object",
+        "required": [
+          "stance",
+          "text",
+          "evidence"
+        ],
+        "title": "ReasonOut"
+      },
       "RefreshOut": {
         "properties": {
           "snapshot_id": {
@@ -2887,6 +5224,108 @@
         ],
         "title": "RefreshResponse"
       },
+      "SelectionOut": {
+        "properties": {
+          "selection": {
+            "type": "string",
+            "title": "Selection"
+          },
+          "line": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Line"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "probability": {
+            "type": "number",
+            "title": "Probability"
+          },
+          "fair_odds": {
+            "type": "number",
+            "title": "Fair Odds"
+          },
+          "best_odds": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Best Odds"
+          },
+          "bookmaker": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bookmaker"
+          },
+          "ev": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ev"
+          },
+          "verdict": {
+            "type": "string",
+            "enum": [
+              "valor",
+              "justo",
+              "evitar",
+              "sin_cuota"
+            ],
+            "title": "Verdict"
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "alta",
+              "media",
+              "baja"
+            ],
+            "title": "Confidence"
+          },
+          "information_only": {
+            "type": "boolean",
+            "title": "Information Only"
+          }
+        },
+        "type": "object",
+        "required": [
+          "selection",
+          "line",
+          "label",
+          "probability",
+          "fair_odds",
+          "best_odds",
+          "bookmaker",
+          "ev",
+          "verdict",
+          "confidence",
+          "information_only"
+        ],
+        "title": "SelectionOut"
+      },
       "SeriesPoint": {
         "properties": {
           "date": {
@@ -2915,7 +5354,7 @@
               },
               {
                 "type": "string",
-                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,10}|(?=[\\d.]{1,13}0*$)\\d{0,10}\\.\\d{0,2}0*$)"
               }
             ],
             "title": "Bankroll Initial"
@@ -2924,6 +5363,7 @@
             "type": "string",
             "maxLength": 3,
             "minLength": 3,
+            "pattern": "^[A-Z]{3}$",
             "title": "Currency",
             "default": "PEN"
           },
@@ -2935,7 +5375,7 @@
               },
               {
                 "type": "string",
-                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,10}|(?=[\\d.]{1,13}0*$)\\d{0,10}\\.\\d{0,2}0*$)"
               }
             ],
             "title": "Monthly Loss Limit"
@@ -2957,15 +5397,24 @@
             "maximum": 1.0,
             "minimum": 0.0,
             "title": "Min Edge"
+          },
+          "version": {
+            "type": "integer",
+            "maximum": 2147483647.0,
+            "minimum": 0.0,
+            "title": "Version",
+            "description": "La versión que se editó; 0 si nunca se guardaron"
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "required": [
           "bankroll_initial",
           "monthly_loss_limit",
           "max_stake_pct",
           "kelly_fraction",
-          "min_edge"
+          "min_edge",
+          "version"
         ],
         "title": "SettingsIO"
       },
@@ -2979,6 +5428,7 @@
             "type": "string",
             "maxLength": 3,
             "minLength": 3,
+            "pattern": "^[A-Z]{3}$",
             "title": "Currency",
             "default": "PEN"
           },
@@ -3004,11 +5454,19 @@
             "minimum": 0.0,
             "title": "Min Edge"
           },
+          "version": {
+            "type": "integer",
+            "maximum": 2147483647.0,
+            "minimum": 0.0,
+            "title": "Version",
+            "description": "La versión que se editó; 0 si nunca se guardaron"
+          },
           "monthly_loss_limit_in_force": {
             "type": "number",
             "title": "Monthly Loss Limit In Force"
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "required": [
           "bankroll_initial",
@@ -3016,6 +5474,7 @@
           "max_stake_pct",
           "kelly_fraction",
           "min_edge",
+          "version",
           "monthly_loss_limit_in_force"
         ],
         "title": "SettingsOut"
@@ -3224,6 +5683,14 @@
             "type": "array",
             "title": "By Bookmaker"
           },
+          "by_market": {
+            "items": {
+              "$ref": "#/components/schemas/MarketSummaryOut"
+            },
+            "type": "array",
+            "title": "By Market",
+            "default": []
+          },
           "month": {
             "$ref": "#/components/schemas/MonthOut"
           },
@@ -3282,6 +5749,79 @@
           "elo"
         ],
         "title": "Team"
+      },
+      "TeamFormOut": {
+        "properties": {
+          "team": {
+            "type": "string",
+            "title": "Team"
+          },
+          "last6": {
+            "items": {
+              "$ref": "#/components/schemas/FormMatchOut"
+            },
+            "type": "array",
+            "title": "Last6"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/FormSummaryOut"
+          },
+          "summary_venue": {
+            "$ref": "#/components/schemas/VenueSummaryOut"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Warnings"
+          }
+        },
+        "type": "object",
+        "required": [
+          "team",
+          "last6",
+          "summary",
+          "summary_venue",
+          "warnings"
+        ],
+        "title": "TeamFormOut"
+      },
+      "TeamOut": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "league": {
+            "type": "string",
+            "title": "League"
+          },
+          "rating": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rating"
+          },
+          "rating_source": {
+            "type": "string",
+            "const": "elo_propio",
+            "title": "Rating Source",
+            "default": "elo_propio"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "league",
+          "rating"
+        ],
+        "title": "TeamOut"
       },
       "TrackingSummaryOut": {
         "properties": {
@@ -3419,6 +5959,125 @@
           "kelly_fraction"
         ],
         "title": "ValueBetOut"
+      },
+      "VenueSummaryOut": {
+        "properties": {
+          "n": {
+            "type": "integer",
+            "title": "N"
+          },
+          "goals_for_avg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Goals For Avg"
+          },
+          "goals_against_avg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Goals Against Avg"
+          },
+          "xg_for_avg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Xg For Avg"
+          },
+          "xg_against_avg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Xg Against Avg"
+          },
+          "over25_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Over25 Pct"
+          },
+          "btts_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Btts Pct"
+          },
+          "scored_2plus": {
+            "type": "integer",
+            "title": "Scored 2Plus"
+          },
+          "failed_to_score": {
+            "type": "integer",
+            "title": "Failed To Score"
+          },
+          "clean_sheets": {
+            "type": "integer",
+            "title": "Clean Sheets"
+          },
+          "streak": {
+            "type": "string",
+            "title": "Streak"
+          },
+          "venue": {
+            "type": "string",
+            "enum": [
+              "home",
+              "away"
+            ],
+            "title": "Venue"
+          },
+          "fallback_to_all": {
+            "type": "boolean",
+            "title": "Fallback To All"
+          }
+        },
+        "type": "object",
+        "required": [
+          "n",
+          "goals_for_avg",
+          "goals_against_avg",
+          "xg_for_avg",
+          "xg_against_avg",
+          "over25_pct",
+          "btts_pct",
+          "scored_2plus",
+          "failed_to_score",
+          "clean_sheets",
+          "streak",
+          "venue",
+          "fallback_to_all"
+        ],
+        "title": "VenueSummaryOut"
       },
       "betting_ml__api__schemas_002__Triple": {
         "properties": {

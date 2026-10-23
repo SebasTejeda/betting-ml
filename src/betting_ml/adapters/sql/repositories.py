@@ -7,18 +7,29 @@ from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from decimal import Decimal
 
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, func, or_, select, update
+from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.orm import Session, sessionmaker
 
+from betting_ml.adapters.sql.audit import (
+    Clock,
+    append,
+    record_change,
+    row_state,
+    take_write_lock,
+    utc_now,
+)
 from betting_ml.adapters.sql.models import (
     BetRow,
     BookmakerRow,
     OddsQuoteRow,
     OddsSnapshotRow,
+    SessionRow,
     SettingsHistoryRow,
     SettingsRow,
 )
 from betting_ml.config import BookmakersFile
+from betting_ml.domain.audit import SYSTEM, AuditEvent, AuditInfo
 from betting_ml.domain.entities import Outcome
 from betting_ml.domain.journal import (
     BankrollSettings,
@@ -30,7 +41,9 @@ from betting_ml.domain.journal import (
     OddsSnapshot,
     QuoteSource,
     SettingsChange,
+    VersionConflictError,
 )
+from betting_ml.domain.security import Session as OwnerSession
 
 __all__ = [
     "BetFilters",
@@ -60,8 +73,9 @@ class SnapshotInfo:
 
 
 class SqlOddsRepository:
-    def __init__(self, sessions: sessionmaker[Session]) -> None:
+    def __init__(self, sessions: sessionmaker[Session], clock: Clock = utc_now) -> None:
         self.sessions = sessions
+        self.clock = clock
 
     def sync_bookmakers(self, catalog: BookmakersFile) -> None:
         with self.sessions.begin() as session:
@@ -76,8 +90,10 @@ class SqlOddsRepository:
                     )
                 )
 
-    def save_snapshot(self, snapshot: OddsSnapshot) -> int:
+    def save_snapshot(self, snapshot: OddsSnapshot, audit: AuditInfo = SYSTEM) -> int:
+        """Store a snapshot and its audit event (a summary: the quotes are not copied)."""
         with self.sessions.begin() as session:
+            take_write_lock(session)
             row = OddsSnapshotRow(
                 fetched_at=snapshot.fetched_at,
                 source=snapshot.source.value,
@@ -101,6 +117,25 @@ class SqlOddsRepository:
             ]
             session.add(row)
             session.flush()
+            manual = snapshot.source is QuoteSource.MANUAL
+            append(
+                session,
+                AuditEvent(
+                    ts_utc=self.clock(),
+                    actor=audit.actor,
+                    action=audit.action or ("ODDS_MANUAL_QUOTE" if manual else "ODDS_REFRESHED"),
+                    entity="odds_snapshot",
+                    entity_id=str(row.id),
+                    after={
+                        "source": snapshot.source.value,
+                        "leagues": list(snapshot.leagues),
+                        "quotes": len(snapshot.quotes),
+                        "credits_used": snapshot.credits_used,
+                        "credits_remaining": snapshot.credits_remaining,
+                    },
+                    detail=audit.detail,
+                ),
+            )
             return row.id
 
     @staticmethod
@@ -197,36 +232,43 @@ class SqlOddsRepository:
 
 # ---------------------------------------------------------------------- bets
 class SqlBetRepository:
-    def __init__(self, sessions: sessionmaker[Session]) -> None:
+    """Every write appends its audit event in the same transaction (spec 003, US5)."""
+
+    def __init__(self, sessions: sessionmaker[Session], clock: Clock = utc_now) -> None:
         self.sessions = sessions
+        self.clock = clock
 
     @staticmethod
-    def _to_row(bet: Bet, row: BetRow | None = None) -> BetRow:
-        row = row or BetRow()
-        row.created_at = bet.created_at
-        row.match_id = bet.match_id
-        row.league = bet.league
-        row.home_team = bet.home_team
-        row.away_team = bet.away_team
-        row.kickoff_utc = bet.kickoff_utc
-        row.outcome = bet.outcome.value
-        row.bookmaker = bet.bookmaker
-        row.odds = bet.odds
-        row.stake = bet.stake
-        row.kind = bet.kind.value
-        row.status = bet.status.value
-        row.note = bet.note
-        row.from_experimental_signal = bet.from_experimental_signal
-        row.fair_probability = bet.fair_probability
-        row.ev = bet.ev
-        row.warnings = "\n".join(bet.warnings)
-        row.clv = bet.clv
-        row.clv_source = bet.clv_source
-        row.profit = bet.profit
-        row.settled_at = bet.settled_at
-        row.result_source = bet.result_source
-        row.no_reference = bet.no_reference
-        return row
+    def _values(bet: Bet) -> dict[str, object]:
+        """Column values of a bet, without its id and version (the repository owns both)."""
+        return {
+            "created_at": bet.created_at,
+            "match_id": bet.match_id,
+            "league": bet.league,
+            "home_team": bet.home_team,
+            "away_team": bet.away_team,
+            "kickoff_utc": bet.kickoff_utc,
+            "outcome": bet.outcome.value if bet.outcome is not None else None,
+            "bookmaker": bet.bookmaker,
+            "odds": bet.odds,
+            "stake": bet.stake,
+            "kind": bet.kind.value,
+            "status": bet.status.value,
+            "note": bet.note,
+            "from_experimental_signal": bet.from_experimental_signal,
+            "fair_probability": bet.fair_probability,
+            "ev": bet.ev,
+            "warnings": "\n".join(bet.warnings),
+            "clv": bet.clv,
+            "clv_source": bet.clv_source,
+            "profit": bet.profit,
+            "settled_at": bet.settled_at,
+            "result_source": bet.result_source,
+            "no_reference": bet.no_reference,
+            "market": bet.market,
+            "selection": bet.selection,
+            "line": bet.line,
+        }
 
     @staticmethod
     def _to_bet(row: BetRow) -> Bet:
@@ -234,7 +276,7 @@ class SqlBetRepository:
             id=row.id,
             match_id=row.match_id,
             league=row.league,
-            outcome=Outcome(row.outcome),
+            outcome=Outcome(row.outcome) if row.outcome else None,
             bookmaker=row.bookmaker,
             odds=Decimal(row.odds),
             stake=Decimal(row.stake),
@@ -255,33 +297,56 @@ class SqlBetRepository:
             settled_at=_utc(row.settled_at),
             result_source=row.result_source,
             no_reference=bool(row.no_reference),
+            version=row.version,
+            market=row.market or "h2h",
+            selection=row.selection,
+            line=row.line,
         )
 
-    def add(self, bet: Bet) -> Bet:
+    def add(self, bet: Bet, audit: AuditInfo = SYSTEM) -> Bet:
         with self.sessions.begin() as session:
-            row = self._to_row(bet)
+            take_write_lock(session)
+            row = BetRow(**self._values(bet), version=1)
             session.add(row)
             session.flush()
-            return replace(bet, id=row.id)
+            record_change(session, audit, "BET_CREATED", "bet", row.id, None, self.clock)
+            return replace(bet, id=row.id, version=1)
 
     def get(self, bet_id: int) -> Bet | None:
         with self.sessions() as session:
             row = session.get(BetRow, bet_id)
             return None if row is None else self._to_bet(row)
 
-    def update(self, bet: Bet) -> Bet:
+    def update(self, bet: Bet, audit: AuditInfo = SYSTEM) -> Bet:
+        """Save a change only if nobody saved another since ``bet.version`` was read: one
+        conditional UPDATE, atomic in SQLite, so two writers can never both win."""
         if bet.id is None:
             raise ValueError("bet without id")
         with self.sessions.begin() as session:
-            row = session.get(BetRow, bet.id)
-            if row is None:
-                raise KeyError(bet.id)
-            self._to_row(bet, row)
-        return bet
+            take_write_lock(session)
+            before = row_state(session, "bet", bet.id)
+            saved = session.execute(
+                update(BetRow)
+                .where(BetRow.id == bet.id, BetRow.version == bet.version)
+                .values(**self._values(bet), version=bet.version + 1)
+            )
+            if saved.rowcount == 0:  # type: ignore[attr-defined]
+                current = session.scalar(select(BetRow.version).where(BetRow.id == bet.id))
+                if current is None:
+                    raise KeyError(bet.id)
+                raise VersionConflictError("bet", current)
+            record_change(session, audit, "BET_UPDATED", "bet", bet.id, before, self.clock)
+        return replace(bet, version=bet.version + 1)
 
-    def delete(self, bet_id: int) -> bool:
+    def delete(self, bet_id: int, audit: AuditInfo = SYSTEM) -> bool:
         with self.sessions.begin() as session:
-            return session.execute(delete(BetRow).where(BetRow.id == bet_id)).rowcount > 0  # type: ignore[attr-defined]
+            take_write_lock(session)
+            before = row_state(session, "bet", bet_id)
+            if before is None:
+                return False
+            session.execute(delete(BetRow).where(BetRow.id == bet_id))
+            record_change(session, audit, "BET_DELETED", "bet", bet_id, before, self.clock)
+            return True
 
     def search(
         self, filters: BetFilters | None = None, page: int = 1, size: int = 50
@@ -317,10 +382,14 @@ class SqlBetRepository:
 # ---------------------------------------------------------------------- settings
 class SqlSettingsRepository:
     def __init__(
-        self, sessions: sessionmaker[Session], defaults: BankrollSettings | None = None
+        self,
+        sessions: sessionmaker[Session],
+        defaults: BankrollSettings | None = None,
+        clock: Clock = utc_now,
     ) -> None:
         self.sessions = sessions
         self.defaults = defaults or BankrollSettings()
+        self.clock = clock
 
     def get(self) -> BankrollSettings:
         with self.sessions() as session:
@@ -334,28 +403,67 @@ class SqlSettingsRepository:
                 max_stake_pct=float(row.max_stake_pct),
                 kelly_fraction=float(row.kelly_fraction),
                 min_edge=float(row.min_edge),
+                version=row.version,
             )
 
-    def save(self, settings: BankrollSettings, changes: Sequence[SettingsChange] = ()) -> None:
+    def save(
+        self,
+        settings: BankrollSettings,
+        changes: Sequence[SettingsChange] = (),
+        audit: AuditInfo = SYSTEM,
+    ) -> BankrollSettings:
+        """Save the settings read at ``settings.version`` (0 = the defaults, never saved) and
+        their history in one transaction; a newer saved version raises VersionConflictError."""
+        values = {
+            "bankroll_initial": settings.bankroll_initial,
+            "currency": settings.currency,
+            "monthly_loss_limit": settings.monthly_loss_limit,
+            "max_stake_pct": settings.max_stake_pct,
+            "kelly_fraction": settings.kelly_fraction,
+            "min_edge": settings.min_edge,
+        }
+        new_version = settings.version + 1
         with self.sessions.begin() as session:
-            row = session.get(SettingsRow, 1) or SettingsRow(id=1)
-            row.bankroll_initial = settings.bankroll_initial
-            row.currency = settings.currency
-            row.monthly_loss_limit = settings.monthly_loss_limit
-            row.max_stake_pct = settings.max_stake_pct
-            row.kelly_fraction = settings.kelly_fraction
-            row.min_edge = settings.min_edge
-            session.merge(row)
-            for change in changes:
-                session.add(
-                    SettingsHistoryRow(
-                        changed_at=change.changed_at,
-                        field=change.field,
-                        old_value=change.old_value,
-                        new_value=change.new_value,
-                        effective_from=change.effective_from,
-                    )
+            take_write_lock(session)
+            before = row_state(session, "settings", 1)
+            if settings.version == 0:
+                statement = (
+                    sqlite_insert(SettingsRow)
+                    .values(id=1, version=1, **values)
+                    .on_conflict_do_nothing(index_elements=["id"])
                 )
+            else:
+                statement = (
+                    update(SettingsRow)  # type: ignore[assignment]
+                    .where(SettingsRow.id == 1, SettingsRow.version == settings.version)
+                    .values(**values, version=new_version)
+                )
+            if session.execute(statement).rowcount == 0:  # type: ignore[attr-defined]
+                current = session.scalar(select(SettingsRow.version).where(SettingsRow.id == 1))
+                raise VersionConflictError("settings", current or 0)
+            record_change(session, audit, "SETTINGS_CHANGED", "settings", 1, before, self.clock)
+            # Each history row is audited too: the limit in force is computed from it.
+            recorded = AuditInfo(audit.actor, "SETTINGS_HISTORY_ADDED", audit.detail)
+            for change in changes:
+                row = SettingsHistoryRow(
+                    changed_at=change.changed_at,
+                    field=change.field,
+                    old_value=change.old_value,
+                    new_value=change.new_value,
+                    effective_from=change.effective_from,
+                )
+                session.add(row)
+                session.flush()
+                record_change(
+                    session,
+                    recorded,
+                    "SETTINGS_HISTORY_ADDED",
+                    "settings_change",
+                    row.id,
+                    None,
+                    self.clock,
+                )
+        return replace(settings, version=new_version)
 
     def history(self, field: str | None = None) -> list[SettingsChange]:
         with self.sessions() as session:
@@ -374,3 +482,85 @@ class SqlSettingsRepository:
                 )
                 for r in session.scalars(query).all()
             ]
+
+
+# ---------------------------------------------------------------------- sessions (spec 003)
+LOGIN = AuditInfo("session", "LOGIN_OK")
+
+
+class SqlSessionStore:
+    """Login and logout are audited with the session change; the token hash never is."""
+
+    def __init__(self, sessions: sessionmaker[Session], clock: Clock = utc_now) -> None:
+        self.sessions = sessions
+        self.clock = clock
+
+    def _event(self, audit: AuditInfo, action: str, after: dict[str, object]) -> AuditEvent:
+        return AuditEvent(
+            ts_utc=self.clock(),
+            actor=audit.actor,
+            action=audit.action or action,
+            entity="session",
+            entity_id=None,
+            after=after,
+            detail=audit.detail,
+        )
+
+    def add(self, owner_session: OwnerSession, audit: AuditInfo = LOGIN) -> None:
+        with self.sessions.begin() as session:
+            take_write_lock(session)
+            session.add(
+                SessionRow(
+                    token_hash=owner_session.token_hash,
+                    csrf_token=owner_session.csrf_token,
+                    created_at=owner_session.created_at,
+                    last_seen_at=owner_session.last_seen_at,
+                    expires_at=owner_session.expires_at,
+                    password_fingerprint=owner_session.password_fingerprint,
+                )
+            )
+            session.flush()
+            append(
+                session, self._event(audit, "LOGIN_OK", {"expires_at": owner_session.expires_at})
+            )
+
+    def get(self, token_hash: str) -> OwnerSession | None:
+        with self.sessions() as session:
+            row = session.get(SessionRow, token_hash)
+            if row is None:
+                return None
+            return OwnerSession(
+                token_hash=row.token_hash,
+                csrf_token=row.csrf_token,
+                created_at=_utc(row.created_at),  # type: ignore[arg-type]
+                last_seen_at=_utc(row.last_seen_at),  # type: ignore[arg-type]
+                expires_at=_utc(row.expires_at),  # type: ignore[arg-type]
+                password_fingerprint=row.password_fingerprint,
+            )
+
+    def touch(self, token_hash: str, last_seen_at: datetime) -> None:
+        with self.sessions.begin() as session:
+            session.execute(
+                update(SessionRow)
+                .where(SessionRow.token_hash == token_hash)
+                .values(last_seen_at=last_seen_at)
+            )
+
+    def delete(self, token_hash: str, audit: AuditInfo | None = None) -> None:
+        """Logout (audited) or an expired session found on use (housekeeping, not audited)."""
+        with self.sessions.begin() as session:
+            if audit is not None:
+                take_write_lock(session)
+            gone = session.execute(delete(SessionRow).where(SessionRow.token_hash == token_hash))
+            if audit is not None and gone.rowcount:  # type: ignore[attr-defined]
+                append(session, self._event(audit, "LOGOUT", {}))
+
+    def purge(self, now: datetime, idle_cutoff: datetime) -> int:
+        """Deletes sessions past their absolute expiry or idle since before ``idle_cutoff``."""
+        with self.sessions.begin() as session:
+            result = session.execute(
+                delete(SessionRow).where(
+                    or_(SessionRow.expires_at <= now, SessionRow.last_seen_at <= idle_cutoff)
+                )
+            )
+            return int(result.rowcount)  # type: ignore[attr-defined]

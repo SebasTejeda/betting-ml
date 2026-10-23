@@ -4,7 +4,7 @@ import { http, HttpResponse } from "msw";
 
 import { budget, comparator, leagues } from "../test/fixtures";
 import { API, renderApp } from "../test/render";
-import { server } from "../test/server";
+import { server, TEST_CSRF } from "../test/server";
 
 function base() {
   server.use(
@@ -63,12 +63,14 @@ test("API error is shown", async () => {
   expect(await screen.findByRole("alert")).toHaveTextContent("fecha inválida");
 });
 
-test("refresh sends the write key and reports a low budget (429)", async () => {
+test("refresh sends the session CSRF token and reports a low budget (429)", async () => {
   base();
   server.use(http.get(`${API}/comparator`, () => HttpResponse.json(comparator)));
-  let key: string | null = null;
+  let csrf: string | null = null;
+  let key: string | null = "unset";
   server.use(
     http.post(`${API}/odds/refresh`, ({ request }) => {
+      csrf = request.headers.get("X-CSRF-Token");
       key = request.headers.get("X-API-Key");
       return HttpResponse.json(
         {
@@ -82,12 +84,12 @@ test("refresh sends the write key and reports a low budget (429)", async () => {
       );
     }),
   );
-  window.localStorage.setItem("betting-ml.apiKey", "k-123");
   renderApp("/");
   await screen.findByRole("list", { name: "Partidos" });
   await userEvent.click(screen.getByRole("button", { name: "Actualizar cuotas" }));
   await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("Quedan 42 créditos"));
-  expect(key).toBe("k-123");
+  expect(csrf).toBe(TEST_CSRF);
+  expect(key).toBeNull(); // no secret lives in the browser
 });
 
 test("the accessible filter can be turned off", async () => {
@@ -103,4 +105,15 @@ test("the accessible filter can be turned off", async () => {
   await screen.findByRole("list", { name: "Partidos" });
   await userEvent.click(screen.getByLabelText("Solo casas accesibles desde Perú"));
   await waitFor(() => expect(seen).toContain("false"));
+});
+
+test("each match links to its analysis", async () => {
+  base();
+  server.use(http.get(`${API}/comparator`, () => HttpResponse.json(comparator)));
+  renderApp("/");
+  const links = await screen.findAllByRole("link", { name: /Analizar\s*Arsenal – Chelsea/ });
+  expect(links[0]).toHaveAttribute(
+    "href",
+    "/analysis?home=Arsenal&away=Chelsea&match=E0-2026-10-10-arsenal-chelsea",
+  );
 });

@@ -1,5 +1,5 @@
 # Comandos del proyecto (ver plan.md §8). Todos delegan en `uv run` y en la CLI `betting-ml`.
-.PHONY: web web-test web-api dev backtest-002 backtest-002-final setup lint test data baselines exp select holdout report train-prod serve track docker all
+.PHONY: verify-integrity backup restore models-rehash security web web-test web-api dev backtest-002 backtest-002-final setup lint test data baselines exp select holdout report train-prod serve track docker all analyze data-europe validate-cross-league validate-cross-league-final validate-markets validate-markets-final
 
 UV ?= uv
 RUN = $(UV) run
@@ -21,6 +21,24 @@ test:
 
 data:
 	$(CLI) data
+
+data-europe:
+	$(CLI) data-europe
+
+validate-cross-league:
+	$(CLI) validate-cross-league
+
+analyze:
+	$(CLI) analyze "$(HOME)" "$(AWAY)"
+
+validate-cross-league-final:
+	$(CLI) validate-cross-league --final
+
+validate-markets:
+	$(CLI) validate-markets
+
+validate-markets-final:
+	$(CLI) validate-markets --final
 
 baselines:
 	$(CLI) exp E01
@@ -76,6 +94,21 @@ odds:
 settle:
 	$(CLI) settle
 
+# Base, cadena de auditoría y apuestas = último evento (spec 003). Código 1 si algo falla.
+verify-integrity:
+	$(CLI) verify-integrity
+
+# Copia en caliente con su .sha256 (data/backups/) y restauración verificada (pide confirmación).
+backup:
+	$(CLI) backup
+
+restore:
+	$(CLI) restore $(FILE)
+
+# Una sola vez, tras revisar los modelos anteriores a la spec 003 (pide confirmación).
+models-rehash:
+	$(CLI) models-rehash
+
 # ---- Frontend (spec 002)
 web:
 	cd frontend && npm run dev
@@ -90,3 +123,13 @@ web-api:
 # API (:8000) y frontend (:5173, con proxy /api) juntos.
 dev:
 	$(CLI) serve --host 127.0.0.1 --port 8000 & cd frontend && npm run dev
+
+# ---- Seguridad (spec 003, T019): falla ante cualquier hallazgo (lo mismo que el job `security` de CI).
+AUDIT_REQS = .audit-requirements.txt
+
+security:
+	$(RUN) ruff check --select S src tests migrations
+	$(UV) export --frozen --no-emit-project --extra dev --format requirements-txt -o $(AUDIT_REQS)
+	$(RUN) pip-audit --disable-pip --require-hashes -r $(AUDIT_REQS)
+	cd frontend && npm audit --audit-level=high
+	gitleaks git --redact --no-banner .

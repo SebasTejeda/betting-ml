@@ -277,7 +277,9 @@ class GoalModel(BaseProbabilisticModel):
                     self.history[self.history["league"] == league],
                     new_rows[new_rows["league"] == league],
                 ]
-            ).drop_duplicates("match_id")
+            ).drop_duplicates(
+                "match_id"
+            )  # keeps the fit() row: callers must not pass targets as history
             group = group.sort_values("date")
             start = group["date"].min()
             while start <= group["date"].max():

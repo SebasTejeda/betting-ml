@@ -6,11 +6,13 @@ import requests
 
 from betting_ml.adapters.football_data import (
     CANONICAL_COLUMNS,
+    ODDS_COLUMNS,
     FootballDataSource,
     parse_csv,
     season_code,
 )
 from betting_ml.adapters.http import DownloadError, HttpClient
+from tests.http_fakes import StreamedBody
 
 FIXTURES = Path(__file__).parents[1] / "fixtures"
 
@@ -57,6 +59,28 @@ def test_new_season_maps_avg_columns_and_time() -> None:
     assert df["home_shots"].notna().all()
 
 
+def test_over_under_25_odds_are_normalized() -> None:
+    """Spec 003, T004: pre-closing and closing Over/Under 2.5 prices of every source."""
+    raw = pd.read_csv(FIXTURES / "football_data_E0_2425.csv", encoding="latin-1").iloc[0]
+    df = _load("football_data_E0_2425.csv", season="2024-25")
+    first = df.iloc[0]
+    pairs = {
+        "b365": ("B365>2.5", "B365<2.5"),
+        "ps": ("P>2.5", "P<2.5"),
+        "avg": ("Avg>2.5", "Avg<2.5"),
+        "max": ("Max>2.5", "Max<2.5"),
+        "b365c": ("B365C>2.5", "B365C<2.5"),
+        "psc": ("PC>2.5", "PC<2.5"),
+        "avgc": ("AvgC>2.5", "AvgC<2.5"),
+        "maxc": ("MaxC>2.5", "MaxC<2.5"),
+    }
+    for prefix, (over, under) in pairs.items():
+        assert first[f"{prefix}_over25"] == pytest.approx(float(raw[over]))
+        assert first[f"{prefix}_under25"] == pytest.approx(float(raw[under]))
+    # Every Over/Under column is in the canonical schema and counted as odds.
+    assert {f"{p}_{s}25" for p in pairs for s in ("over", "under")} <= set(ODDS_COLUMNS)
+
+
 def test_current_season_without_pinnacle() -> None:
     df = _load("football_data_E0_2627.csv", season="2026-27")
     assert df["ps_odds_h"].isna().all()
@@ -82,7 +106,7 @@ def test_bad_inputs() -> None:
         parse_csv(b"Div,Date,HomeTeam,AwayTeam\nE0,2014-08-16,A,B\n", "E0", "2014-15")
 
 
-class _FakeResponse:
+class _FakeResponse(StreamedBody):
     def __init__(self, content: bytes, status: int = 200) -> None:
         self.content = content
         self.status_code = status

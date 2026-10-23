@@ -1,0 +1,21 @@
+# Ligas que alimentan el Elo propio entre ligas (spec 003, T006; ver decisions.md).
+# Nuestras 5 ligas salen de football-data (data/processed). Las demás, de openfootball/europe:
+#   https://raw.githubusercontent.com/openfootball/europe/master/{folder}/{season}_{file}.txt
+#   country  código de país de openfootball/champions-league (el que va entre paréntesis)
+#   folder   carpeta del repo openfootball/europe
+#   file     código del archivo (primera división)
+# Cobertura verificada el 2026-10-22: casi todas desde 2018-19, con huecos (por ejemplo
+# Escocia, Turquía y Grecia sin 2021-22 ni 2022-23). Una temporada sin archivo se salta.
+domestic:
+  E0: ENG
+  SP1: ESP
+  D1: GER
+  I1: ITA
+  F1: FRA
+openfootball:
+  - {country: NED, folder: netherlands, file: nl1}
+  - {country: POR, folder: portugal, file: pt1}
+  - {country: SCO, folder: scotland, file: sco1}
+  - {country: TUR, folder: turkey, file: tr1}
+  - {country: SUI, folder: switzerland, file: ch1}
+  - {country: GRE, folder: greece, file: gr1}

@@ -21,6 +21,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Login */
+        post: operations["login_api_v1_auth_login_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Me */
+        get: operations["me_api_v1_auth_me_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/logout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Logout */
+        post: operations["logout_api_v1_auth_logout_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/leagues": {
         parameters: {
             query?: never;
@@ -297,23 +348,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/bets/summary": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Summary */
-        get: operations["summary_api_v1_bets_summary_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/bets/{bet_id}": {
         parameters: {
             query?: never;
@@ -330,6 +364,23 @@ export interface paths {
         head?: never;
         /** Patch Bet */
         patch: operations["patch_bet_api_v1_bets__bet_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/bets/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Summary */
+        get: operations["summary_api_v1_bets_summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/settings": {
@@ -367,10 +418,194 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/teams/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Search Teams */
+        get: operations["search_teams_api_v1_teams_search_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/analysis/fixture": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Find Fixture */
+        get: operations["find_fixture_api_v1_analysis_fixture_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/analysis": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Analyze */
+        get: operations["analyze_api_v1_analysis_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/analysis/{match_id}/odds/estimate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Estimate Event Odds */
+        get: operations["estimate_event_odds_api_v1_analysis__match_id__odds_estimate_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/markets/calibration": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Market Calibration */
+        get: operations["market_calibration_api_v1_markets_calibration_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/analysis/{match_id}/odds/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Refresh Event Odds */
+        post: operations["refresh_event_odds_api_v1_analysis__match_id__odds_refresh_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AdviceItemOut */
+        AdviceItemOut: {
+            /** Label */
+            label: string;
+            /**
+             * Market
+             * @enum {string}
+             */
+            market: "h2h" | "double_chance" | "draw_no_bet" | "totals" | "btts" | "team_totals" | "european_handicap" | "correct_score";
+            /** Selection */
+            selection: string;
+            /** Line */
+            line: number | null;
+            /** Probability */
+            probability: number;
+            /** Fair Odds */
+            fair_odds: number;
+            /** Best Odds */
+            best_odds: number | null;
+            /** Bookmaker */
+            bookmaker: string | null;
+            /** Ev */
+            ev: number | null;
+            /**
+             * Verdict
+             * @enum {string}
+             */
+            verdict: "valor" | "justo" | "evitar" | "sin_cuota";
+            /**
+             * Confidence
+             * @enum {string}
+             */
+            confidence: "alta" | "media" | "baja";
+            /** Experimental */
+            experimental: boolean;
+            /** Price Comment */
+            price_comment: string;
+            /** Reasons */
+            reasons: components["schemas"]["ReasonOut"][];
+            /** Warnings */
+            warnings: string[];
+        };
+        /** AnalysisMatchOut */
+        AnalysisMatchOut: {
+            /** Match Id */
+            match_id: string;
+            /** Competition */
+            competition: string;
+            /** Kickoff */
+            kickoff: string | null;
+            /** Date */
+            date: string;
+            /** Home Team */
+            home_team: string;
+            /** Away Team */
+            away_team: string;
+            /** Cross League */
+            cross_league: boolean;
+            ratings: components["schemas"]["RatingsOut"] | null;
+            expected_goals: components["schemas"]["ExpectedGoalsOut"];
+            /** Model */
+            model: string;
+            /** Odds Snapshot At */
+            odds_snapshot_at?: string | null;
+            /** Warnings */
+            warnings: string[];
+        };
+        /** AnalysisOut */
+        AnalysisOut: {
+            match: components["schemas"]["AnalysisMatchOut"];
+            /** Best Options */
+            best_options: components["schemas"]["AdviceItemOut"][];
+            /** Best Options Note */
+            best_options_note: string | null;
+            /** Most Likely */
+            most_likely: components["schemas"]["AdviceItemOut"][];
+            /** No Value Message */
+            no_value_message: string | null;
+            /** Markets */
+            markets: components["schemas"]["MarketOut"][];
+            form: components["schemas"]["FormOut"];
+        };
         /** BankrollOut */
         BankrollOut: {
             /** Initial */
@@ -393,11 +628,18 @@ export interface components {
         BetIn: {
             /** Match Id */
             match_id: string;
+            /** Outcome */
+            outcome?: ("home" | "draw" | "away") | null;
             /**
-             * Outcome
+             * Market
+             * @default h2h
              * @enum {string}
              */
-            outcome: "home" | "draw" | "away";
+            market: "h2h" | "double_chance" | "draw_no_bet" | "totals" | "btts" | "team_totals" | "european_handicap" | "correct_score";
+            /** Selection */
+            selection?: string | null;
+            /** Line */
+            line?: number | null;
             /** Bookmaker */
             bookmaker: string;
             /** Odds */
@@ -446,11 +688,18 @@ export interface components {
             away_team: string;
             /** Kickoff */
             kickoff: string | null;
+            /** Outcome */
+            outcome: ("home" | "draw" | "away") | null;
             /**
-             * Outcome
+             * Market
+             * @default h2h
              * @enum {string}
              */
-            outcome: "home" | "draw" | "away";
+            market: "h2h" | "double_chance" | "draw_no_bet" | "totals" | "btts" | "team_totals" | "european_handicap" | "correct_score";
+            /** Selection */
+            selection?: string | null;
+            /** Line */
+            line?: number | null;
             /** Bookmaker */
             bookmaker: string;
             /** Odds */
@@ -479,6 +728,8 @@ export interface components {
             settled_at: string | null;
             /** Result Source */
             result_source?: ("manual" | "official") | null;
+            /** Version */
+            version: number;
             /**
              * Sin Referencia
              * @default false
@@ -500,6 +751,11 @@ export interface components {
         };
         /** BetPatch */
         BetPatch: {
+            /**
+             * Version
+             * @description La versión que se editó (409 si es vieja)
+             */
+            version: number;
             /** Note */
             note?: string | null;
             /** Status */
@@ -589,6 +845,17 @@ export interface components {
             reference: string;
             best_available: components["schemas"]["BestOut"] | null;
         };
+        /** CalibrationOut */
+        CalibrationOut: {
+            /** Leagues */
+            leagues: {
+                [key: string]: unknown;
+            };
+            /** Europe */
+            europe: {
+                [key: string]: unknown;
+            } | null;
+        };
         /** ComparatorDetailOut */
         ComparatorDetailOut: {
             /** Match Id */
@@ -655,12 +922,138 @@ export interface components {
             /** Matches */
             matches: components["schemas"]["ComparatorMatchOut"][];
         };
+        /** EstimateOut */
+        EstimateOut: {
+            /** Markets */
+            markets: number;
+            /** Regions */
+            regions: number;
+            /** Estimated Credits */
+            estimated_credits: number;
+            /** Credits Remaining */
+            credits_remaining: number | null;
+        };
+        /** EventRefreshOut */
+        EventRefreshOut: {
+            /** Match Id */
+            match_id: string;
+            /** Markets */
+            markets: string[];
+            /** Credits Used */
+            credits_used: number;
+            /** Credits Remaining */
+            credits_remaining: number | null;
+            /** Fetched At */
+            fetched_at: string;
+            /** From Cache */
+            from_cache: boolean;
+        };
+        /** ExpectedGoalsOut */
+        ExpectedGoalsOut: {
+            /** Home */
+            home: number;
+            /** Away */
+            away: number;
+        };
         /** FairOut */
         FairOut: {
             /** Source */
             source: string;
             probabilities: components["schemas"]["betting_ml__api__schemas_002__Triple"];
             odds: components["schemas"]["betting_ml__api__schemas_002__Triple"];
+        };
+        /** FixtureOut */
+        FixtureOut: {
+            /** Found */
+            found: boolean;
+            /** Match Id */
+            match_id: string | null;
+            /** Competition */
+            competition: string | null;
+            /** Kickoff */
+            kickoff: string | null;
+            /** Date */
+            date: string | null;
+        };
+        /** FormMatchOut */
+        FormMatchOut: {
+            /** Date */
+            date: string;
+            /** Opponent */
+            opponent: string;
+            /** Competition */
+            competition: string;
+            /**
+             * Venue
+             * @enum {string}
+             */
+            venue: "home" | "away";
+            /** Goals For */
+            goals_for: number;
+            /** Goals Against */
+            goals_against: number;
+            /** Xg For */
+            xg_for: number | null;
+            /** Xg Against */
+            xg_against: number | null;
+            /**
+             * Result
+             * @enum {string}
+             */
+            result: "W" | "D" | "L";
+        };
+        /** FormOut */
+        FormOut: {
+            home: components["schemas"]["TeamFormOut"];
+            away: components["schemas"]["TeamFormOut"];
+            h2h: components["schemas"]["H2HOut"];
+        };
+        /** FormSummaryOut */
+        FormSummaryOut: {
+            /** N */
+            n: number;
+            /** Goals For Avg */
+            goals_for_avg: number | null;
+            /** Goals Against Avg */
+            goals_against_avg: number | null;
+            /** Xg For Avg */
+            xg_for_avg: number | null;
+            /** Xg Against Avg */
+            xg_against_avg: number | null;
+            /** Over25 Pct */
+            over25_pct: number | null;
+            /** Btts Pct */
+            btts_pct: number | null;
+            /** Scored 2Plus */
+            scored_2plus: number;
+            /** Failed To Score */
+            failed_to_score: number;
+            /** Clean Sheets */
+            clean_sheets: number;
+            /** Streak */
+            streak: string;
+        };
+        /** H2HMatchOut */
+        H2HMatchOut: {
+            /** Date */
+            date: string;
+            /** Competition */
+            competition: string;
+            /** Home Team */
+            home_team: string;
+            /** Away Team */
+            away_team: string;
+            /** Home Goals */
+            home_goals: number;
+            /** Away Goals */
+            away_goals: number;
+        };
+        /** H2HOut */
+        H2HOut: {
+            /** Matches */
+            matches: components["schemas"]["H2HMatchOut"][];
+            /** Note */
+            note: string;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -702,6 +1095,23 @@ export interface components {
             /** Teams */
             teams: number;
         };
+        /** LoginIn */
+        LoginIn: {
+            /** Password */
+            password: string;
+        };
+        /** LoginOut */
+        LoginOut: {
+            /** Csrf Token */
+            csrf_token: string;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /** Idle Minutes */
+            idle_minutes: number;
+        };
         /** MarginsOut */
         MarginsOut: {
             /** Best Combined */
@@ -718,6 +1128,62 @@ export interface components {
             average_odds: components["schemas"]["betting_ml__api__schemas__Triple"] | null;
             best_odds: components["schemas"]["betting_ml__api__schemas__Triple"] | null;
             implied_probabilities: components["schemas"]["betting_ml__api__schemas__Triple"] | null;
+        };
+        /** MarketOut */
+        MarketOut: {
+            /**
+             * Market
+             * @enum {string}
+             */
+            market: "h2h" | "double_chance" | "draw_no_bet" | "totals" | "btts" | "team_totals" | "european_handicap" | "correct_score";
+            /** Name */
+            name: string;
+            /**
+             * Confidence
+             * @enum {string}
+             */
+            confidence: "alta" | "media" | "baja";
+            /** Experimental */
+            experimental: boolean;
+            /** Selections */
+            selections: components["schemas"]["SelectionOut"][];
+        };
+        /**
+         * MarketSummaryOut
+         * @description Spec 003 US6: one market of the journal.
+         */
+        MarketSummaryOut: {
+            /**
+             * Market
+             * @enum {string}
+             */
+            market: "h2h" | "double_chance" | "draw_no_bet" | "totals" | "btts" | "team_totals" | "european_handicap" | "correct_score";
+            /** Bets */
+            bets: number;
+            /** Settled */
+            settled: number;
+            /** Roi */
+            roi: number | null;
+            /** Clv Mean Pinnacle */
+            clv_mean_pinnacle: number | null;
+            /** Clv N Pinnacle */
+            clv_n_pinnacle: number;
+            /** Clv Mean Market Average */
+            clv_mean_market_average: number | null;
+            /** Clv N Market Average */
+            clv_n_market_average: number;
+            /** Clv Mean Other */
+            clv_mean_other: number | null;
+            /** Clv N Other */
+            clv_n_other: number;
+            /** Paper With Clv */
+            paper_with_clv: number;
+            /** Paper Clv Mean */
+            paper_clv_mean: number | null;
+            /** Evidence Target */
+            evidence_target: number;
+            /** Evidence Met */
+            evidence_met: boolean;
         };
         /** MatchOut */
         MatchOut: {
@@ -754,6 +1220,20 @@ export interface components {
             message: string | null;
             /** Matches */
             matches: components["schemas"]["MatchOut"][];
+        };
+        /** MeOut */
+        MeOut: {
+            /** Authenticated */
+            authenticated: boolean;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "session" | "api_key";
+            /** Csrf Token */
+            csrf_token: string | null;
+            /** Expires At */
+            expires_at: string | null;
         };
         /** ModelInfo */
         ModelInfo: {
@@ -848,6 +1328,31 @@ export interface components {
              */
             model_variant: "with_odds" | "without_odds";
         };
+        /** RatingsOut */
+        RatingsOut: {
+            /** Home */
+            home: number;
+            /** Away */
+            away: number;
+            /** Source */
+            source: string;
+            /** Date */
+            date: string;
+        };
+        /** ReasonOut */
+        ReasonOut: {
+            /**
+             * Stance
+             * @enum {string}
+             */
+            stance: "for" | "against" | "context";
+            /** Text */
+            text: string;
+            /** Evidence */
+            evidence: {
+                [key: string]: unknown;
+            };
+        };
         /** RefreshOut */
         RefreshOut: {
             /** Snapshot Id */
@@ -885,6 +1390,37 @@ export interface components {
              */
             current_season_refresh: "scheduled";
         };
+        /** SelectionOut */
+        SelectionOut: {
+            /** Selection */
+            selection: string;
+            /** Line */
+            line: number | null;
+            /** Label */
+            label: string;
+            /** Probability */
+            probability: number;
+            /** Fair Odds */
+            fair_odds: number;
+            /** Best Odds */
+            best_odds: number | null;
+            /** Bookmaker */
+            bookmaker: string | null;
+            /** Ev */
+            ev: number | null;
+            /**
+             * Verdict
+             * @enum {string}
+             */
+            verdict: "valor" | "justo" | "evitar" | "sin_cuota";
+            /**
+             * Confidence
+             * @enum {string}
+             */
+            confidence: "alta" | "media" | "baja";
+            /** Information Only */
+            information_only: boolean;
+        };
         /** SeriesPoint */
         SeriesPoint: {
             /** Date */
@@ -909,6 +1445,11 @@ export interface components {
             kelly_fraction: number;
             /** Min Edge */
             min_edge: number;
+            /**
+             * Version
+             * @description La versión que se editó; 0 si nunca se guardaron
+             */
+            version: number;
         };
         /** SettingsOut */
         SettingsOut: {
@@ -927,6 +1468,11 @@ export interface components {
             kelly_fraction: number;
             /** Min Edge */
             min_edge: number;
+            /**
+             * Version
+             * @description La versión que se editó; 0 si nunca se guardaron
+             */
+            version: number;
             /** Monthly Loss Limit In Force */
             monthly_loss_limit_in_force: number;
         };
@@ -1005,6 +1551,11 @@ export interface components {
             by_bookmaker: {
                 [key: string]: unknown;
             }[];
+            /**
+             * By Market
+             * @default []
+             */
+            by_market: components["schemas"]["MarketSummaryOut"][];
             month: components["schemas"]["MonthOut"];
             experimental_signal: components["schemas"]["SignalProgressOut"];
             /** Best Odds Uplift Mean */
@@ -1018,6 +1569,32 @@ export interface components {
             name: string;
             /** Elo */
             elo: number;
+        };
+        /** TeamFormOut */
+        TeamFormOut: {
+            /** Team */
+            team: string;
+            /** Last6 */
+            last6: components["schemas"]["FormMatchOut"][];
+            summary: components["schemas"]["FormSummaryOut"];
+            summary_venue: components["schemas"]["VenueSummaryOut"];
+            /** Warnings */
+            warnings: string[];
+        };
+        /** TeamOut */
+        TeamOut: {
+            /** Name */
+            name: string;
+            /** League */
+            league: string;
+            /** Rating */
+            rating: number | null;
+            /**
+             * Rating Source
+             * @default elo_propio
+             * @constant
+             */
+            rating_source: "elo_propio";
         };
         /** TrackingSummaryOut */
         TrackingSummaryOut: {
@@ -1062,6 +1639,38 @@ export interface components {
             expected_value: number;
             /** Kelly Fraction */
             kelly_fraction: number;
+        };
+        /** VenueSummaryOut */
+        VenueSummaryOut: {
+            /** N */
+            n: number;
+            /** Goals For Avg */
+            goals_for_avg: number | null;
+            /** Goals Against Avg */
+            goals_against_avg: number | null;
+            /** Xg For Avg */
+            xg_for_avg: number | null;
+            /** Xg Against Avg */
+            xg_against_avg: number | null;
+            /** Over25 Pct */
+            over25_pct: number | null;
+            /** Btts Pct */
+            btts_pct: number | null;
+            /** Scored 2Plus */
+            scored_2plus: number;
+            /** Failed To Score */
+            failed_to_score: number;
+            /** Clean Sheets */
+            clean_sheets: number;
+            /** Streak */
+            streak: string;
+            /**
+             * Venue
+             * @enum {string}
+             */
+            venue: "home" | "away";
+            /** Fallback To All */
+            fallback_to_all: boolean;
         };
         /** Triple */
         betting_ml__api__schemas_002__Triple: {
@@ -1110,10 +1719,106 @@ export interface operations {
             };
         };
     };
-    leagues_api_v1_leagues_get: {
+    login_api_v1_auth_login_post: {
         parameters: {
             query?: never;
             header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoginIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoginOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    me_api_v1_auth_me_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-api-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MeOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    logout_api_v1_auth_logout_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-csrf-token"?: string | null;
+                "x-api-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    leagues_api_v1_leagues_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-api-key"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -1128,12 +1833,23 @@ export interface operations {
                     "application/json": components["schemas"]["League"][];
                 };
             };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
     };
     teams_api_v1_leagues__code__teams_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "x-api-key"?: string | null;
+            };
             path: {
                 code: string;
             };
@@ -1173,7 +1889,9 @@ export interface operations {
                 /** @description Umbral de valor esperado */
                 min_edge?: number;
             };
-            header?: never;
+            header?: {
+                "x-api-key"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -1202,7 +1920,9 @@ export interface operations {
     predict_api_v1_predictions_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "x-api-key"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -1235,7 +1955,9 @@ export interface operations {
     model_api_v1_model_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "x-api-key"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -1250,12 +1972,23 @@ export interface operations {
                     "application/json": components["schemas"]["ModelInfo"];
                 };
             };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
     };
     experiments_api_v1_experiments_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "x-api-key"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -1272,12 +2005,23 @@ export interface operations {
                     }[];
                 };
             };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
     };
     summary_api_v1_tracking_summary_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "x-api-key"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -1292,12 +2036,22 @@ export interface operations {
                     "application/json": components["schemas"]["TrackingSummaryOut"];
                 };
             };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
     };
     refresh_api_v1_admin_refresh_post: {
         parameters: {
             query?: never;
             header?: {
+                "x-csrf-token"?: string | null;
                 "x-api-key"?: string | null;
             };
             path?: never;
@@ -1331,6 +2085,7 @@ export interface operations {
                 league?: string | null;
             };
             header?: {
+                "x-csrf-token"?: string | null;
                 "x-api-key"?: string | null;
             };
             path?: never;
@@ -1361,7 +2116,9 @@ export interface operations {
     odds_budget_api_v1_odds_budget_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "x-api-key"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -1376,12 +2133,23 @@ export interface operations {
                     "application/json": components["schemas"]["BudgetOut"];
                 };
             };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
     };
     bookmakers_api_v1_bookmakers_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "x-api-key"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -1394,6 +2162,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BookmakerOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -1409,7 +2186,9 @@ export interface operations {
                 min_edge?: number | null;
                 accessible_only?: boolean;
             };
-            header?: never;
+            header?: {
+                "x-api-key"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -1438,7 +2217,9 @@ export interface operations {
     comparator_detail_api_v1_comparator__match_id__get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "x-api-key"?: string | null;
+            };
             path: {
                 match_id: string;
             };
@@ -1470,6 +2251,7 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
+                "x-csrf-token"?: string | null;
                 "x-api-key"?: string | null;
             };
             path?: never;
@@ -1512,7 +2294,9 @@ export interface operations {
                 page?: number;
                 size?: number;
             };
-            header?: never;
+            header?: {
+                "x-api-key"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -1542,6 +2326,7 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
+                "x-csrf-token"?: string | null;
                 "x-api-key"?: string | null;
             };
             path?: never;
@@ -1577,6 +2362,7 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
+                "x-csrf-token"?: string | null;
                 "x-api-key"?: string | null;
             };
             path?: never;
@@ -1604,43 +2390,11 @@ export interface operations {
             };
         };
     };
-    summary_api_v1_bets_summary_get: {
-        parameters: {
-            query?: {
-                kind?: string;
-                from?: string | null;
-                to?: string | null;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SummaryOut"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
     delete_bet_api_v1_bets__bet_id__delete: {
         parameters: {
             query?: never;
             header?: {
+                "x-csrf-token"?: string | null;
                 "x-api-key"?: string | null;
             };
             path: {
@@ -1672,6 +2426,7 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
+                "x-csrf-token"?: string | null;
                 "x-api-key"?: string | null;
             };
             path: {
@@ -1705,10 +2460,47 @@ export interface operations {
             };
         };
     };
+    summary_api_v1_bets_summary_get: {
+        parameters: {
+            query?: {
+                kind?: string;
+                from?: string | null;
+                to?: string | null;
+            };
+            header?: {
+                "x-api-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SummaryOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_settings_api_v1_settings_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "x-api-key"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -1723,12 +2515,22 @@ export interface operations {
                     "application/json": components["schemas"]["SettingsOut"];
                 };
             };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
     };
     put_settings_api_v1_settings_put: {
         parameters: {
             query?: never;
             header?: {
+                "x-csrf-token"?: string | null;
                 "x-api-key"?: string | null;
             };
             path?: never;
@@ -1763,7 +2565,9 @@ export interface operations {
     backtest_api_v1_backtest_pinnacle_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "x-api-key"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -1778,6 +2582,222 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    search_teams_api_v1_teams_search_get: {
+        parameters: {
+            query: {
+                q: string;
+            };
+            header?: {
+                "x-api-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    find_fixture_api_v1_analysis_fixture_get: {
+        parameters: {
+            query: {
+                home: string;
+                away: string;
+            };
+            header?: {
+                "x-api-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FixtureOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    analyze_api_v1_analysis_get: {
+        parameters: {
+            query: {
+                home: string;
+                away: string;
+                match_id?: string | null;
+                date?: string | null;
+                competition?: string | null;
+                kickoff?: string | null;
+                min_edge?: number | null;
+            };
+            header?: {
+                "x-api-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnalysisOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    estimate_event_odds_api_v1_analysis__match_id__odds_estimate_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-api-key"?: string | null;
+            };
+            path: {
+                match_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EstimateOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    market_calibration_api_v1_markets_calibration_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-api-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalibrationOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    refresh_event_odds_api_v1_analysis__match_id__odds_refresh_post: {
+        parameters: {
+            query: {
+                home: string;
+                away: string;
+            };
+            header?: {
+                "x-csrf-token"?: string | null;
+                "x-api-key"?: string | null;
+            };
+            path: {
+                match_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventRefreshOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

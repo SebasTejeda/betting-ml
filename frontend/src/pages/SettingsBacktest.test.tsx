@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 
@@ -107,18 +107,25 @@ test("settings are saved as fractions and a raised limit applies next month", as
     kelly_fraction: 0.25,
     min_edge: 0.02,
     currency: "PEN",
+    version: 3,
   });
   expect(
     screen.getByText(/el nuevo límite de .* aplica desde el mes siguiente/),
   ).toBeInTheDocument();
 });
 
-test("settings validation and 401 without key", async () => {
+test("settings validation, and a 401 (expired session) leads to the login page", async () => {
   server.use(
     http.get(`${API}/settings`, () => HttpResponse.json(settings)),
     http.put(`${API}/settings`, () =>
       HttpResponse.json(
-        { error: { code: "UNAUTHORIZED", message: "Falta la clave X-API-Key", details: {} } },
+        {
+          error: {
+            code: "UNAUTHORIZED",
+            message: "Credenciales inválidas o ausentes",
+            details: {},
+          },
+        },
         { status: 401 },
       ),
     ),
@@ -132,5 +139,89 @@ test("settings validation and 401 without key", async () => {
   await userEvent.clear(stake);
   await userEvent.type(stake, "2");
   await userEvent.click(screen.getByRole("button", { name: "Guardar" }));
-  expect(await screen.findByRole("alert")).toHaveTextContent("Configura la clave de escritura");
+  expect(await screen.findByRole("form", { name: "Iniciar sesión" })).toBeInTheDocument();
+  expect(screen.getByRole("status")).toHaveTextContent("Tu sesión expiró");
+});
+
+test("a CSRF token rotated by another tab is refreshed, so the retry is saved", async () => {
+  let meCalls = 0;
+  const sent: (string | null)[] = [];
+  server.use(
+    http.get(`${API}/auth/me`, () => {
+      meCalls += 1;
+      return HttpResponse.json({
+        authenticated: true,
+        kind: "session",
+        csrf_token: meCalls === 1 ? "stale-token" : "rotated-token",
+        expires_at: "2030-01-01T00:00:00Z",
+      });
+    }),
+    http.get(`${API}/settings`, () => HttpResponse.json(settings)),
+    http.put(`${API}/settings`, ({ request }) => {
+      const csrf = request.headers.get("X-CSRF-Token");
+      sent.push(csrf);
+      return csrf === "rotated-token"
+        ? HttpResponse.json(settings)
+        : HttpResponse.json(
+            {
+              error: {
+                code: "CSRF_FAILED",
+                message: "Falta el token CSRF o no corresponde a la sesión",
+                details: {},
+              },
+            },
+            { status: 403 },
+          );
+    }),
+  );
+  renderApp("/settings");
+  await screen.findByLabelText(/Stake máximo/);
+  await userEvent.click(screen.getByRole("button", { name: "Guardar" }));
+  expect(await screen.findByRole("alert")).toHaveTextContent("Vuelve a intentarlo.");
+  await userEvent.click(screen.getByRole("button", { name: "Guardar" }));
+  expect(await screen.findByText("Ajustes guardados.")).toBeInTheDocument();
+  expect(sent).toEqual(["stale-token", "rotated-token"]);
+  expect(screen.queryByRole("form", { name: "Iniciar sesión" })).not.toBeInTheDocument();
+});
+
+test("settings saved elsewhere (409): the form reloads them and the retry sends the new version", async () => {
+  let reads = 0;
+  const sent: Record<string, unknown>[] = [];
+  server.use(
+    http.get(`${API}/settings`, () => {
+      reads += 1;
+      return HttpResponse.json(
+        reads === 1 ? settings : { ...settings, monthly_loss_limit: 120, version: 4 },
+      );
+    }),
+    http.put(`${API}/settings`, async ({ request }) => {
+      const body = (await request.json()) as Record<string, unknown>;
+      sent.push(body);
+      return body.version === 4
+        ? HttpResponse.json({ ...settings, ...body, version: 5 })
+        : HttpResponse.json(
+            {
+              error: {
+                code: "VERSION_CONFLICT",
+                message:
+                  "Los ajustes cambiaron mientras los editabas: se recargaron los datos actuales.",
+                details: { current_version: 4 },
+              },
+            },
+            { status: 409 },
+          );
+    }),
+  );
+  renderApp("/settings");
+  const limit = await screen.findByLabelText(/Límite de pérdida mensual/);
+  await userEvent.clear(limit);
+  await userEvent.type(limit, "90");
+  await userEvent.click(screen.getByRole("button", { name: "Guardar" }));
+  expect(await screen.findByRole("alert")).toHaveTextContent("Los ajustes cambiaron");
+  await waitFor(() => expect(limit).toHaveValue("120.00")); // the values saved elsewhere
+  await userEvent.clear(limit);
+  await userEvent.type(limit, "90");
+  await userEvent.click(screen.getByRole("button", { name: "Guardar" }));
+  expect(await screen.findByText("Ajustes guardados.")).toBeInTheDocument();
+  expect(sent.map((b) => b.version)).toEqual([3, 4]);
 });

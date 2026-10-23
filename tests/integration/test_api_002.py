@@ -28,6 +28,7 @@ from betting_ml.config import load_bookmakers, load_leagues, load_team_aliases
 from betting_ml.container import ApiServices, JournalServices
 from betting_ml.domain.entities import Probabilities
 from betting_ml.domain.journal import OddsSnapshot, QuoteSource
+from tests.clients import ReaderClient
 from tests.serving import build_serving_env, leagues
 
 FIXTURES = Path(__file__).parents[1] / "fixtures" / "the_odds_api"
@@ -118,7 +119,7 @@ def ctx(tmp_path: Path):  # type: ignore[no-untyped-def]
     reports = tmp_path / "reports"
     reports.mkdir()
     journal = JournalServices(
-        refresh, compare, EvaluateManualOdds(compare, clock), manage, settle, catalog, KEY, reports
+        refresh, compare, EvaluateManualOdds(compare, clock), manage, settle, catalog, reports
     )
     serving = build_serving_env(tmp_path)
     services = ApiServices(
@@ -126,11 +127,11 @@ def ctx(tmp_path: Path):  # type: ignore[no-untyped-def]
         serving.tracking,
         leagues(),
         pd.DataFrame,
-        "admin-key",
+        KEY,
         RefreshData(lambda: 0, lambda: None, serving.predictor.reset),
         journal,
     )
-    with TestClient(create_app(services)) as client:
+    with ReaderClient(create_app(services), KEY) as client:
         yield client, journal, clock, client_box, results, services
 
 
@@ -314,7 +315,11 @@ def test_bets_crud_and_limits(ctx) -> None:  # type: ignore[no-untyped-def]
     assert client.get("/api/v1/bets", params={"from": "2030-01-01"}).json()["total"] == 0
     # patch / delete: settling needs the match to have started, deleting needs the opposite
     _error(
-        client.patch(f"/api/v1/bets/{bet['id']}", json={"status": "perdida"}, headers=AUTH),
+        client.patch(
+            f"/api/v1/bets/{bet['id']}",
+            json={"status": "perdida", "version": bet["version"]},
+            headers=AUTH,
+        ),
         409,
         "MATCH_NOT_STARTED",
     )
@@ -326,25 +331,38 @@ def test_bets_crud_and_limits(ctx) -> None:  # type: ignore[no-untyped-def]
         "MATCH_ALREADY_STARTED",
     )
     patched = client.patch(
-        f"/api/v1/bets/{bet['id']}", json={"status": "perdida", "note": "mala"}, headers=AUTH
+        f"/api/v1/bets/{bet['id']}",
+        json={"status": "perdida", "note": "mala", "version": bet["version"]},
+        headers=AUTH,
     ).json()
+    assert patched["version"] == bet["version"] + 1
     assert (
         patched["status"] == "perdida" and patched["profit"] == -5.0 and patched["note"] == "mala"
     )
     _error(client.delete(f"/api/v1/bets/{bet['id']}", headers=AUTH), 409, "BET_NOT_PENDING")
     _error(
-        client.patch(f"/api/v1/bets/{bet['id']}", json={"status": "pendiente"}, headers=AUTH),
+        client.patch(
+            f"/api/v1/bets/{bet['id']}",
+            json={"status": "pendiente", "version": patched["version"]},
+            headers=AUTH,
+        ),
         409,
         "BET_NOT_PENDING",
     )
     _error(
-        client.patch(f"/api/v1/bets/{bet['id']}", json={"status": "ganada"}, headers=AUTH),
+        client.patch(
+            f"/api/v1/bets/{bet['id']}",
+            json={"status": "ganada", "version": patched["version"]},
+            headers=AUTH,
+        ),
         409,
         "BET_NOT_PENDING",
     )
     _error(client.delete("/api/v1/bets/9999", headers=AUTH), 404, "BET_NOT_FOUND")
     _error(
-        client.patch("/api/v1/bets/9999", json={"note": "x"}, headers=AUTH), 404, "BET_NOT_FOUND"
+        client.patch("/api/v1/bets/9999", json={"note": "x", "version": 1}, headers=AUTH),
+        404,
+        "BET_NOT_FOUND",
     )
 
 
@@ -360,7 +378,9 @@ def test_monthly_limit_403_but_paper_allowed(ctx) -> None:  # type: ignore[no-un
     clock.now = AFTER_KICKOFF
     for bet in bets:
         response = client.patch(
-            f"/api/v1/bets/{bet['id']}", json={"status": "perdida"}, headers=AUTH
+            f"/api/v1/bets/{bet['id']}",
+            json={"status": "perdida", "version": bet["version"]},
+            headers=AUTH,
         )
         assert response.status_code == 200, response.text
     error = _error(
@@ -419,8 +439,11 @@ def test_settle_settings_and_backtest(ctx) -> None:  # type: ignore[no-untyped-d
     assert (
         updated["monthly_loss_limit"] == 150.0 and updated["monthly_loss_limit_in_force"] == 100.0
     )
+    assert updated["version"] == new["version"] + 1
     lowered = client.put(
-        "/api/v1/settings", json={**new, "monthly_loss_limit": 80}, headers=AUTH
+        "/api/v1/settings",
+        json={**new, "monthly_loss_limit": 80, "version": updated["version"]},
+        headers=AUTH,
     ).json()
     assert lowered["monthly_loss_limit_in_force"] == 80.0
     _error(
@@ -442,13 +465,15 @@ def test_settle_settings_and_backtest(ctx) -> None:  # type: ignore[no-untyped-d
 
 
 def test_writes_disabled_with_default_key_and_missing_services(ctx, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
-    client, journal, *_, services = ctx
-    services.journal = replace(journal, app_api_key="cambia-esto")
+    client, _, *_, services = ctx
+    services.app_api_key = "cambia-esto"
     _error(
         client.post("/api/v1/odds/refresh", headers={"X-API-Key": "cambia-esto"}),
         503,
         "WRITES_DISABLED",
     )
+    _error(client.get("/api/v1/bookmakers"), 503, "WRITES_DISABLED")  # reads too (T007)
+    services.app_api_key = KEY
     services.journal = None
     _error(client.get("/api/v1/bookmakers"), 503, "SERVICE_NOT_AVAILABLE")
 
@@ -478,7 +503,9 @@ def test_settle_corrects_a_wrong_manual_result(ctx) -> None:  # type: ignore[no-
     match_id = _match_id(client)
     bet = client.post("/api/v1/bets", json=_bet(match_id, stake=10), headers=AUTH).json()
     clock.now = AFTER_KICKOFF
-    wrong = client.patch(f"/api/v1/bets/{bet['id']}", json={"status": "perdida"}, headers=AUTH)
+    wrong = client.patch(
+        f"/api/v1/bets/{bet['id']}", json={"status": "perdida", "version": 1}, headers=AUTH
+    )
     assert wrong.status_code == 200
     assert client.get("/api/v1/bets/summary").json()["month"]["current_loss"] == 10.0
     results.frame = pd.DataFrame(
@@ -513,7 +540,7 @@ def test_lifespan_starts_and_stops_the_auto_refresh(ctx) -> None:  # type: ignor
         return FakeScheduler()
 
     app = create_app(replace(services, journal=replace(journal, start_auto_refresh=start)))
-    with TestClient(app) as client:
+    with ReaderClient(app, KEY) as client:
         assert events == ["start"]
         assert client.get("/api/v1/bookmakers").status_code == 200
     assert events == ["start", "stop"]
@@ -585,8 +612,12 @@ def test_manual_win_does_not_lift_the_403_until_confirmed(ctx) -> None:  # type:
     ]
     clock.now = AFTER_KICKOFF
     for bet in bets[:9]:
-        client.patch(f"/api/v1/bets/{bet['id']}", json={"status": "perdida"}, headers=AUTH)
-    won = client.patch(f"/api/v1/bets/{bets[9]['id']}", json={"status": "ganada"}, headers=AUTH)
+        client.patch(
+            f"/api/v1/bets/{bet['id']}", json={"status": "perdida", "version": 1}, headers=AUTH
+        )
+    won = client.patch(
+        f"/api/v1/bets/{bets[9]['id']}", json={"status": "ganada", "version": 1}, headers=AUTH
+    )
     assert won.json()["result_source"] == "manual"
     new = _bet(match_id, stake=1, confirm=True)
     _error(client.post("/api/v1/bets", json=new, headers=AUTH), 403, "MONTHLY_LIMIT_REACHED")
@@ -608,3 +639,77 @@ def test_manual_win_does_not_lift_the_403_until_confirmed(ctx) -> None:  # type:
     assert client.post("/api/v1/bets", json=new, headers=AUTH).status_code == 201
     items = client.get("/api/v1/bets", params={"kind": "real", "size": 50}).json()["items"]
     assert {b["result_source"] for b in items if b["status"] == "ganada"} == {"official"}
+
+
+def test_stale_versions_answer_409_and_change_nothing(ctx) -> None:  # type: ignore[no-untyped-def]
+    """Spec 003, T014: two edits from the same version, the second gets VERSION_CONFLICT."""
+    client, _, clock, *_ = ctx
+    bet = client.post("/api/v1/bets", json=_bet(_match_id(client), stake=5), headers=AUTH).json()
+    assert bet["version"] == 1
+    url = f"/api/v1/bets/{bet['id']}"
+    first = client.patch(url, json={"note": "primera", "version": 1}, headers=AUTH).json()
+    assert first["version"] == 2
+    error = _error(
+        client.patch(url, json={"note": "segunda", "version": 1}, headers=AUTH),
+        409,
+        "VERSION_CONFLICT",
+    )
+    assert error["details"] == {"current_version": 2}
+    clock.now = AFTER_KICKOFF
+    _error(
+        client.patch(url, json={"status": "ganada", "version": 1}, headers=AUTH),
+        409,
+        "VERSION_CONFLICT",
+    )
+    stored = client.get("/api/v1/bets").json()["items"][0]
+    assert (stored["note"], stored["status"], stored["version"]) == ("primera", "pendiente", 2)
+    _error(client.patch(url, json={"note": "sin versión"}, headers=AUTH), 422, "VALIDATION_ERROR")
+
+    settings = client.get("/api/v1/settings").json()
+    assert settings["version"] == 0  # defaults, never saved
+    body = {k: v for k, v in settings.items() if k != "monthly_loss_limit_in_force"}
+    saved = client.put("/api/v1/settings", json={**body, "min_edge": 0.03}, headers=AUTH).json()
+    assert saved["version"] == 1
+    error = _error(
+        client.put("/api/v1/settings", json={**body, "min_edge": 0.05}, headers=AUTH),
+        409,
+        "VERSION_CONFLICT",
+    )
+    assert error["details"] == {"current_version": 1}
+    assert client.get("/api/v1/settings").json()["min_edge"] == 0.03
+    without = {k: v for k, v in body.items() if k != "version"}
+    _error(client.put("/api/v1/settings", json=without, headers=AUTH), 422, "VALIDATION_ERROR")
+
+
+def test_api_writes_are_audited_with_their_principal(ctx) -> None:  # type: ignore[no-untyped-def]
+    """Spec 003, T015: the machine key is the actor of every write it makes."""
+    from betting_ml.adapters.sql.audit import SqlAuditLog, SqlIntegrity
+    from betting_ml.application.maintenance import VerifyIntegrity
+
+    client, journal, *_ = ctx
+    match_id = _match_id(client)
+    bet = client.post("/api/v1/bets", json=_bet(match_id, stake=5), headers=AUTH).json()
+    client.patch(f"/api/v1/bets/{bet['id']}", json={"note": "n", "version": 1}, headers=AUTH)
+    body = {
+        k: v
+        for k, v in client.get("/api/v1/settings").json().items()
+        if k != "monthly_loss_limit_in_force"
+    }
+    client.put("/api/v1/settings", json={**body, "min_edge": 0.03}, headers=AUTH)
+    client.post(
+        "/api/v1/calculator",
+        json={"match_id": match_id, "outcome": "away", "bookmaker": "teapuesto", "odds": 4.6},
+        headers=AUTH,
+    )
+    client.delete(f"/api/v1/bets/{bet['id']}", headers=AUTH)
+    sessions = journal.bets.bets.sessions
+    events = [(r.actor, r.action) for r in SqlAuditLog(sessions).records() if r.actor != "system"]
+    assert events == [
+        ("api_key", "BET_CREATED"),
+        ("api_key", "BET_UPDATED"),
+        ("api_key", "SETTINGS_CHANGED"),
+        ("api_key", "SETTINGS_HISTORY_ADDED"),  # min_edge: the change and when it applies
+        ("api_key", "ODDS_MANUAL_QUOTE"),
+        ("api_key", "BET_DELETED"),
+    ]
+    assert VerifyIntegrity(SqlIntegrity(sessions)).run().ok

@@ -1,0 +1,409 @@
+import json
+import logging
+from datetime import UTC, date, datetime, timedelta
+from pathlib import Path
+from typing import Any
+
+import httpx
+import pytest
+
+from betting_ml.adapters.the_odds_api import (
+    Credits,
+    OddsResponse,
+    TheOddsApiClient,
+    estimate_event_cost,
+    parse_event_prices,
+)
+from betting_ml.application.event_odds import (
+    EventNotFoundError,
+    EventOddsService,
+    find_event,
+    same_team,
+)
+from betting_ml.application.refresh_odds import OddsBudgetLowError
+from betting_ml.application.throttle import RateLimitedError
+
+FIXTURE = (
+    Path(__file__).resolve().parents[1] / "fixtures" / "the_odds_api" / "event_odds_SYNTHETIC.json"
+)
+EVENT = json.loads(FIXTURE.read_text(encoding="utf-8"))
+ACCESSIBLE = {"betsson", "coolbet"}
+
+
+def test_parse_event_prices_best_accessible_price() -> None:
+    prices = parse_event_prices(EVENT, ACCESSIBLE, {})
+    assert prices[("h2h", "home", None)] == (1.58, "coolbet")  # 1xBet (1.80) is not accessible
+    assert prices[("h2h", "draw", None)] == (4.6, "betsson")
+    assert prices[("totals", "over", 2.5)] == (1.66, "coolbet")
+    assert prices[("totals", "over", 0.75)] == (
+        1.02,
+        "betsson",
+    )  # parsed; unused lines are ignored later
+    assert prices[("btts", "yes", None)] == (1.70, "betsson")
+    assert prices[("team_totals", "home_over", 1.5)] == (1.95, "betsson")
+    assert prices[("team_totals", "away_over", 1.5)] == (2.40, "betsson")
+    assert prices[("double_chance", "1X", None)] == (1.15, "betsson")
+    assert prices[("double_chance", "X2", None)] == (2.40, "betsson")
+    assert prices[("double_chance", "12", None)] == (1.25, "betsson")
+    assert prices[("draw_no_bet", "away", None)] == (4.40, "betsson")
+
+
+def test_exchange_prices_are_net_of_commission() -> None:
+    prices = parse_event_prices(EVENT, {"betfair_ex_eu"}, {"betfair_ex_eu": 0.05})
+    assert prices[("h2h", "home", None)][0] == pytest.approx(1 + 0.70 * 0.95)
+
+
+def test_estimate_event_cost() -> None:
+    assert estimate_event_cost(["h2h", "totals", "btts", "totals"], "eu,uk") == 6
+    assert estimate_event_cost(["h2h"], "eu") == 1
+
+
+def test_same_team_and_find_event() -> None:
+    assert same_team("Real Madrid", "Real Madrid CF")
+    assert same_team("Ath Madrid", "Atletico Madrid", {"Ath Madrid": ["Atletico Madrid"]})
+    assert not same_team("Real Madrid", "Real Betis")
+    events = [
+        EVENT,
+        {
+            **EVENT,
+            "id": "evt-2",
+            "home_team": "Real Betis",
+            "commence_time": "2026-10-28T18:00:00Z",
+        },
+    ]
+    assert find_event(events, "Real Madrid", "RB Leipzig", date(2026, 10, 28))["id"] == "evt-001"
+    assert find_event(events, "Real Madrid", "RB Leipzig", date(2026, 11, 5)) is None  # other date
+    assert find_event([{"id": "x"}], "A", "B", date(2026, 10, 28)) is None  # malformed event
+
+
+class _Client:
+    regions = "eu"
+
+    def __init__(self, remaining: int = 400) -> None:
+        self.calls: list[str] = []
+        self.remaining = remaining
+
+    def events(self, sport_key: str) -> list[dict[str, Any]]:
+        self.calls.append(f"events:{sport_key}")
+        return [EVENT]
+
+    def event_odds(self, sport_key: str, event_id: str, markets: list[str]) -> OddsResponse:
+        self.calls.append(f"odds:{event_id}:{','.join(markets)}")
+        return OddsResponse([EVENT], Credits(self.remaining, 100, len(markets)))
+
+
+def _service(
+    tmp_path: Path, client: _Client, remaining: int | None = 400, clock: Any = None
+) -> EventOddsService:
+    return EventOddsService(
+        client=lambda: client,
+        cache_dir=tmp_path / "event_odds",
+        markets=["h2h", "totals", "btts", "team_totals", "double_chance", "draw_no_bet"],
+        regions="eu",
+        sport_key=lambda comp: {"UCL": "soccer_uefa_champs_league"}.get(comp),
+        parse=lambda event: parse_event_prices(event, ACCESSIBLE, {}),
+        credits_remaining=lambda: remaining,
+        min_reserve=50,
+        clock=clock or (lambda: datetime(2026, 10, 27, 12, tzinfo=UTC)),
+    )
+
+
+def test_refresh_caches_for_thirty_minutes(tmp_path: Path) -> None:
+    client = _Client(remaining=394)
+    now = [datetime(2026, 10, 27, 12, tzinfo=UTC)]
+    service = _service(tmp_path, client, clock=lambda: now[0])
+    first = service.refresh(
+        "UCL-2026-10-28-real-madrid-rb-leipzig",
+        "UCL",
+        "Real Madrid",
+        "RB Leipzig",
+        date(2026, 10, 28),
+    )
+    assert not first.from_cache and first.credits_used == 6 and first.credits_remaining == 394
+    assert client.calls == [
+        "events:soccer_uefa_champs_league",
+        "odds:evt-001:h2h,totals,btts,team_totals,double_chance,draw_no_bet",
+    ]
+    now[0] += timedelta(minutes=20)
+    again = service.refresh(
+        "UCL-2026-10-28-real-madrid-rb-leipzig",
+        "UCL",
+        "Real Madrid",
+        "RB Leipzig",
+        date(2026, 10, 28),
+    )
+    assert again.from_cache and again.credits_used == 0 and len(client.calls) == 2  # no spend
+    now[0] += timedelta(minutes=15)
+    service.refresh(
+        "UCL-2026-10-28-real-madrid-rb-leipzig",
+        "UCL",
+        "Real Madrid",
+        "RB Leipzig",
+        date(2026, 10, 28),
+    )
+    assert len(client.calls) == 4  # cache expired
+    cached = (tmp_path / "event_odds" / "UCL-2026-10-28-real-madrid-rb-leipzig.json").read_text(
+        encoding="utf-8"
+    )
+    assert "apiKey" not in cached
+    prices, fetched = service.prices("UCL-2026-10-28-real-madrid-rb-leipzig")
+    assert prices[("totals", "over", 2.5)] == (1.66, "coolbet") and fetched is not None
+    assert service.prices("unknown") == ({}, None)
+
+
+def test_estimate_and_budget(tmp_path: Path) -> None:
+    service = _service(tmp_path, _Client(), remaining=55)
+    estimate = service.estimate()
+    assert (estimate.markets, estimate.regions, estimate.estimated_credits) == (6, 1, 6)
+    assert estimate.credits_remaining == 55
+    with pytest.raises(OddsBudgetLowError):  # 55 − 6 < 50 reserve
+        service.refresh(
+            "UCL-2026-10-28-real-madrid-rb-leipzig",
+            "UCL",
+            "Real Madrid",
+            "RB Leipzig",
+            date(2026, 10, 28),
+        )
+
+
+def test_event_not_found(tmp_path: Path) -> None:
+    service = _service(tmp_path, _Client())
+    with pytest.raises(EventNotFoundError):
+        service.refresh(
+            "UCL-2026-10-28-real-madrid-rb-leipzig",
+            "UCL",
+            "Real Madrid",
+            "Getafe",
+            date(2026, 10, 28),
+        )
+    with pytest.raises(EventNotFoundError):
+        service.refresh(
+            "XYZ-2026-10-28-real-madrid-rb-leipzig",
+            "XYZ",
+            "Real Madrid",
+            "RB Leipzig",
+            date(2026, 10, 28),
+        )
+
+
+def test_client_event_endpoints_never_leak_the_key() -> None:
+    seen: list[httpx.URL] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(request.url)
+        if request.url.path.endswith("/events"):
+            return httpx.Response(200, json=[EVENT])
+        return httpx.Response(
+            200, json=EVENT, headers={"x-requests-remaining": "490", "x-requests-last": "6"}
+        )
+
+    client = TheOddsApiClient(
+        "secret-key", regions="eu", http=httpx.Client(transport=httpx.MockTransport(handler))
+    )
+    assert client.events("soccer_uefa_champs_league")[0]["id"] == "evt-001"
+    response = client.event_odds("soccer_uefa_champs_league", "evt-001", ["h2h", "totals"])
+    assert response.events[0]["id"] == "evt-001" and response.credits.remaining == 490
+    assert seen[1].path == "/v4/sports/soccer_uefa_champs_league/events/evt-001/odds"
+    assert seen[1].params["markets"] == "h2h,totals"
+    assert "secret-key" not in repr(client)
+
+
+@pytest.mark.parametrize(
+    "bad", ["UCL-2026-10-28/../../secret", r"..\..\x", "ucl-2026-10-28-a-b", ""]
+)
+def test_invalid_match_ids_never_touch_the_disk(tmp_path: Path, bad: str) -> None:
+    from betting_ml.application.event_odds import InvalidMatchIdError
+
+    service = _service(tmp_path, _Client())
+    assert service.prices(bad) == ({}, None)
+    with pytest.raises(InvalidMatchIdError):
+        service.refresh(bad, "UCL", "Real Madrid", "RB Leipzig", date(2026, 10, 28))
+
+
+def test_remaining_credits_use_the_latest_value_not_the_lowest(tmp_path: Path) -> None:
+    cache = tmp_path / "event_odds"
+    cache.mkdir()
+    old = {
+        "fetched_at": "2026-09-30T10:00:00+00:00",
+        "credits_remaining": 40,
+        "markets": [],
+        "event": {},
+    }
+    new = {
+        "fetched_at": "2026-10-20T10:00:00+00:00",
+        "credits_remaining": 380,
+        "markets": [],
+        "event": {},
+    }
+    (cache / "E0-2026-09-30-a-b.json").write_text(json.dumps(old), encoding="utf-8")
+    (cache / "E0-2026-10-20-a-b.json").write_text(json.dumps(new), encoding="utf-8")
+    assert _service(tmp_path, _Client(), remaining=None).estimate().credits_remaining == 380
+    # A newer snapshot of spec 002 in the same month wins when it is lower.
+    assert _service(tmp_path, _Client(), remaining=300).estimate().credits_remaining == 300
+
+
+# ------------------------------------------------------------------ quota and events (I04)
+REFRESH = ("UCL-2026-10-28-real-madrid-rb-leipzig", "UCL", "Real Madrid", "RB Leipzig")
+DAY = date(2026, 10, 28)
+
+
+class _Quota:
+    """ODDS_REFRESH_MAX_PER_HOUR stand-in: raises like RateLimits once the slots are used."""
+
+    def __init__(self, slots: int) -> None:
+        self.slots = slots
+        self.taken = 0
+
+    def __call__(self) -> None:
+        if self.taken == self.slots:
+            raise RateLimitedError(3600, "Máximo de refrescos de cuotas por hora.")
+        self.taken += 1
+
+
+def test_the_quota_is_taken_only_right_before_spending(tmp_path: Path) -> None:
+    client, quota = _Client(), _Quota(slots=1)
+    service = _service(tmp_path, client)
+    assert not service.refresh(*REFRESH, DAY, quota=quota).from_cache
+    assert quota.taken == 1
+    # the slot is used up: any further call to the quota would raise RateLimitedError
+    assert service.refresh(*REFRESH, DAY, quota=quota).from_cache  # cached: no credits, no slot
+    with pytest.raises(EventNotFoundError):  # unknown event: found out for free, no slot
+        service.refresh(
+            "UCL-2026-10-28-real-madrid-getafe", "UCL", "Real Madrid", "Getafe", DAY, quota=quota
+        )
+    with pytest.raises(OddsBudgetLowError):  # under the reserve: refused before the quota
+        _service(tmp_path / "low", _Client(), remaining=55).refresh(*REFRESH, DAY, quota=quota)
+    assert quota.taken == 1
+
+
+def test_without_quota_no_credits_are_spent_and_nothing_is_cached(tmp_path: Path) -> None:
+    client = _Client()
+    with pytest.raises(RateLimitedError):
+        _service(tmp_path, client).refresh(*REFRESH, DAY, quota=_Quota(slots=0))
+    assert client.calls == ["events:soccer_uefa_champs_league"]  # only the free lookup
+    assert not (tmp_path / "event_odds").exists()
+
+
+def test_each_refresh_leaves_a_security_event(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    service = _service(tmp_path, _Client(remaining=394))
+    with caplog.at_level(logging.INFO, logger="betting_ml.security"):
+        service.refresh(*REFRESH, DAY, actor="session")
+        service.refresh(*REFRESH, DAY, actor="api_key")
+    events = [r.fields for r in caplog.records if r.name == "betting_ml.security"]  # type: ignore[attr-defined]
+    assert events == [
+        {
+            "event": "ODDS_REFRESH",
+            "actor": "session",
+            "scope": "event",
+            "match_id": REFRESH[0],
+            "credits_used": 6,
+            "credits_remaining": 394,
+            "from_cache": False,
+        },
+        {
+            "event": "ODDS_REFRESH",
+            "actor": "api_key",
+            "scope": "event",
+            "match_id": REFRESH[0],
+            "credits_used": 0,
+            "credits_remaining": 394,
+            "from_cache": True,
+        },
+    ]
+
+
+def test_a_response_that_echoes_the_key_is_cached_without_it(tmp_path: Path) -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/events"):
+            return httpx.Response(200, json=[EVENT])
+        return httpx.Response(200, json={**EVENT, "debug": "apiKey=secret-key-0123456789"})
+
+    real = TheOddsApiClient(
+        "secret-key-0123456789",
+        regions="eu",
+        http=httpx.Client(transport=httpx.MockTransport(handler)),
+    )
+    service = EventOddsService(
+        client=lambda: real,
+        cache_dir=tmp_path / "event_odds",
+        markets=["h2h"],
+        regions="eu",
+        sport_key=lambda comp: "soccer_uefa_champs_league",
+        parse=lambda event: parse_event_prices(event, ACCESSIBLE, {}),
+        credits_remaining=lambda: 400,
+        min_reserve=50,
+        clock=lambda: datetime(2026, 10, 27, 12, tzinfo=UTC),
+    )
+    service.refresh(*REFRESH, DAY)
+    cached = (tmp_path / "event_odds" / f"{REFRESH[0]}.json").read_text(encoding="utf-8")
+    assert "secret-key-0123456789" not in cached and "apiKey=***" in cached
+
+
+# ------------------------------------------------ integration I08: one balance for both consumers
+class _Recorder:
+    def __init__(self, fails: bool = False) -> None:
+        self.calls: list[tuple[int, int, str]] = []
+        self.fails = fails
+
+    def __call__(self, remaining: int, used: int, actor: str) -> None:
+        self.calls.append((remaining, used, actor))
+        if self.fails:
+            raise RuntimeError("database is locked")
+
+
+def _refresh(service: EventOddsService, actor: str = "session") -> Any:
+    return service.refresh(
+        "UCL-2026-10-28-real-madrid-rb-leipzig",
+        "UCL",
+        "Real Madrid",
+        "RB Leipzig",
+        date(2026, 10, 28),
+        actor=actor,
+    )
+
+
+def test_a_paid_refresh_records_the_balance_and_a_cached_one_does_not(tmp_path: Path) -> None:
+    recorder = _Recorder()
+    service = _service(tmp_path, _Client(remaining=394))
+    service.record_credits = recorder
+    _refresh(service)
+    assert recorder.calls == [(394, 6, "session")]
+    _refresh(service)  # from the cache: nothing spent, nothing recorded
+    assert recorder.calls == [(394, 6, "session")]
+
+
+def test_a_failed_paid_call_still_records_what_the_api_reported(tmp_path: Path) -> None:
+    class _Failing(_Client):
+        last_credits = Credits(361, 39, 6)
+
+        def event_odds(self, sport_key: str, event_id: str, markets: list[str]) -> OddsResponse:
+            raise RuntimeError("502 after being charged")
+
+    recorder = _Recorder()
+    service = _service(tmp_path, _Failing())
+    service.record_credits = recorder
+    with pytest.raises(RuntimeError, match="502"):
+        _refresh(service)
+    assert recorder.calls == [(361, 6, "session")]
+
+
+def test_a_failure_to_record_never_loses_the_paid_answer(tmp_path: Path) -> None:
+    recorder = _Recorder(fails=True)
+    service = _service(tmp_path, _Client(remaining=394))
+    service.record_credits = recorder
+    result = _refresh(service)
+    assert not result.from_cache and recorder.calls  # tried, failed, logged
+    assert service.prices("UCL-2026-10-28-real-madrid-rb-leipzig")[0]  # the cache was written
+
+
+def test_a_cache_dated_in_the_future_is_not_fresh(tmp_path: Path) -> None:
+    client = _Client(remaining=394)
+    now = [datetime(2026, 10, 27, 12, tzinfo=UTC)]
+    service = _service(tmp_path, client, clock=lambda: now[0])
+    _refresh(service)
+    now[0] -= timedelta(hours=2)  # the clock went back: the file now looks two hours ahead
+    again = _refresh(service)
+    assert not again.from_cache
+    assert sum(call.startswith("odds:") for call in client.calls) == 2

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import re
 from collections import defaultdict
 from collections.abc import Callable
@@ -10,6 +11,7 @@ from datetime import UTC, date, datetime, time
 from decimal import Decimal
 from typing import Any
 
+from betting_ml.domain.audit import AuditInfo
 from betting_ml.domain.entities import OUTCOMES, Outcome
 from betting_ml.domain.journal import (
     BankrollSettings,
@@ -19,6 +21,7 @@ from betting_ml.domain.journal import (
     BetStatus,
     QuoteSource,
     SettingsChange,
+    VersionConflictError,
 )
 from betting_ml.domain.limits import (
     LimitChange,
@@ -35,9 +38,15 @@ from betting_ml.domain.limits import (
 )
 from betting_ml.domain.ports import BetRepository, OddsRepository, SettingsRepository
 from betting_ml.domain.value import reference_probabilities
+from betting_ml.logging_config import security_event
 
 MATCH_ID = re.compile(r"^(?P<league>[A-Z0-9]+)-(?P<date>\d{4}-\d{2}-\d{2})-[a-z0-9-]+$")
 ROI_NOTE = "Con menos de 300 apuestas el ROI es mayormente ruido; mira el CLV."
+NO_MARKET_REFERENCE_WARNING = (
+    "Mercado sin cuota de referencia sharp: no hay EV de referencia. El CLV solo se calcula en "
+    "Más/Menos 2.5 de partidos de liga (cierre de Pinnacle o, si falta, cierre promedio del "
+    "mercado); en el resto de mercados no hay CLV. Cuenta para los límites."
+)
 NO_REFERENCE_WARNING = (
     "Sin cuota de referencia: el partido no tiene cuotas de la API. Cuenta para los límites, "
     "queda fuera de la señal de valor y su CLV se calculará con el cierre de Pinnacle de "
@@ -80,13 +89,17 @@ class BetStateError(BetNotPendingError):
 @dataclass(frozen=True)
 class NewBet:
     match_id: str
-    outcome: Outcome
+    outcome: Outcome | None
     bookmaker: str
     odds: Decimal
     stake: Decimal
     kind: BetKind
     note: str | None = None
     from_experimental_signal: bool = False
+    # Spec 003: any market (default 1X2 with ``outcome``).
+    market: str = "h2h"
+    selection: str | None = None
+    line: float | None = None
 
 
 @dataclass
@@ -103,6 +116,7 @@ class Summary:
     bankroll_series: list[tuple[str, Decimal]]
     by_league: list[dict[str, Any]]
     by_bookmaker: list[dict[str, Any]]
+    by_market: list[dict[str, Any]]
     month_limit: Decimal
     month_loss: Decimal
     month_remaining: Decimal
@@ -141,10 +155,13 @@ class ManageBets:
     def get_settings(self) -> BankrollSettings:
         return self.settings_repo.get()
 
-    def update_settings(self, new: BankrollSettings) -> BankrollSettings:
+    def update_settings(self, new: BankrollSettings, actor: str = "system") -> BankrollSettings:
         """Lowering the monthly limit applies now; raising it applies from next month (compared
-        with the limit currently in force). Every change is kept in the history."""
+        with the limit currently in force). Every change is kept in the history. ``new.version``
+        is the version that was edited: if another save came first, VersionConflictError."""
         old = self.settings_repo.get()
+        if new.version != old.version:
+            raise VersionConflictError("settings", old.version)
         now = self.clock()
         in_force = self.current_limit(now)
         changes = []
@@ -164,8 +181,18 @@ class ManageBets:
             if name == "monthly_loss_limit":
                 effective = effective_from_for(in_force, after, now)
             changes.append(SettingsChange(now, name, str(before), str(after), effective))
-        self.settings_repo.save(new, changes)
-        return new
+        audit = AuditInfo(actor, "SETTINGS_CHANGED")
+        saved: BankrollSettings = self.settings_repo.save(new, changes, audit)
+        if changes:  # limits included: when a raise takes effect is part of the event
+            security_event(
+                "SETTINGS_CHANGED",
+                logging.INFO,
+                actor=actor,
+                changes=[
+                    f"{c.field}:{c.old_value}->{c.new_value}@{c.effective_from}" for c in changes
+                ],
+            )
+        return saved
 
     # ------------------------------------------------------------------ bets
     def _match_info(self, match_id: str) -> dict[str, Any]:
@@ -222,7 +249,11 @@ class ManageBets:
             Decimal("0.00"),
         )
         overdue = overdue_pending(everything, now)
-        progress = signal_progress(everything) if request.from_experimental_signal else None
+        progress = (
+            signal_progress(everything, request.market)
+            if request.from_experimental_signal
+            else None
+        )
         return check_bet(
             request.stake,
             request.kind,
@@ -235,7 +266,7 @@ class ManageBets:
             overdue=overdue,
         )
 
-    def create(self, request: NewBet, confirm: bool = False) -> Bet:
+    def create(self, request: NewBet, confirm: bool = False, actor: str = "system") -> Bet:
         if request.stake <= 0 or request.odds <= 1:
             raise ValueError("stake > 0 y cuota > 1")
         info = self._match_info(request.match_id)
@@ -244,10 +275,18 @@ class ManageBets:
             raise MonthlyLimitReachedError(result)
         if result.status is LimitStatus.WARNING and not confirm:
             raise LimitWarningError(result)
-        fair, ev = self._fair(request.match_id, request.outcome, request.odds, info["kickoff_utc"])
+        if request.market == "h2h" and request.outcome is not None:
+            fair, ev = self._fair(
+                request.match_id, request.outcome, request.odds, info["kickoff_utc"]
+            )
+        else:  # no sharp reference for the other markets yet (spec 003)
+            fair, ev = None, None
         warnings = result.messages
         if fair is None:
-            warnings = (*warnings, NO_REFERENCE_WARNING)
+            warnings = (
+                *warnings,
+                NO_REFERENCE_WARNING if request.market == "h2h" else NO_MARKET_REFERENCE_WARNING,
+            )
         if info["kickoff_utc"] is not None and self.clock() >= info["kickoff_utc"]:
             warnings = (
                 *warnings,
@@ -271,8 +310,11 @@ class ManageBets:
             ev=ev,
             warnings=warnings,
             no_reference=fair is None,
+            market=request.market,
+            selection=request.selection,
+            line=request.line,
         )
-        return self.bets.add(bet)
+        return self.bets.add(bet, AuditInfo(actor, "BET_CREATED"))
 
     def search(
         self, filters: BetFilters | None = None, page: int = 1, size: int = 50
@@ -285,8 +327,19 @@ class ManageBets:
             raise BetNotFoundError(bet_id)
         return bet
 
-    def update(self, bet_id: int, note: str | None = None, status: BetStatus | None = None) -> Bet:
+    def update(
+        self,
+        bet_id: int,
+        note: str | None = None,
+        status: BetStatus | None = None,
+        version: int | None = None,
+        actor: str = "system",
+    ) -> Bet:
+        """``version`` is the one the client edited; the save itself is conditional too."""
         bet = self.get(bet_id)
+        if version is not None and version != bet.version:
+            raise VersionConflictError("bet", bet.version)
+        action = "BET_UPDATED"
         if note is not None:
             bet = replace(bet, note=note)
         if status is not None and status is not bet.status:
@@ -301,9 +354,10 @@ class ManageBets:
                     "el partido aún no empieza: no se puede liquidar", "MATCH_NOT_STARTED"
                 )
             bet = bet.settle(status, self.clock(), source="manual")
-        return self.bets.update(bet)
+            action = "BET_SETTLED"
+        return self.bets.update(bet, AuditInfo(actor, action))
 
-    def delete(self, bet_id: int) -> None:
+    def delete(self, bet_id: int, actor: str = "system") -> None:
         bet = self.get(bet_id)
         if bet.status is not BetStatus.PENDING:
             raise BetNotPendingError("solo se pueden borrar apuestas pendientes")
@@ -312,7 +366,7 @@ class ManageBets:
                 "el partido ya empezó: la apuesta se liquida con el resultado, no se borra",
                 "MATCH_ALREADY_STARTED",
             )
-        self.bets.delete(bet_id)
+        self.bets.delete(bet_id, AuditInfo(actor, "BET_DELETED"))
 
     # ------------------------------------------------------------------ summary
     def summary(
@@ -350,6 +404,7 @@ class ManageBets:
             bankroll_series=series,
             by_league=_group(settled, lambda b: b.league, "league"),
             by_bookmaker=_group(settled, lambda b: b.bookmaker, "bookmaker"),
+            by_market=by_market(bets),
             month_limit=limit,
             month_loss=loss,
             month_remaining=max(Decimal("0.00"), limit - loss),
@@ -367,7 +422,7 @@ class ManageBets:
                 for q in self.odds.latest_quotes(
                     match_ids=[bet.match_id], before=bet.created_at, source=QuoteSource.API
                 )
-                if q.outcome is bet.outcome
+                if bet.market == "h2h" and q.outcome is bet.outcome
             ]
             if quotes:
                 uplifts.append(float(bet.odds) / (sum(quotes) / len(quotes)) - 1.0)
@@ -389,6 +444,61 @@ def _group(bets: list[Bet], key: Callable[[Bet], str], name: str) -> list[dict[s
                 "bets": len(items),
                 "roi": float(profit / staked) if staked > 0 else None,
                 "clv_mean": sum(clvs) / len(clvs) if clvs else None,
+            }
+        )
+    return out
+
+
+# CLV sources: Pinnacle's closing price (sharp) vs the closing market average (weaker).
+PINNACLE_CLV_SOURCES = ("football_data_psc", "odds_api_pinnacle")
+MARKET_AVERAGE_CLV_SOURCES = ("football_data_avgc",)
+EVIDENCE_PAPER_BETS = 100  # spec 003 US6: ≥ 100 paper bets with mean CLV > 0 per market
+
+
+def _mean(values: list[float]) -> float | None:
+    return sum(values) / len(values) if values else None
+
+
+def by_market(bets: list[Bet]) -> list[dict[str, Any]]:
+    """Spec 003 US6: bets, ROI and CLV per market, with the CLV against Pinnacle apart from the
+    CLV against the closing market average, and the progress of paper bets with CLV towards
+    the evidence condition (≥ 100 with mean CLV > 0)."""
+    groups: dict[str, list[Bet]] = defaultdict(list)
+    for bet in bets:
+        groups[bet.market].append(bet)
+    out = []
+    for market, items in sorted(groups.items()):
+        settled = [b for b in items if b.status is not BetStatus.PENDING and b.profit is not None]
+        staked = sum((b.stake for b in settled), Decimal("0"))
+        profit = sum((b.profit or Decimal("0") for b in settled), Decimal("0"))
+        with_clv = [b for b in items if b.clv is not None]
+        sharp = [b.clv for b in with_clv if b.clv_source in PINNACLE_CLV_SOURCES]
+        average = [b.clv for b in with_clv if b.clv_source in MARKET_AVERAGE_CLV_SOURCES]
+        other = [
+            b.clv
+            for b in with_clv
+            if b.clv_source not in (*PINNACLE_CLV_SOURCES, *MARKET_AVERAGE_CLV_SOURCES)
+        ]
+        paper_clv = [b.clv for b in with_clv if b.kind is BetKind.PAPER and b.clv is not None]
+        mean_paper = _mean(paper_clv)
+        out.append(
+            {
+                "market": market,
+                "bets": len(items),
+                "settled": len(settled),
+                "roi": float(profit / staked) if staked > 0 else None,
+                "clv_mean_pinnacle": _mean([v for v in sharp if v is not None]),
+                "clv_n_pinnacle": len(sharp),
+                "clv_mean_market_average": _mean([v for v in average if v is not None]),
+                "clv_n_market_average": len(average),
+                "clv_mean_other": _mean([v for v in other if v is not None]),
+                "clv_n_other": len(other),
+                "paper_with_clv": len(paper_clv),
+                "paper_clv_mean": mean_paper,
+                "evidence_target": EVIDENCE_PAPER_BETS,
+                "evidence_met": len(paper_clv) >= EVIDENCE_PAPER_BETS
+                and mean_paper is not None
+                and mean_paper > 0,
             }
         )
     return out

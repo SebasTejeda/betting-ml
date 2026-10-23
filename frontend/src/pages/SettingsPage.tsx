@@ -7,9 +7,11 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
+import { isVersionConflict } from "../api/client";
 import { useSaveSettings, useSettings } from "../api/hooks";
 import type { Settings } from "../api/types";
 import { ErrorBox, ExperimentalBadge, Loading, PageTitle, Panel } from "../components/common";
@@ -30,7 +32,11 @@ const percent = (min: number, max: number) =>
 
 const schema = z.object({
   bankroll_initial: amount,
-  currency: z.string().trim().length(3, "Código de 3 letras (PEN)").toUpperCase(),
+  currency: z
+    .string()
+    .trim()
+    .regex(/^[A-Za-z]{3}$/, "Código de 3 letras (PEN)")
+    .toUpperCase(),
   monthly_loss_limit: amount,
   max_stake_pct: percent(0.1, 100),
   kelly_fraction: percent(1, 100),
@@ -63,12 +69,18 @@ function SettingsForm({ settings }: { settings: Settings }) {
   const {
     register,
     handleSubmit,
+    reset,
     formState: { errors },
   } = useForm<Input, unknown, Output>({
     resolver: zodResolver(schema),
     defaultValues: toInput(settings),
   });
   const current = save.data ?? settings;
+  // Saved elsewhere meanwhile (409): show the reloaded values, never overwrite them blindly.
+  const conflict = isVersionConflict(save.error);
+  useEffect(() => {
+    if (conflict) reset(toInput(settings));
+  }, [conflict, settings, reset]);
   const pendingRaise = current.monthly_loss_limit > current.monthly_loss_limit_in_force;
 
   const field = (name: keyof Input, label: string, help?: string, suffix?: string) => (
@@ -102,7 +114,7 @@ function SettingsForm({ settings }: { settings: Settings }) {
       <form
         className="flex flex-col gap-4"
         noValidate
-        onSubmit={handleSubmit((values) => save.mutate(values))}
+        onSubmit={handleSubmit((values) => save.mutate({ ...values, version: current.version }))}
         aria-label="Ajustes"
       >
         <Panel title="Bankroll y límites" icon={ShieldCheck}>

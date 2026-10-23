@@ -134,3 +134,251 @@ Spec activa: [`specs/002-odds-comparator/`](specs/002-odds-comparator/). Una lí
   - El navegador usado para la prueba guardó una clave temporal: pulsa "Clave configurada" y pega tu `APP_API_KEY`.
 - 2026-09-28 · Cambio del dueño · Apuestas reales sin cuota de referencia: ya no se rechazan (422); se registran con sin_referencia=true (migración 0003), cuentan para todos los límites de US6 (vencidas desde el final del día del partido + 3 h), quedan fuera de la señal y su CLV sale del cierre de Pinnacle de football-data. Calculadora con '¿El partido no aparece?' y aviso; Mis apuestas las marca. CLAUDE.md empieza con 'Responde siempre al usuario en español.'
 - 2026-09-28 · Rediseño del frontend (solo presentación) · shadcn/ui + lucide + Inter, colores como tokens CSS con tema oscuro por defecto y claro (recordado en localStorage), contraste AA verificado con tests; barra superior y menú inferior en el celular; Hoy con tarjetas y chips de cuotas, Partido con marcador y barras 1X2, Calculadora con veredicto grande, Mis apuestas con KPIs, curva de bankroll con área y badges de estado, Backtest y Ajustes con tarjetas; skeletons de carga. Página nueva Top del día (/top), solo frontend (only_value=true). 49 tests del frontend en verde.
+
+---
+
+# Spec 003 — Seguridad, integridad de datos y arquitectura
+
+**Terminada** (2026-10-22, nivel Bueno; ver "Resumen final (spec 003)" al final). Spec: [`specs/003-security-hardening/`](specs/003-security-hardening/). Trabajo en la rama `Daniel`; tras cada tarea se pidió confirmación al dueño. Una línea por tarea: `AAAA-MM-DD · TXXX · qué se hizo · resultado clave`.
+
+## Bitácora (spec 003)
+
+- 2026-10-22 · T000 · Spec 003 redactada a partir de una revisión del código: spec (hallazgos por categoría OWASP, 8 historias), plan (7 fases), contrato (login, errores, cabeceras), 23 tareas y decisiones. El dueño la aprueba con el modelo de un solo dueño (contraseña Argon2id y sesión de servidor)
+- 2026-10-22 · T001 · Spec 003 integrada: constitución XII (seguridad e integridad), CLAUDE.md con spec activa, reglas de seguridad, excepción de confirmación por tarea y nota sin make; ml-reviewer con bloque de la spec 003; /status con el estado de seguridad. Solo documentación; lint y tests no se corrieron (esta copia no tiene uv ni .venv)
+- 2026-10-22 · T002 · Entorno instalado (uv 0.13.5, uv sync, npm ci) y línea base verificada en verde antes de tocar nada. make security (modo informe): ruff S, pip-audit, npm audit, gitleaks; .gitleaks.toml. Historial (109 commits) y árbol sin secretos. Arreglos triviales: pillow 13.0.0, certifi y virtualenv (pip-audit 0 en prod y dev); vite 8.3.5, vitest 5.0.5 y otros con npm audit fix (bundle de producción 0; quedan 10 solo de desarrollo, cadena de la CLI shadcn → T019). reports/SECURITY_BASELINE.md con 21 hallazgos (1 crítico: lecturas sin autenticación) asignados a su tarea. 314 tests backend + 49 frontend en verde
+- 2026-10-22 · T003 · Settings con APP_ENV (dev/prod), claves como SecretStr (ocultas en repr, dump y logs), variables de seguridad de plan §6 (listas por comas), ensure_secure en el lifespan de la API antes de cargar nada: en prod falla sin hash Argon2id, con APP_API_KEY/SESSION_SECRET < 32 o iguales, ALLOWED_HOSTS vacío o '*', CORS con comodín u orígenes sin esquema; el error nombra variables, nunca valores. ADMIN_API_KEY alias obsoleto de APP_API_KEY con aviso (/admin ya usa APP_API_KEY). .env.example comentado y probado. 28 tests nuevos; 342 backend en verde, cobertura 98.5 %, OpenAPI sin cambios
+- 2026-10-22 · T004 · journal.py (442 líneas) dividido en 7 routers por recurso (odds, bookmakers, comparator, calculator, bets, settings, backtest) con mappers en api/mappers/ (también el de la spec 001, antes routers/mapping.py). GET /backtest/pinnacle pasa por el caso de uso ReadBacktestReport y el puerto ReportStore (JsonReportStore solo admite nombres *.json planos: sin rutas ni traversal); se acaba la lectura de archivos en el router (§V.3). Servicios tipados con Protocol (ServicesApi, JournalApi) en dependencies.py: sin Any en los routers y mypy ahora revisa sus cuerpos. openapi.json idéntico (0 líneas de diferencia); 352 tests en verde sin modificar los existentes (10 nuevos), cobertura 98.5 %
+- 2026-10-22 · T005 · api/security.py como única puerta: políticas public / require_read / require_write declaradas a nivel de APIRouter (los módulos mixtos bets, odds y settings tienen routers reads y writes); Principal en domain/security.py. Se eliminan las verificaciones duplicadas de admin.py y dependencies.py: una sola clave (ApiServices.app_api_key, fuera de JournalServices), comparación en tiempo constante sobre bytes (una cabecera no ASCII ya no puede dar 500); /admin responde WRITES_DISABLED como el resto (antes ADMIN_DISABLED, contrato 003 actualizado). FastAPI 0.141 envuelve los routers incluidos (_IncludedRouter): las rutas efectivas se recorren con iter_route_contexts. test_route_access: cada ruta con exactamente una política, solo /health pública, todo POST/PUT/PATCH/DELETE es escritura (salvo POST /predictions, cálculo sin estado), las 9 escrituras dan 401 sin clave o con clave errónea y 503 con la de ejemplo; mutación comprobada (calculator como lectura → falla). Las lecturas siguen abiertas hasta T007. Postman con una sola variable appApiKey. OpenAPI igual en contenido (solo cambia el orden de /bets/summary). 359 tests backend + 49 frontend en verde
+- 2026-10-22 · T006 · Login del dueño: Argon2id (argon2-cffi, parámetros OWASP; betting-ml hash-password sin eco, mínimo 12 caracteres) y sesiones de servidor (migración 0004, tabla sessions). Token de 256 bits solo en cookie bml_session HttpOnly + SameSite=Strict (+ Secure en prod), en la base solo HMAC-SHA256(SESSION_SECRET, token); expiración por inactividad (30 min, deslizante) y absoluta (12 h); rotación en cada login; cambiar la contraseña o SESSION_SECRET cierra todas las sesiones; purga al arrancar y en cada login. /auth/login (público, 401 INVALID_CREDENTIALS genérico sin cookie, 503 LOGIN_DISABLED sin hash, cuerpo con extra=forbid y máx. 1024), /auth/me y /auth/logout. CSRF adelantado de T007: require_write acepta sesión + X-CSRF-Token (403 CSRF_FAILED si falta, es falso o de otra sesión) o X-API-Key sin CSRF; una clave errónea es 401 aunque haya sesión válida. Mutación comprobada (sin CSRF → 2 tests fallan). Orden de tareas: T009 antes que T008 (decisión del dueño). Postman con carpeta de autenticación (6 peticiones, variables ownerPassword y csrfToken vacías). 45 tests nuevos; 404 backend + 49 frontend en verde; pip-audit 0
+- 2026-10-22 · T007 · require_read exige principal (X-API-Key o sesión): las 16 rutas de lectura (partidos, predicciones, modelo, diario, bankroll, ajustes, límites, backtest…) dan 401 sin credencial, con clave vacía/errónea o con cookie inventada; solo /health y /auth/login son públicas. La clave de ejemplo bloquea también las lecturas (503 WRITES_DISABLED, mensaje neutro). test_route_access generado desde las rutas de la app; mutación comprobada (require_read sin exigir → 2 tests fallan). Tests funcionales con tests/clients.py (ReaderClient: añade X-API-Key solo a lecturas; las escrituras sin cabecera siguen anónimas). Postman: X-API-Key en las 26 peticiones privadas + ejemplo GET /bets sin clave (401), con test. OpenAPI documenta X-API-Key también en las lecturas. El frontend no puede leer hasta T009. 409 backend + 49 frontend en verde
+- 2026-10-22 · T009 · Frontend con login: página /login (contraseña, campo limpio tras cada intento, mensajes de la API, 429 con Retry-After que bloquea el botón ese tiempo, 503 LOGIN_DISABLED), AuthProvider que pregunta /auth/me al cargar, RequireAuth que redirige a /login y vuelve a la página pedida, botón Salir en la barra. Se eliminan lib/apiKey.ts y ApiKeyButton: el navegador ya no guarda ningún secreto (cookie HttpOnly + token CSRF solo en memoria, enviado en X-CSRF-Token en POST/PUT/PATCH/DELETE; credentials same-origin). Cualquier 401 cierra la sesión local, vacía la caché de React Query (los datos personales no sobreviven en memoria) y lleva al login con aviso de sesión expirada. Mutaciones comprobadas (sin cabecera CSRF → 2 tests fallan; CSRF en localStorage → falla el test de almacenamiento). README actualizado. 53 tests frontend (5 nuevos de login), cobertura 94 % líneas / 91 % funciones; build OK
+- 2026-10-22 · T008 · Puerto RateLimiter + MemoryRateLimiter (ventana deslizante, atómico entre hilos, memoria acotada a 10 000 claves sin expulsar bloqueos vivos). LoginThrottle: cada intento se cuenta antes de Argon2; el 6.º en un minuto es 429 TOO_MANY_ATTEMPTS con Retry-After y bloquea la IP 1, 5 y luego 15 min (nivel recordado 24 h, se limpia con un login correcto); bloqueado no se comprueba ni la contraseña correcta ni se gasta CPU. RateLimitMiddleware global por IP (120/min, 429 RATE_LIMITED; una cookie inventada no da cupo nuevo), cupo de 6 refrescos de cuotas por hora contado tras autenticar, BodyLimitMiddleware 413 PAYLOAD_TOO_LARGE por Content-Length y por conteo de cuerpos troceados. Orden de middlewares según plan §3. Mutaciones comprobadas (sin freno → 3 tests fallan; sin conteo troceado → 1). 4 decisiones nuevas. OpenAPI sin cambios. 431 backend en verde (22 nuevos), cobertura 98.4 %
+- 2026-10-22 · T010 🔍 · Checkpoint de identidad y acceso (T003–T009 + T008). Revisión de seguridad independiente (security-audit, solo código): 0 críticos y 0 altos, 4 bajos. ml-reviewer: BLOQUEADO (el cableado real del freno, los límites y la cookie Secure en container.py no tenía tests) → tras las correcciones, APROBADO CON OBSERVACIONES. Corregido:
+  - test_container_security con el Container real; Authenticate exige throttle.
+  - test_route_access con Authenticate real y CSRF probado en cada escritura con sesión.
+  - Cupos en application (RateLimits.take_*); IPv6 agrupado por /64.
+  - Argon2 con 2 plazas y fallo rápido (503 LOGIN_BUSY).
+  - serve y Dockerfile sin proxy headers.
+  - El frontend borra la clave antigua de localStorage y recupera el CSRF tras CSRF_FAILED.
+  - prod rechaza parámetros Argon2id débiles; hash-password funciona con python -m.
+  Riesgos aceptados registrados en decisions.md. Mutaciones comprobadas: validate permisivo, CSRF desactivado y sin refreshCsrf hacen fallar los tests. 452 tests de backend (cobertura 98,8 %) y 55 de frontend en verde
+- 2026-10-22 · T011 · Middlewares, de fuera hacia dentro: SecurityHeaders → RequestId → TrustedHost → CORS → BodyLimit → RateLimit.
+  - Cabeceras: CSP del contrato, nosniff, DENY, no-referrer, Permissions-Policy, COOP y no-store en toda respuesta (también 400/401/404/405/413/422/429/500/503); HSTS solo en prod.
+  - Errores: 500 INTERNAL_ERROR uniforme con request_id y sin traza.
+  - X-Request-ID: se conserva el entrante si es válido; si no, se genera un UUID.
+  - Hosts: 400 INVALID_HOST fuera de ALLOWED_HOSTS (cableado desde el Container).
+  - CORS: orígenes, métodos y cabeceras explícitos; en prod solo https.
+  - /docs, /redoc y /openapi.json solo en dev (betting-ml openapi sigue exportando).
+  - Frontend: theme-init.js fuera de index.html; security-headers.ts con la misma CSP (aplicada en vite preview, Report-Only en dev); Zod jitless; bundle sin eval.
+  - Verificación: CSP probada en Chrome con el build (sin violaciones, tema y fuente bien).
+  - Tests aislados del .env local. Mutaciones comprobadas (sin TrustedHost y sin la red de seguridad del 500 fallan los tests). 476 backend (cobertura 98.8 %) + 57 frontend en verde
+- 2026-10-22 · T012 · Validación estricta en api/validation.py.
+  - Cuerpos con extra="forbid".
+  - Patrones y longitudes: league, match_id, bookmaker, equipos, note y currency.
+  - Fechas entre 2000 y 2099, con from ≤ to.
+  - page ≤ 10 000, size ≤ 500 y bet_id acotado.
+  - El 422 lleva solo loc, msg y type; nunca el valor recibido.
+  - El 500 lleva request_id; la traza va al log con el mismo request_id y ya no se relanza.
+  - OpenAPI regenerado; el frontend valida la moneda con el mismo patrón.
+  - 58 tests negativos nuevos; mutaciones comprobadas.
+  - 534 tests backend (cobertura 98.8 %) y 57 frontend en verde.
+- 2026-10-22 · T013 · 28 restricciones CHECK con nombre en bets, settings, settings_history, odds_quotes, odds_snapshots, bookmakers y sessions.
+  - Cubren cuota > 1, stake > 0 en céntimos, listas de estado, tipo y resultado, coherencia pendiente/liquidada, beneficio según el estado, rangos de probabilidad, EV y CLV, moneda y fracciones.
+  - Migración 0005: valida antes y aborta listando rowids sin tocar datos; downgrade explícito.
+  - PRAGMA WAL, busy_timeout=5000 y foreign_keys=ON en cada conexión, verificados al arrancar.
+  - The Odds API descarta y cuenta las cuotas inválidas.
+  - 46 tests nuevos (INSERT directo imposible → IntegrityError, migración con datos válidos e inválidos, esquema migrado = modelos, PRAGMA).
+  - 580 tests backend en verde (cobertura 98.8 %)
+- 2026-10-22 · T014 · Concurrencia optimista en apuestas y ajustes.
+  - Columna `version` (migración 0006).
+  - Toda escritura es un UPDATE condicional atómico; PATCH /bets/{id} y PUT /settings exigen version.
+  - 409 VERSION_CONFLICT con current_version.
+  - Liquidación: una apuesta cambiada entre la lectura y la escritura se salta y nunca se liquida dos veces (probado con una carrera determinista y con dos ejecuciones en paralelo).
+  - Frontend: envía version; ante un 409 recarga y avisa (el formulario de ajustes se recarga).
+  - Postman con variables de versión y una petición 409.
+  - 587 tests backend (cobertura 98.8 %) y 59 frontend en verde
+- 2026-10-22 · T015 · Auditoría encadenada SHA-256 de solo inserción (audit_log, migración 0007).
+  - Triggers contra UPDATE y DELETE; línea base de los datos existentes.
+  - Cada escritura de apuestas, ajustes y snapshots, y cada login, login fallido y logout, añade su evento en la misma transacción, con actor (session/api_key/cli/scheduler) y la fila antes y después.
+  - `betting-ml verify-integrity` (+ make): PRAGMAs, cadena y apuestas/ajustes iguales a su último evento; código 1 si falla.
+  - Detecta registros alterados (indica el seq), borrados y filas cambiadas, insertadas o borradas fuera de la API.
+  - Tests de propiedad del encadenado (40 semillas) y de concurrencia (4 hilos).
+  - 820 tests backend (cobertura 98.8 %; auditoría 98–100 %)
+- 2026-10-22 · T016 · Copias de seguridad y restauración verificadas (`betting-ml backup` / `restore` + make).
+  - Copia en caliente con la API de backup de SQLite en `data/backups/`: un solo archivo con su `.sha256` (formato sha256sum).
+  - Retención `BACKUP_KEEP` por fecha y sufijo; las copias previas a restaurar rotan aparte.
+  - `restore` rechaza copias sin hash, con hash distinto, corruptas, ajenas o con filas alteradas aunque el hash se haya recalculado (verifica la auditoría).
+  - Antes de restaurar guarda una copia del estado actual y pide confirmación (`--yes` para scripts).
+  - 21 tests nuevos (copia durante escrituras concurrentes, 9 formas de copia mala); 8 mutaciones detectadas.
+  - 841 tests backend (cobertura 99 %)
+- 2026-10-22 · T017 · Integridad de los modelos y checkpoint 🔍 de la fase 4.
+  - SHA-256 de `model.joblib` en `metadata.json`, verificado sobre los mismos bytes que se deserializan; `503 MODEL_INTEGRITY_ERROR`; `betting-ml models-rehash` (+ make), que nunca reemplaza un hash distinto.
+  - Checkpoint ml-reviewer: bloqueado por 2 hallazgos altos, corregidos:
+    - historial de límites auditado y verificado (migración 0008);
+    - el downgrade de 0007 aborta si hay auditoría.
+  - También corregidos:
+    - `restore --force` sobre una base dañada y `--allow-legacy` para copias sin auditoría;
+    - restaurar cierra las sesiones y registra `DB_RESTORED`;
+    - `verify-integrity` comprueba los triggers.
+  - Riesgo del encadenado sin clave documentado con su alcance real; HMAC con clave pendiente de decisión del dueño.
+  - 874 tests backend (cobertura 99 %); 13 mutaciones detectadas.
+- 2026-10-22 · T018 · Logs estructurados y seguros (`logging_config.py`).
+  - JSON en prod (`LOG_FORMAT`); `request_id` en cada línea.
+  - Access log propio sin query string, que sustituye al de uvicorn.
+  - Redacción en el formateador para cualquier logger: secretos de la configuración, pares password/token/cookie/api-key/authorization y hashes Argon2.
+  - Eventos de seguridad: login correcto, fallido y bloqueado, logout, 401/403/CSRF, cambio de ajustes y límites, verify-integrity fallido e integridad del modelo.
+  - El dueño acepta el riesgo del encadenado sin clave (sin HMAC).
+  - 902 tests backend (cobertura 99 %); 10 mutaciones detectadas.
+- 2026-10-22 · T019 · CI de seguridad.
+  - Token de solo lectura, acciones fijadas por SHA y `uv sync --locked`.
+  - Job `security` que falla: ruff S, pip-audit de producción y desarrollo, `npm audit --audit-level=high` y gitleaks verificado por SHA-256.
+  - Dependabot (uv, npm, actions) y pre-commit con gitleaks y detect-private-key.
+  - CLI de shadcn sustituida por su CSS copiado (MIT): 0 vulnerabilidades npm y CSS idéntico.
+  - Asserts y `git` corregidos.
+  - 912 tests backend (cobertura 99 %), 59 frontend.
+- 2026-10-22 · T020 · Docker y despliegue.
+  - Imágenes python, uv y caddy fijadas por digest; código propiedad de root y `app` (uid 10001) solo escribe en data/models/reports.
+  - `HEALTHCHECK` con `betting-ml healthcheck` (Host de ALLOWED_HOSTS).
+  - `FORWARDED_ALLOW_IPS` validado (`*` prohibido en prod) y `serve` solo cree al proxy configurado.
+  - deploy/compose.yaml (solo lectura, sin capacidades, API sin puertos) y deploy/Caddyfile (TLS, CSP y HSTS, log sin credenciales).
+  - Job docker de CI con arranque --read-only (pendiente del primer push).
+  - docs/deploy.md con .env de prod, copias, restauración y rotación de claves.
+  - 929 tests backend (cobertura 99 %), 59 frontend.
+- 2026-10-22 · T021 · Auditoría final de seguridad (skill security-audit, perfil quick, 14 agentes) y revisión de arquitectura (ml-reviewer: APROBADO CON OBSERVACIONES).
+  - 0 confirmados (sin sandbox no se ejecuta código), 2 needs_validation y 1 rechazado.
+  - Corregido:
+    - la red edge con IPv6 y FORWARDED_ALLOW_IPS con las dos direcciones de Caddy (evita que todos los clientes IPv6 compartan un bloqueo);
+    - presupuesto global de 100 LOGIN_FAILED auditados por hora;
+    - middlewares tipados con ServicesApi y test de punta a punta con el Container real (M1);
+    - API key fuera del repr (M2);
+    - verify-integrity compara el SQL de los triggers y rechaza los ajenos;
+    - los importes de ajustes enormes dan 422 en lugar de 500.
+  - 8 mutaciones detectadas. reports/SECURITY_AUDIT_003.md.
+  - 938 tests backend (cobertura 99 %), 59 frontend.
+- 2026-10-22 · T022 · Documentación y verificación de punta a punta.
+  - SECURITY.md nuevo, sección de seguridad en el README (con `curl`, Postman y la instalación corregidos) y SECURITY_BASELINE.md con el estado final: escaneos en 0 y H-01..H-21 resueltos.
+  - Verificación en dev y prod contra una base desechable: API, CLI (backup, `sha256sum -c`, restore, verify-integrity) y navegador (login, 6 páginas, logout, sin secretos en el almacenamiento). Todo correcto.
+  - Corregido: el `.sha256` se escribía con CRLF en Windows y `sha256sum -c` lo rechazaba. Ahora va con LF y el test compara bytes (mutación detectada).
+  - 938 tests backend (cobertura 99 %), 59 frontend.
+
+## Resumen final (spec 003)
+
+- **Nivel: Bueno.** Excelente queda pendiente solo de probar el despliegue con Docker (job `docker` de CI tras el push, o el primer despliegue con `docs/deploy.md`). La auditoría final no tuvo hallazgos altos ni críticos.
+- **Hecho:**
+  - **Acceso.** Login de un solo dueño (Argon2id) con sesión `HttpOnly` y CSRF. Todas las rutas protegidas salvo `/health` y el login. `X-API-Key` para máquinas.
+  - **Abuso.** Límites de login y peticiones, cuerpo máximo, hosts permitidos, CSP y cabeceras, configuración que falla en prod con claves débiles.
+  - **Integridad.** `CHECK` en la base, concurrencia optimista y auditoría de solo inserción encadenada con `verify-integrity`.
+  - **Recuperación y cargas.** Copias verificadas y restauración segura; hash de modelos.
+  - **Operación.** Logs JSON con redacción y eventos de seguridad. CI de seguridad que falla, con acciones por SHA y Dependabot. Docker endurecido con Caddy y TLS.
+- **Hallazgos.** Los 21 de la línea base están resueltos. La auditoría final dio 0 confirmados; los 2 por validar se corrigieron y 1 se rechazó. Los riesgos aceptados están en SECURITY.md §3.
+- **Pendiente para el dueño:**
+  - hacer el `git push` de la rama `Daniel` y revisar los jobs `security` y `docker` de CI;
+  - desplegar siguiendo `docs/deploy.md`;
+  - programar las copias externas.
+
+---
+
+# Spec 004 — Análisis de partido con mercados y consejos explicados (rama Sebastian)
+
+Rama de trabajo: `Sebastian`, donde se llamó *spec 003*. Spec en `specs/004-match-analysis/` (renumerada al integrarse en `Daniel`; las líneas de abajo se conservan como las escribió).
+
+## Bitácora (spec 003)
+
+- 2026-10-22 · T001 · Spec 003 integrada: principio XII "Consejos honestos" en la constitución; CLAUDE.md con la spec 003 activa, la regla de procesos (servidores en segundo plano, cerrarlos al terminar) y el límite de 3 llamadas con coste a The Odds API; bloque de revisión 003 en ml-reviewer (fuga en forma y matriz, cierre solo para CLV, calibración por mercado, lock propio, fórmula de empate no apuesta, lenguaje y evidencia de los consejos). Entorno nuevo en esta máquina: uv 0.13.5 + Python 3.12; `data/` vacía y sin `.env` (hay que regenerar datos y crear la clave antes de T004)
+- 2026-10-22 · T002 · domain/markets.py: mercados P1 derivados de la matriz de marcadores (1X2, doble oportunidad, empate no apuesta con EV = P(1)·cuota + P(X) − 1, Más/Menos 0.5–4.5, ambos marcan, goles de cada equipo 0.5–2.5, hándicap europeo −1/+1 de tres vías, top 5 marcadores); cada selección se define una sola vez por su regla de liquidación (probabilidad = Σ M de las celdas ganadoras, misma función que `settle`). configs/markets.yaml con nombres en español, líneas, fuente de cuota y `experimental: true`, validado con pydantic. 75 tests (a mano, propiedades sobre 20 matrices Dirichlet/Poisson, liquidación = probabilidad)
+- 2026-10-22 · T003 · Fuentes europeas: adaptador openfootball (Football.TXT de `champions-league`, resultado a 90 minutos, prórrogas marcadas; verificado con los archivos reales: UCL 2014-15→2025-26 completa, UEL 2020-21→2024-25, el parser lee el 100 % de los partidos declarados) y ClubElo (CSV por fecha, instantánea semanal estrictamente anterior al partido en `domain/ratings.py`, caché, no cachea respuestas inválidas). Alias `openfootball` de los 54 clubes de nuestras ligas que jugaron en Europa (53 con alias; RB Leipzig coincide) en team_aliases.yaml (falla si falta uno); clubes extranjeros por nombre normalizado dentro de su país + configs/europe_aliases.yaml. Caso de uso `data-europe` → europe_matches / europe_holdout (protegido como el holdout) + reports/europe_data_quality.md. 33 tests sin red. **Pendiente:** api.clubelo.com responde 502 desde las 08:50; falta correr `data-europe` real y completar los alias `clubelo` (decisions.md)
+- 2026-10-22 · T004 · Cuotas históricas Más/Menos 2.5: agregadas `b365_over25/under25`, `b365c_*` y `maxc_*` al esquema de football-data (las de Pinnacle, promedio y máximo ya existían como `{fuente}_over25`); disponibles desde 2019-20 (≈ 99 %), solo en metadatos, nunca como features. Datos regenerados (mismos 19 837 / 1 752 partidos). **Pendiente por decisión del dueño:** la llamada a The Odds API para verificar los market keys (sin `.env` en esta máquina); se hará antes de T014 (decisions.md)
+- 2026-10-22 · T005 · ml/models/goal_model.py: fachada `ScoreMatrixModel` sobre Dixon-Coles con xG (E09, el mejor modelo de goles de la spec 001), walk-forward con re-ajuste cada 7 días; `fixture_matrix` para un partido próximo (solo historia anterior a su fecha), `validation_matrices` para F1–F3 con el ξ que E09 eligió en validación interna (0.0019 / 0.003 / 0.003; ξ por defecto 0.003). Reproduce E09 exacto en datos reales (log loss 1X2 0.99233 / 0.97707 / 0.97777, media 0.98239; 5 330 partidos, 15 s). Más de 2.5: Brier 0.2415 vs 0.2488 de la línea base, pero sobreestima (55.3 % vs 53.5 % observado), a revisar en T007. 7 tests (anti-fuga por bloque y por fecha). Corregido: índices duplicados al mezclar ligas
+- 2026-10-22 · T007 · ml/calibration_markets.py + `validate-markets` (F1–F3, 5 330 partidos, 22 s), reglas pre-registradas en decisions.md antes de correr: calibración binaria por grupo (mercado × línea × equipo) contra la frecuencia por liga del entrenamiento del fold. **14 grupos `alta`, 4 `media`, 0 `baja`** (1X2 ECE 0.011, Más/Menos 2.5 ECE 0.014, ambos marcan 0.012). Backtest Más/Menos 2.5 **negativo**: Bet365 1 098 apuestas, ROI −11.7 % [−18.3, −4.8], CLV −4.8 % = placebo; 73–76 % de las apuestas a "Más" por la sobreestimación del modelo. Figuras reports/figures/003_*, resultados en reports/market_validation_003.json. Parte europea pendiente de T006 (ClubElo sigue en 502). 13 tests
+- 2026-10-22 · T008 · Checkpoint ml-reviewer, 1.ª ronda: BLOQUEADO (sin fuga ni uso indebido del cierre; la ECE agrupada cancelaba errores de selecciones complementarias y el umbral absoluto no veía sesgos relativos). Corregido: nivel por selección con sesgo relativo (alta < 5 %, media < 10 %), el grupo toma la peor; marcador exacto por rango; doble oportunidad marcada como derivada de 1X2; placebo por lado (Bet365: estrategia −4.8 % vs placebo de la misma mezcla −5.1 %); curvas por selección; líneas de goles deben ser > 0; test anti-fuga de `walk_forward` que ahora sí altera el futuro. Niveles nuevos: **6 alta / 8 media / 4 baja** (baja: Más/Menos 4.5, local Más/Menos 2.5, hándicap −1, marcador exacto). Causa del sesgo a "Más": λ sigue al xG (F3 3.02 vs 2.83 goles); recalibración como experimento futuro (decisions.md)
+- 2026-10-22 · T008 · 2.ª ronda ml-reviewer: **APROBADO CON OBSERVACIONES**. Aplicado antes de T009: regla final de niveles (baja solo con sesgo > 10 % significativo |z| ≥ 2; alta exige ≥ 400 casos positivos; EE y z del sesgo en el JSON), signo del sesgo en la CLI, comentario sobre `drop_duplicates` en poisson.py. Niveles F1–F3 sin cambios: 6 alta / 8 media / 4 baja. Pendiente para el informe de T009: decir que la comparación con la línea base es por grupo
+- 2026-10-22 · T009 · Evaluación final única en el test 2025-26 de las 5 ligas (1 752 partidos; lock `HOLDOUT_003_USED.lock`, commit 6d7c3fb con las reglas pre-registradas). **Nivel: Mínimo** (con salvedad: el análisis de partido de T013 y la parte europea aún no existen). Niveles en el test: 0 alta; publicados (peor entre validación y test): **0 alta / 9 media / 9 baja**. El sesgo hacia los goles empeora en 2025-26: Menos de 2.5 −8.2 % (z −3.5), Más de 3.5 +18 %, Más de 4.5 +32 %; Más/Menos 1.5 y 2.5 pasan de alta a baja. Backtest Más/Menos 2.5 con umbrales de validación: Bet365 262 apuestas (90 % a "Más"), ROI −12.1 % [−25.1, −0.0], CLV −5.7 % vs placebo de la misma mezcla −5.5 %: sin valor. reports/REPORT_003_markets.md y reports/market_calibration.json (niveles que leerá la API). Europa: evaluación aparte con su propio lock tras T006
+- 2026-10-22 · T010 · Puerta: pasa en lo formal (9 grupos `media`, 0 `alta`). Evidencia débil: sin mercados `alta` en el test y sin valor en Más/Menos 2.5. Ejecución pausada antes de T011 a la espera del dueño; opciones en decisions.md (recalibrar λ como experimento; desactivar "Mejores opciones" hasta tener evidencia)
+- 2026-10-22 · T006 (parte 1) · ClubElo sigue caído (502) y API-Football no tiene ratings → **Elo propio entre ligas** (decisión del dueño): `ml/models/club_elo.py` (K 20, local 60, margen, regresión 1/3 a la media de su liga, ascendido = media − 50, sin fuga: instantánea del día d = partidos < d), `application/build_club_elo.py` (5 ligas de football-data + Países Bajos, Portugal, Escocia, Turquía, Suiza y Grecia de openfootball/europe + UCL/UEL), `adapters/elo_snapshots.py` con el esquema de ClubElo, `configs/elo_leagues.yaml`. Parser de openfootball ampliado (archivos de liga sin país, marcador entre equipos) y **corregida la inferencia del año** (fechaba en 2019 la fase final de agosto de 2020). `data-europe` real: 2 248 partidos europeos de entrenamiento + 189 del test, 95.6 % con rating. Límite: brechas entre ligas comprimidas (Premier 1 485 vs Países Bajos 1 357; Feyenoord/PSV por encima del Real Madrid) → el desplazamiento por liga se estimará en el ajuste (decisions.md)
+- 2026-10-22 · T006 · Ajuste entre ligas `ml/models/cross_league.py` (Poisson: nivel del club dentro de su liga por Elo + desplazamiento por liga estimado con partidos europeos, ridge; ventaja de local europea estimada) y `validate-cross-league` (walk-forward 2018-19…2024-25, ridge por validación interna). 1 096 partidos elegibles. Log loss 1X2: frecuencias 1.0595, Elo crudo 1.0157, **ajuste por liga 0.9965** (elegido). Desplazamientos: Premier +0.23 … Suiza −0.26; local europeo +30 % de goles. Calibración europea: Más/Menos 2.5 **alta**, 1X2 **baja** (ECE local 0.041). reports/market_validation_003_europe.json, figura 003_calibration_europe.png. Pendiente: test europeo 2025-26 (UCL) con su propio lock, y checkpoint de esta parte
+- 2026-10-22 · Checkpoint europeo (ml-reviewer) 1.ª ronda: BLOQUEADO (clubes renombrados entre temporadas en openfootball/europe → Elo reiniciado; sin fuga). Corregido: `configs/europe_league_aliases.yaml` + guardia de renombres (≤ 5 clubes nuevos por temporada; tras alias, ≤ 3), base de liga fija por temporada (sin cascada), nivel 1 por última temporada, elegibilidad ≥ 10 partidos/365 d y ≤ 60 d desde el último, ridge con rejilla amplia y 2 temporadas internas. Re-corrido: 1 066 partidos elegibles, log loss 1X2 **0.9831** (Elo crudo 1.0115), Más/Menos 2.5 europeo alta, 1X2 europeo baja
+- 2026-10-22 · Checkpoint europeo 2.ª ronda: BLOQUEADO por un punto (la regla de 60 días medía el último partido de cualquier tipo) → corregido con `last_league_match`; guardia de renombres también a través de huecos. Resultado final T006: 1 026 elegibles, log loss 1X2 **0.9880** (Elo crudo 1.0094, frecuencias 1.0587); niveles europeos 1X2 **baja**, Más/Menos 2.5 **media**. Ridge variable: no bloquea (M2 gana con cualquier ridge)
+- 2026-10-22 · Test europeo 2025-26 (una sola vez, lock `HOLDOUT_003_EUROPE_USED.lock`, commit 2d53cae; 3.ª ronda ml-reviewer: APROBADO): 113 partidos elegibles de la Champions. Log loss 1X2: frecuencias 1.0306, Elo crudo 0.9439, **ajuste por liga 0.9298**. Más/Menos 2.5: el ajuste no mejora a la línea base (Champions con 3.41 goles por partido vs 2.94 esperados). Niveles publicados para partidos entre ligas: 1X2 **baja**, Más/Menos 2.5 **baja** → análisis entre ligas solo informativo, sin consejos de valor. reports/REPORT_003_europe.md y reports/market_calibration_europe.json
+- 2026-10-22 · Decisión del dueño: fase 2 con "Mejores opciones" desactivada hasta tener evidencia; solo "Lo más probable" con precio honesto y mercados `baja` como información (decisions.md)
+- 2026-10-22 · T011 · application/team_form.py (US2): últimos 6 partidos (rival, competición, condición, goles, xG si existe), promedios de goles y xG, % Más 2.5, % ambos marcan, partidos con 2+ goles, racha; resumen por condición con respaldo al total si hay < 4 partidos; H2H de 5 años con nota de poco poder predictivo; todo con partidos < fecha. 6 tests (anti-fuga: alterar partidos ≥ d no cambia la forma en d). Probado con datos reales (Real Madrid a 2026-10-22: WWLWWL, 2.17 goles a favor por partido). Límite: sin UCL/UEL 2026-27 en openfootball
+- 2026-10-22 · T012 · domain/advice.py + configs/advice.yaml: reglas a favor, en contra y de contexto con evidencia trazable, máximo 4 razones, comentario honesto de precio (valor/justo/evitar/sin cuota), aviso de EV > 0.15, mensaje sin valor, filtro de lenguaje prohibido (también al cargar el YAML). "Mejores opciones" implementada pero desactivada (`best_options.enabled: false`, decisión del dueño); "Lo más probable" una por mercado, sin triviales ni mercados baja. 17 tests (incluye el ejemplo de la spec: "Real Madrid marcó 2 o más en 5 de sus últimos 6 partidos de local.")
+- 2026-10-22 · T013 · application/analyze_match.py: une matriz (Dixon-Coles misma liga / ajuste entre ligas con Elo propio), mercados del catálogo con etiquetas, cuotas (1X2 del comparador por ahora), EV con reembolso de empate no apuesta, veredicto, confianza por selección (ligas o europea), forma y H2H, motor de consejos (Mejores opciones desactivada, Lo más probable sin baja), avisos. Comando `betting-ml analyze "Real Madrid" "Barcelona"` (probado: 2.09 − 1.91 goles esperados; Real Madrid vs RB Leipzig: entre ligas, todo como información). 10 tests
+- 2026-10-22 · T014 · Cuotas por evento: `TheOddsApiClient.events` (gratis) y `event_odds`, `parse_event_prices` (mejor cuota accesible por mercado/selección/línea, exchanges netos), `estimate_event_cost`; `application/event_odds.py` con estimación, caché de 30 min sin la clave, reserva de créditos (429) y búsqueda del evento por equipos y fecha; el análisis combina 1X2 del comparador con las cuotas del evento. 8 tests con un fixture **sintético** (sin clave en esta máquina): falta verificar con una respuesta real (decisions.md)
+- 2026-10-22 · T015 · Routers de la spec 003 (`/teams/search`, `/analysis/fixture`, `/analysis`, `/analysis/{id}/odds/estimate`, `/analysis/{id}/odds/refresh` con X-API-Key, `/markets/calibration`) con errores 404/422/429/503; `POST /bets` acepta `market/selection/line` (outcome opcional, migración 0004), liquidación por marcador para todos los mercados (empate no apuesta nula, hándicap de tres vías), CLV de Más/Menos 2.5 con el cierre de Pinnacle. Contrato actualizado (sección "Cambios de implementación"). OpenAPI y tipos del frontend regenerados (3 ajustes de tipos; 49 tests del frontend en verde). 15 tests de integración nuevos
+- 2026-10-22 · T016 · Tests de API de la spec 003 con TestClient (11, sin red): búsqueda, fixture, análisis de liga y entre ligas (por match_id), sin lenguaje de certeza, errores 404 TEAM_NOT_FOUND / 422 SAME_TEAM / 503 RATINGS_UNAVAILABLE / 422 validación, cuotas por evento (estimación, 401 sin clave, refresco con caché sin gastar de nuevo, precios en el análisis, 429 ODDS_BUDGET_LOW, 503 ODDS_API_NOT_CONFIGURED y WRITES_DISABLED, 404 EVENT_NOT_FOUND), calibración y servicios ausentes. Carpeta "Spec 003 — Análisis de partido" en Postman (9 requests con tests). Corregido: el test de Postman fallaba desde T015 (rutas nuevas sin cubrir). Suite completa: **554 tests en verde**, cobertura 97.5 %
+- 2026-10-22 · T017 · Checkpoint ml-reviewer del backend, 1.ª ronda: BLOQUEADO (8 reglas con "de local/de visita" fijo cuando la forma usa todos los partidos; CLV de Más/Menos 2.5 imposible en 2026-27 sin Pinnacle). Corregido: condición siempre por `*_venue_text` y validación de `advice.yaml` (métricas, campos, condición fija); CLV de Más/Menos 2.5 con cierre promedio (`football_data_avgc`) si falta Pinnacle; además `match_id` validado en la caché, equipos del refresco vs `match_id`, créditos más recientes, avisos de cuotas viejas / forma vieja / fuera del dominio entre ligas, hándicap "draw" sin reglas de empate, 422 en 1X2 con selection/line, CLI en UTF-8. 569 tests en verde
+- 2026-10-22 · T017 · 2.ª ronda ml-reviewer: **APROBADO CON OBSERVACIONES** (bloqueantes corregidos y verificados; aplicado además el chequeo de equipos vs `match_id` en `GET /analysis`; nota para T020: separar CLV Pinnacle vs cierre promedio)
+- 2026-10-22 · T018 · Página **Análisis** (`/analysis`, menú "Análisis"): buscador con autocompletado de equipos (fecha y competición opcionales; si hay partido próximo entre ambos se usa solo), marcador con goles esperados, Elo y avisos (entre ligas, cuotas, forma), costo y botón de refresco de cuotas por evento, nota de "Mejores opciones" desactivada, tarjetas de "Lo más probable" con barra de probabilidad, comentario de precio y razones a favor/en contra/contexto, forma reciente (chips V/E/D accesibles, promedios, H2H plegable) y tabla de mercados plegable y ordenable con confianza y "Solo información" para `baja`. Probada con la API real (Real Madrid–Barcelona). `RegisterBetForm` generalizado a cualquier mercado (selección/línea, cuota manual si no hay precio, papel por defecto). Contrato regenerado (`AnalysisMatchOut` para no chocar con `MatchOut` de la spec 001; incluye ya el `by_market` de T020)
+- 2026-10-22 · T019 · Enlace "Analizar" en cada partido de Hoy y en la página Partido (`analysisLink` con el match_id); registro desde la tabla de mercados y desde "Lo más probable" en papel por defecto, con `from_experimental_signal` solo si el veredicto es `valor` y el mismo flujo de límites (409 → confirmar, 403 → bloqueo y paso a papel)
+- 2026-10-22 · T020 · Panel "Evidencia por mercado" en Mis apuestas: apuestas (liquidadas), ROI, **CLV contra Pinnacle y CLV contra el cierre promedio por separado** (con su n), progreso de apuestas en papel con CLV hacia 100 (US6) y notas (referencia más débil; solo 1X2 y Más/Menos 2.5 de liga tienen CLV; las apuestas europeas se liquidan a mano y cuentan para el límite). Backend: `by_market` en `GET /bets/summary`; las apuestas de otros mercados muestran su selección
+- 2026-10-22 · T021 · Tests de frontend con MSW (13 nuevos, 62 en total, cobertura de líneas 92 %): análisis completo (sin lenguaje de certeza), registro en papel desde "Lo más probable" con mercado/selección, selección sin cuota con cuota manual y 409 → confirmación, sin valor, entre ligas, refresco sin clave (503) y desde caché, equipo inexistente (404), sin rating (503), búsqueda con partido próximo, panel por mercado y enlace "Analizar". Build de producción y backend (570 tests) en verde
+- 2026-10-22 · T022 · **Pospuesto** por decisión del dueño: córners y tarjetas (US7, P3 opcional) quedan fuera de esta entrega
+- 2026-10-22 · T023 · README: sección spec 003 (qué hace, cómo se calcula, niveles de confianza, por qué "lo más probable" no es "lo mejor", cuotas por evento, evidencia por mercado, comandos con y sin make, uso de la página Análisis) y limitaciones nuevas
+- 2026-10-22 · T024 · Auditoría final ml-reviewer: **APROBADO CON OBSERVACIONES**, sin bloqueantes (570 tests, cobertura 97,5 %; sin fuga; locks y niveles coherentes; claves fuera del repo). Aplicado: el router de análisis ya no importa de `ml`. Resto registrado en decisions.md
+- 2026-10-22 · T025 · Verificación final. Tests: backend 570 (cobertura 97,5 %), frontend 62 (lint, typecheck y build en verde). API y frontend levantados en segundo plano y cerrados al terminar. Análisis reales en la app: **Levante–Ath Bilbao** (SP1, 2026-10-21; único partido de las 5 ligas en el archivo de fixtures de football-data) con λ 1.51/1.60, "Lo más probable" honesto sin cuota y forma reciente; **SL Benfica–Real Madrid** (UCL, entre ligas, Elo propio 1679/1723) sin selecciones destacadas (nivel baja) y con sus avisos (sin xG europeo, forma de hace 45 días). Capturas en `reports/figures/003_t025_*.jpg`. **No se hizo** ninguna llamada de cuotas por evento ni el registro de la apuesta en papel: no hay `ODDS_API_KEY` ni `APP_API_KEY` en `.env`; la app respondió `503 WRITES_DISABLED` con su aviso y no creó nada. Créditos de The Odds API usados en toda la spec 003: 0 de 3. Observación: el nombre corto "Benfica" no resuelve (hay que elegir "SL Benfica" del autocompletado)
+
+### Resumen spec 003
+Terminada salvo T022 (córners y tarjetas, pospuesta). Análisis de partido con 1X2, doble oportunidad, empate no apuesta, Más/Menos, ambos marcan, goles por equipo, hándicap europeo y marcador exacto desde la matriz Dixon-Coles; Elo propio entre ligas (ClubElo caído) para Champions/Europa League. Calibración publicada: ligas 0 alta / 9 media / 9 baja; entre ligas, baja (solo información). Sin valor demostrado en Más/Menos 2.5 (CLV −5,7 % ≈ placebo), por lo que "Mejores opciones" queda desactivada y todo registro es en papel por defecto. Pendiente para el dueño: añadir `ODDS_API_KEY` y `APP_API_KEY` a `.env` para verificar las cuotas por evento con una respuesta real y registrar apuestas.
+
+---
+
+# Spec 004 — Integración del análisis de partido (rama Sebastian)
+
+Plan: [`specs/004-match-analysis/integration.md`](specs/004-match-analysis/integration.md). Trabajo en la rama `Daniel`; tras cada tarea se pide confirmación al dueño. Una línea por tarea: `AAAA-MM-DD · IXX · qué se hizo · resultado clave`.
+
+## Bitácora (spec 004)
+
+- 2026-10-22 · I00 · Análisis de `origin/Sebastian` (30 commits, 119 archivos) y plan de integración aprobado.
+  - Encontrado: 18 conflictos de texto, dos migraciones 0004, dos "spec 003" con la enmienda XII, rutas nuevas públicas, columnas de apuestas sin CHECK ni auditoría, y el refresco por evento fuera del cupo de créditos.
+  - Decidido: fusionar conservando sus commits; su spec pasa a 004, la enmienda a XIII y la migración a 0009; `.claude/launch.json` (ruta personal) queda fuera.
+- 2026-10-22 · I01 · Fusión de origin/Sebastian (30 commits) en Daniel, con los 18 conflictos resueltos conservando las dos partes.
+  - Rutas de análisis con nuestro acceso: lecturas con credenciales y refresco con CSRF o X-API-Key; servicios tipados (AnalysisApi) y calibración por el puerto ReportStore.
+  - Migración 0004 → 0009: sella el cambio de esquema en la auditoría, se niega a blanquear apuestas manipuladas o una cadena rota, y su downgrade ya no pierde datos.
+  - 8 assert de su código pasan a errores explícitos; `market` es una lista cerrada en el contrato; Postman con X-API-Key.
+  - Spec renumerada a 004 y enmienda XIII; launch.json personal fuera.
+  - 1198 tests backend (cobertura 97,9 %) y 72 frontend en verde.
+- 2026-10-22 · I02 · Migración 0010 con cuatro CHECK sobre bets: mercado del catálogo, outcome si y solo si es 1X2, selecciones por mercado y líneas válidas (medias en goles, enteras en hándicap).
+  - Valida antes de alterar: aborta listando rowids, sin valores y sin cambiar nada.
+  - Tests nuevos: filas imposibles rechazadas, concordancia con el dominio y manipulación directa detectada por verify-integrity. Mutaciones comprobadas.
+- 2026-10-22 · I03 · API del análisis endurecida.
+  - Cada parámetro tiene patrón y longitud (TeamQuery, MatchId, LeagueCode, ApiDate, Kickoff), y los 422 ya no repiten la entrada (match_id, NO_HISTORY, MATCH_TEAMS_MISMATCH).
+  - Encontrada la trampa de FastAPI `x: Tipo = Query()`, que pierde las restricciones; un test sobre el OpenAPI la vigila en toda la API.
+  - Tests negativos por ruta: entrada inválida sin eco, sin gastar créditos y 413. Contrato regenerado.
+- 2026-10-22 · I04 · El refresco por evento comparte el cupo ODDS_REFRESH_MAX_PER_HOUR con el de la spec 002.
+  - Se descuenta solo justo antes de gastar créditos: la caché, la reserva baja y un evento desconocido no gastan cupo.
+  - Deja el evento de seguridad ODDS_REFRESH.
+  - La clave se redacta también en el cuerpo de las respuestas antes de cachear; un test de extremo a extremo comprueba que no aparece en la caché, los logs ni los errores.
+- 2026-10-22 · I05 · Juego responsable en los ocho mercados.
+  - Bloqueo mensual (confirm no lo levanta), stake máximo con confirm y pendientes vencidas: probados por mercado.
+  - Liquidaciones de mercados nuevos auditadas, y sus pérdidas cuentan en el límite mensual.
+  - Corregido un hueco: la evidencia de la señal experimental se mezclaba entre mercados; ahora es por mercado (US6).
+- 2026-10-22 · I06 · Página Análisis bajo la sesión.
+  - Tests nuevos: un 401 lleva al login; el refresco y el registro llevan el CSRF, sin guardarlo en el navegador; el 429 del cupo se muestra.
+  - CSP compatible (nada externo ni inline). Contrato regenerado sin cambios.
+  - Postman: el refresco con clave ya no acepta 401, y hay un caso de 422 sin eco.
+  - 75 tests de frontend en verde.
+- 2026-10-22 · I07 · Descargas externas acotadas (cierra la cobertura aplazada de la auditoría T021).
+  - HttpClient: streaming con límite de 20 MB y plazo de 120 s, sin reintentos al superarlos.
+  - The Odds API: 5 MB y 60 s, con gzip contado ya descomprimido.
+  - openfootball valida antes de escribir en disco y no pisa una copia buena.
+
+- 2026-10-23 · I08 · 🔍 Checkpoint y cierre: `ml-reviewer` sin bloqueantes, y sus hallazgos corregidos.
+  - Un solo saldo de créditos: el refresco por evento deja un snapshot auditado (`ODDS_EVENT_CREDITS`), también si falla tras cobrar, y la spec 002 ya no gasta por debajo de la reserva. La llamada por evento no se reintenta.
+  - El dominio rechaza lo mismo que los CHECK de la 0010 (marcadores, líneas, NaN). Solo la falta de `ODDS_API_KEY` da 503, con texto fijo. Las descargas cortan a un servidor que gotea bytes, y una caché con fecha futura ya no es fresca. `urllib3>=2.2` declarada.
+  - `make security` limpio (gitleaks: 0 en 168 commits). De punta a punta, 23/23 en dev y en prod, más el navegador con el build real y la CSP, sin violaciones.
+  - Despliegue local: datos y Europa al día, campeones reentrenados el 2026-10-22, base en la 0010 y `verify-integrity` limpio.
+  - SECURITY.md, README y deploy.md al día. 1350 tests backend (cobertura 98,0 %) y 75 frontend en verde.
+
+## Resumen final (spec 004, integración)
+
+- **Nivel: Excelente.** I01–I08 hechas; el checkpoint no tuvo bloqueantes y el despliegue local está actualizado y verificado. Como en la spec 003, el despliegue con Docker queda para la CI o el primer despliegue real.
+- **Hecho:**
+  - El análisis de partido de la rama `Sebastian` funciona dentro de `Daniel`, con todas sus rutas autenticadas, CSRF en el refresco y entradas estrictas sin eco.
+  - La base tiene `CHECK` y auditoría para los ocho mercados, y el dominio rechaza lo mismo que la base.
+  - Los límites de juego responsable valen en todos los mercados.
+  - The Odds API tiene un solo saldo, una reserva y un cupo por hora para el comparador y el análisis.
+  - Las descargas externas tienen tope de tamaño y de tiempo.
+- **Pendiente para el dueño:**
+  - hacer el `git push` de la rama `Daniel` y revisar la CI;
+  - añadir `ODDS_API_KEY` a `.env` para probar las cuotas por evento con una respuesta real (cuesta unos 12 créditos por partido).
+- 2026-10-23 · I08 (CI) · Primera ejecución del job `docker`: el contenedor moría al arrancar porque la imagen no incluía `migrations/`, que la API aplica al iniciar. Reproducido sin Docker y corregido en el Dockerfile, con un test estático que lo vigila.

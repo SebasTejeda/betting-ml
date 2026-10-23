@@ -1,0 +1,9 @@
+# Nombres de ClubElo de clubes extranjeros (no juegan en nuestras 5 ligas) que aparecen en la
+# Champions o la Europa League y que la normalización automática no encuentra (spec 003, T003).
+# Formato:
+#   <país ClubElo>:
+#     <nombre en openfootball>: <nombre en ClubElo>
+# Los clubes de nuestras 5 ligas NO van aquí: usan los alias `clubelo`/`openfootball` de
+# team_aliases.yaml (y faltar uno es un error). Los clubes sin rating se listan en
+# reports/europe_data_quality.md y se excluyen del ajuste entre ligas.
+{}

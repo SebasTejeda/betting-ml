@@ -114,3 +114,40 @@ def test_openapi_export_for_the_frontend(tmp_path: Path) -> None:
     assert result.exit_code == 0, result.output
     spec = json.loads(out.read_text(encoding="utf-8"))
     assert "/api/v1/comparator" in spec["paths"] and "/api/v1/bets" in spec["paths"]
+
+
+def test_hash_password_prints_an_argon2id_hash_without_echoing_the_password() -> None:
+    from betting_ml.adapters.argon2_hasher import Argon2Hasher
+
+    password = "una-contraseña-larga"
+    result = runner.invoke(app, ["hash-password"], input=f"{password}\n{password}\n")
+    assert result.exit_code == 0, result.output
+    line = next(x for x in result.stdout.splitlines() if x.startswith("APP_PASSWORD_HASH="))
+    hashed = line.removeprefix("APP_PASSWORD_HASH=")
+    assert hashed.startswith("$argon2id$")
+    assert Argon2Hasher().verify(hashed, password)
+    assert password not in result.stdout
+
+
+def test_hash_password_rejects_short_or_mismatched_passwords() -> None:
+    short = runner.invoke(app, ["hash-password"], input="corta\ncorta\n")
+    assert short.exit_code == 1
+    assert "APP_PASSWORD_HASH=" not in short.stdout
+    mismatch = runner.invoke(
+        app, ["hash-password"], input="una-contraseña-larga\notra-contraseña-larga\n"
+    )
+    assert mismatch.exit_code != 0
+    assert "APP_PASSWORD_HASH=" not in mismatch.stdout
+
+
+def test_serve_does_not_trust_forwarded_headers(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Spec 003, T010: with uvicorn's default proxy_headers=True a local client could send a
+    fresh X-Forwarded-For per request and dodge the per-IP login lockout."""
+    import uvicorn
+
+    calls: list[dict[str, object]] = []
+    monkeypatch.setattr(uvicorn, "run", lambda *args, **kwargs: calls.append(kwargs))
+    result = runner.invoke(app, ["serve"])
+    assert result.exit_code == 0, result.output
+    assert calls[0]["proxy_headers"] is False
+    assert calls[0]["host"] == "127.0.0.1"

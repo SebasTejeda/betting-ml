@@ -15,6 +15,7 @@ from betting_ml.adapters.the_odds_api import (
 )
 from betting_ml.config import load_bookmakers, load_leagues, load_team_aliases
 from betting_ml.domain.entities import Outcome
+from betting_ml.domain.ports import OddsSourceNotConfiguredError
 
 FIXTURES = Path(__file__).parents[1] / "fixtures" / "the_odds_api"
 KEY = "test-secret-key-123"
@@ -66,6 +67,21 @@ def test_unmapped_teams_are_reported_not_hidden() -> None:
     )
     assert "betsson" in unknown_books.unknown_bookmakers
     assert {q.bookmaker for q in unknown_books.quotes} == {"pinnacle"}
+
+
+def test_invalid_prices_are_skipped_and_counted() -> None:
+    """A price the database would reject (≤ 1, missing, not a number) never reaches it."""
+    event = _events()[0]
+    book = event["bookmakers"][0]
+    outcomes = book["markets"][0]["outcomes"]
+    broken = [{**outcomes[0], "price": 1.0}, {**outcomes[1], "price": "n/a"}, outcomes[2]]
+    event = {
+        **event,
+        "bookmakers": [{**book, "markets": [{**book["markets"][0], "outcomes": broken}]}],
+    }
+    mapped = map_events([event], "E0", TeamNameResolver(load_team_aliases()))
+    assert mapped.invalid_prices == 2
+    assert len(mapped.quotes) == 1 and mapped.quotes[0].odds > 1
 
 
 def _client(handler, **kwargs) -> TheOddsApiClient:  # type: ignore[no-untyped-def]
@@ -130,9 +146,29 @@ def test_client_gives_up_on_network_errors() -> None:
     assert KEY not in str(err.value)
 
 
+def test_the_paid_event_call_is_never_retried() -> None:
+    """Integration I08: a failed event_odds call may already have been charged; one refresh
+    (one quota slot) spends at most one estimate."""
+    calls = {"n": 0}
+
+    def failing(request: httpx.Request) -> httpx.Response:
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise httpx.ReadTimeout("slow")
+        return httpx.Response(502, json={"message": "bad gateway"})
+
+    with pytest.raises(OddsApiError) as err:
+        _client(failing, retries=3).event_odds("soccer_epl", "evt", ["totals"])
+    assert err.value.status == 503 and calls["n"] == 1
+    calls["n"] = 1  # a 5xx is not retried either
+    with pytest.raises(OddsApiError):
+        _client(failing, retries=3).event_odds("soccer_epl", "evt", ["totals"])
+    assert calls["n"] == 2
+
+
 def test_credits_parsing_and_missing_key() -> None:
     assert Credits.from_headers(
         {"x-requests-remaining": "431.0", "x-requests-used": "x"}
     ) == Credits(431, None, None)
-    with pytest.raises(ValueError):
+    with pytest.raises(OddsSourceNotConfiguredError):
         TheOddsApiClient("")
