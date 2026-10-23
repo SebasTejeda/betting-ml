@@ -1,12 +1,13 @@
-import { Activity, LogIn, ShieldCheck } from "lucide-react";
+import { LogIn, ShieldCheck } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
 
 import { ApiError } from "../api/client";
 import { useAuth } from "../auth/context";
-import { ErrorBox, Panel } from "../components/common";
+import { ErrorBox } from "../components/common";
 import { ThemeToggle } from "../components/ThemeToggle";
 import { Button } from "../components/ui/button";
+import { Card } from "../components/ui/card";
 
 function loginError(error: unknown): Error {
   if (error instanceof ApiError && error.status === 429) {
@@ -43,13 +44,23 @@ export function LoginPage() {
         <ThemeToggle />
       </div>
       <main className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center px-4 pb-24">
-        <h1 className="mb-6 flex items-center gap-2 text-2xl font-semibold tracking-tight">
-          <span className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-            <Activity aria-hidden className="size-4" />
+        {/* Same mark as the app header, so the login reads as the same product. */}
+        <div className="mb-8 flex flex-col items-center gap-3 text-center">
+          <span
+            aria-hidden
+            className="num flex size-10 items-center justify-center rounded-lg bg-foreground text-base font-bold text-background"
+          >
+            b
           </span>
-          betting-ml
-        </h1>
-        <Panel title="Iniciar sesión" icon={ShieldCheck}>
+          <div>
+            <p className="text-lg font-semibold tracking-tight">
+              betting<span className="text-muted-foreground">-ml</span>
+            </p>
+            <p className="text-sm text-muted-foreground">Comparador de cuotas</p>
+          </div>
+        </div>
+        <Card className="gap-5 p-6">
+          <h1 className="text-lg font-semibold tracking-tight">Iniciar sesión</h1>
           <form
             className="flex flex-col gap-4"
             noValidate
@@ -78,7 +89,7 @@ export function LoginPage() {
                 Tu sesión expiró. Vuelve a entrar.
               </p>
             )}
-            <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+            <label className="flex flex-col gap-1.5 text-xs font-medium text-muted-foreground">
               Contraseña
               <input
                 className="field"
@@ -92,12 +103,21 @@ export function LoginPage() {
               />
             </label>
             {error && <ErrorBox error={error} />}
-            <Button type="submit" size="lg" disabled={pending || blockedFor > 0 || !password}>
+            <Button
+              type="submit"
+              size="lg"
+              className="w-full"
+              disabled={pending || blockedFor > 0 || !password}
+            >
               <LogIn aria-hidden />
               Entrar
             </Button>
           </form>
-        </Panel>
+        </Card>
+        <p className="mt-6 flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
+          <ShieldCheck aria-hidden className="size-3.5" />
+          Acceso privado. Tras varios intentos fallidos se bloquea un momento.
+        </p>
       </main>
     </div>
   );

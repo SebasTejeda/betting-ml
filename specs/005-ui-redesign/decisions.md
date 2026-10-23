@@ -57,3 +57,17 @@
 - **Avisos.**
   - La nota "ROI con menos de 300 apuestas" pasa de caja informativa a texto junto al selector de tipo.
   - El texto de liquidación manual se mantiene íntegro.
+
+## 2026-10-23 — U04: Calculadora, Backtest, Ajustes y Login
+- **Calculadora.**
+  - Es un flujo en tres pasos numerados: partido, evaluar la cuota y registrar.
+  - Cada número se rellena con el acento al completar su paso, y lleva "Paso N" para los lectores de pantalla.
+  - "¿El partido no aparece?" se mueve dentro del paso 1, que es donde surge la duda. Antes era una tarjeta aparte.
+- **Fallo corregido (previo al rediseño).** Con la casa en el enlace (desde Top o Hoy), el selector "Casa" mostraba "Elige…" aunque el formulario sí tenía la casa, porque el valor llegaba antes que las opciones. Ahora se vuelve a fijar cuando carga la lista. Hay un test nuevo que lo cubre y que fallaba antes del arreglo.
+- **Backtest.**
+  - La conclusión, el nivel y la temporada de prueba son un resumen en cifras grandes.
+  - El aviso de que la estrategia no le ganó al cierre es una franja ámbar con el texto íntegro.
+  - Los márgenes ya no van en verde porque no son cifras con signo; la mejor paga contra el promedio sí lo es y conserva su color.
+- **Ajustes.** Cada sección es una tarjeta: título y explicación a la izquierda, campos a la derecha. La explicación del límite recuerda que no se puede saltar desde la app y que el stake máximo avisa antes de una apuesta grande; no se cambió ninguna regla. "Guardar" va alineado a la derecha y la confirmación aparece a su lado.
+- **Login.** Lleva la misma marca "b" que la cabecera, una tarjeta con el formulario y el botón a todo el ancho. Debajo hay una nota: "Acceso privado. Tras varios intentos fallidos se bloquea un momento.", que corresponde al límite de intentos de la spec 003.
+- **Iconos.** Las páginas y los paneles ya no llevan iconos decorativos junto a los títulos. Los iconos se mantienen solo donde dan significado (estado, aviso, acción).

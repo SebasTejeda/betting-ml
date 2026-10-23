@@ -1,21 +1,15 @@
-import {
-  CircleCheck,
-  FlaskConical,
-  Lock,
-  Save,
-  Settings as SettingsIcon,
-  ShieldCheck,
-} from "lucide-react";
+import { CircleCheck, Lock, Save } from "lucide-react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect } from "react";
+import { type ReactNode, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
 import { isVersionConflict } from "../api/client";
 import { useSaveSettings, useSettings } from "../api/hooks";
 import type { Settings } from "../api/types";
-import { ErrorBox, ExperimentalBadge, Loading, PageTitle, Panel } from "../components/common";
+import { ErrorBox, ExperimentalBadge, Loading, PageTitle } from "../components/common";
 import { Button } from "../components/ui/button";
+import { Card } from "../components/ui/card";
 import { money } from "../lib/format";
 
 const amount = z
@@ -57,6 +51,30 @@ function toInput(s: Settings): Input {
   };
 }
 
+/** Settings section: what it is and why on the left, the fields on the right. */
+function Section({
+  title,
+  description,
+  badge,
+  children,
+}: {
+  title: string;
+  description: ReactNode;
+  badge?: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <Card className="gap-6 p-5 sm:p-6 md:grid md:grid-cols-[minmax(0,16rem)_minmax(0,1fr)] md:gap-10">
+      <div className="flex flex-col gap-2">
+        <h2 className="font-semibold tracking-tight">{title}</h2>
+        {badge}
+        <p className="text-sm text-muted-foreground">{description}</p>
+      </div>
+      <div className="min-w-0">{children}</div>
+    </Card>
+  );
+}
+
 export function SettingsPage() {
   const settings = useSettings();
   if (settings.isPending) return <Loading what="los ajustes" />;
@@ -84,10 +102,10 @@ function SettingsForm({ settings }: { settings: Settings }) {
   const pendingRaise = current.monthly_loss_limit > current.monthly_loss_limit_in_force;
 
   const field = (name: keyof Input, label: string, help?: string, suffix?: string) => (
-    <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+    <label className="flex flex-col gap-1.5 text-xs font-medium text-muted-foreground">
       {label}
       <span className="relative">
-        <input className="field pr-9 tabular-nums" {...register(name)} />
+        <input className="field num pr-9" {...register(name)} />
         {suffix && (
           <span
             aria-hidden
@@ -97,7 +115,7 @@ function SettingsForm({ settings }: { settings: Settings }) {
           </span>
         )}
       </span>
-      {help && <span className="font-normal">{help}</span>}
+      {help && <span className="font-normal text-muted-foreground">{help}</span>}
       {errors[name] && <span className="font-normal text-negative">{errors[name]?.message}</span>}
     </label>
   );
@@ -105,19 +123,19 @@ function SettingsForm({ settings }: { settings: Settings }) {
 
   return (
     <>
-      <PageTitle
-        icon={SettingsIcon}
-        description="Tu bankroll, los límites de juego responsable y los parámetros de la señal experimental."
-      >
+      <PageTitle description="Tu bankroll, los límites de juego responsable y los parámetros de la señal experimental.">
         Ajustes
       </PageTitle>
       <form
-        className="flex flex-col gap-4"
+        className="mt-6 flex flex-col gap-5"
         noValidate
         onSubmit={handleSubmit((values) => save.mutate({ ...values, version: current.version }))}
         aria-label="Ajustes"
       >
-        <Panel title="Bankroll y límites" icon={ShieldCheck}>
+        <Section
+          title="Bankroll y límites"
+          description="Juego responsable: el límite de pérdida mensual no se puede saltar desde la app, y el stake máximo te avisa antes de una apuesta demasiado grande."
+        >
           <div className="grid gap-4 sm:grid-cols-2">
             {field("bankroll_initial", "Bankroll inicial")}
             {field("currency", "Moneda")}
@@ -128,31 +146,35 @@ function SettingsForm({ settings }: { settings: Settings }) {
             )}
             {field("max_stake_pct", "Stake máximo (% del bankroll)", undefined, "%")}
           </div>
-          <p className="mt-4 flex flex-wrap items-center gap-2 rounded-lg bg-secondary/60 p-3 text-sm">
-            <Lock aria-hidden className="size-4 text-primary" />
+          <p className="mt-5 flex flex-wrap items-center gap-2 rounded-lg bg-muted px-3 py-2.5 text-sm">
+            <Lock aria-hidden className="size-4 text-muted-foreground" />
             Límite vigente este mes:{" "}
-            <strong>{money(current.monthly_loss_limit_in_force, currency)}</strong>
+            <strong className="num">{money(current.monthly_loss_limit_in_force, currency)}</strong>
             {pendingRaise &&
               ` · el nuevo límite de ${money(current.monthly_loss_limit, currency)} aplica desde el mes siguiente`}
           </p>
-        </Panel>
-        <Panel title="Señal experimental" icon={FlaskConical} action={<ExperimentalBadge />}>
+        </Section>
+        <Section
+          title="Señal experimental"
+          badge={<ExperimentalBadge />}
+          description="La señal no tiene evidencia todavía. El umbral de EV decide qué cuotas se marcan; la fracción de Kelly, el stake sugerido."
+        >
           <div className="grid gap-4 sm:grid-cols-2">
             {field("kelly_fraction", "Fracción de Kelly (%)", undefined, "%")}
             {field("min_edge", "Umbral de EV de la señal (%)", undefined, "%")}
           </div>
-        </Panel>
-        <div className="flex flex-wrap items-center gap-3">
+        </Section>
+        <div className="flex flex-wrap items-center justify-end gap-3">
+          {save.isSuccess && (
+            <span role="status" className="flex items-center gap-1.5 text-sm text-muted-foreground">
+              <CircleCheck aria-hidden className="size-4 text-positive" />
+              Ajustes guardados.
+            </span>
+          )}
           <Button type="submit" size="lg" disabled={save.isPending}>
             <Save aria-hidden />
             Guardar
           </Button>
-          {save.isSuccess && (
-            <span role="status" className="flex items-center gap-1 text-sm text-positive">
-              <CircleCheck aria-hidden className="size-4" />
-              Ajustes guardados.
-            </span>
-          )}
         </div>
         {save.isError && <ErrorBox error={save.error} />}
       </form>

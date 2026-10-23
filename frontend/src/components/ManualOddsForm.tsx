@@ -1,6 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { CircleCheck, CircleX, type LucideIcon, Scale } from "lucide-react";
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
@@ -46,6 +46,8 @@ export function ManualOddsForm({
   const {
     register,
     handleSubmit,
+    getValues,
+    setValue,
     formState: { errors },
   } = useForm<z.input<typeof schema>, unknown, FormValues>({
     resolver: zodResolver(schema),
@@ -55,6 +57,12 @@ export function ManualOddsForm({
       odds: defaultOdds ? String(defaultOdds) : "",
     },
   });
+
+  // A house given in the link arrives before its <option> exists; set it again once the list
+  // loads, or the select shows "Elige…" while the form still holds the house.
+  useEffect(() => {
+    if (bookmakers.data) setValue("bookmaker", getValues("bookmaker"));
+  }, [bookmakers.data, getValues, setValue]);
 
   const submit = handleSubmit((values) =>
     calculator.mutate(

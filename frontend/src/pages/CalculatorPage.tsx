@@ -1,13 +1,5 @@
-import {
-  Calculator as CalculatorIcon,
-  CalendarDays,
-  ChevronDown,
-  CircleHelp,
-  MousePointerClick,
-  NotebookPen,
-  Scale,
-} from "lucide-react";
-import { useState } from "react";
+import { ChevronDown } from "lucide-react";
+import { type ReactNode, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 
 import { useComparator } from "../api/hooks";
@@ -25,8 +17,28 @@ import {
 } from "../components/common";
 import { kickoff, todayLima } from "../lib/format";
 import { readDraft } from "../lib/links";
+import { cn } from "../lib/utils";
 
 type Evaluated = { outcome: Outcome; bookmaker: string; odds: number; result: CalculatorResult };
+
+/** Numbered step title: the page is a sequence (match → odds → register). */
+function Step({ n, done = false, children }: { n: number; done?: boolean; children: ReactNode }) {
+  return (
+    <span className="flex items-center gap-2.5">
+      <span
+        aria-hidden
+        className={cn(
+          "num flex size-6 items-center justify-center rounded-full text-xs font-semibold",
+          done ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground",
+        )}
+      >
+        {n}
+      </span>
+      <span className="sr-only">Paso {n}: </span>
+      {children}
+    </span>
+  );
+}
 
 export function CalculatorPage() {
   const [params] = useSearchParams();
@@ -48,126 +60,137 @@ export function CalculatorPage() {
 
   return (
     <>
-      <PageTitle
-        icon={CalculatorIcon}
-        description="Escribe la cuota que ves en una casa peruana y compárala con la cuota justa de la referencia. Después puedes registrar la apuesta en tu diario."
-      >
+      <PageTitle description="Escribe la cuota que ves en una casa peruana y compárala con la cuota justa de la referencia. Después puedes registrar la apuesta en tu diario.">
         Calculadora
       </PageTitle>
-      <Panel title="Partido" icon={CalendarDays} className="mb-4">
-        <div className="grid gap-3 sm:grid-cols-[12rem_1fr]">
-          <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
-            Fecha
-            <input
-              type="date"
-              className="field"
-              value={date}
-              onChange={(event) => {
-                setDate(event.target.value || todayLima());
-                setMatchId("");
-                setEvaluated(null);
-              }}
-            />
-          </label>
-          <label className="flex min-w-0 flex-col gap-1 text-xs font-medium text-muted-foreground">
-            Partido
-            <select
-              className="field"
-              value={matchId}
-              onChange={(event) => {
-                setMatchId(event.target.value);
-                setEvaluated(null);
-              }}
-            >
-              <option value="">Elige un partido…</option>
-              {matches.data?.matches.map((m) => (
-                <option key={m.match_id} value={m.match_id}>
-                  {m.home_team} – {m.away_team} ({m.league}, {kickoff(m.kickoff)})
-                </option>
-              ))}
-              {matchId && !matches.data?.matches.some((m) => m.match_id === matchId) && (
-                <option value={matchId}>{matchId}</option>
-              )}
-            </select>
-          </label>
-        </div>
-        {matches.isPending && (
-          <div className="mt-3">
-            <Loading what="partidos" variant="table" />
-          </div>
-        )}
-        {matches.isError && (
-          <div className="mt-3">
-            <ErrorBox error={matches.error} />
-          </div>
-        )}
-      </Panel>
-      <details
-        className="group mb-4 rounded-xl border bg-card p-4 shadow-sm transition-colors duration-150"
-        onToggle={(event) => setNoReferenceOpen(event.currentTarget.open)}
-      >
-        <summary className="flex cursor-pointer list-none items-center gap-2 text-sm font-medium">
-          <CircleHelp aria-hidden className="size-4 text-muted-foreground" />
-          ¿El partido no aparece? Registrar una apuesta sin cuota de referencia
-          <ChevronDown
-            aria-hidden
-            className="ml-auto size-4 text-muted-foreground transition-transform duration-150 group-open:rotate-180"
-          />
-        </summary>
-        <div className="mt-4">{noReferenceOpen && <NoReferenceBet defaultDate={date} />}</div>
-      </details>
-      {!matchId ? (
-        <Empty icon={MousePointerClick}>Elige un partido para evaluar una cuota.</Empty>
-      ) : fromSignal && draft?.outcome && draft.bookmaker && draft.odds ? (
+      <div className="mt-6 flex flex-col gap-5">
         <Panel
-          title="Anotar la señal experimental"
-          icon={NotebookPen}
-          action={<ExperimentalBadge />}
-          className="border border-experimental-border"
+          title={
+            <Step n={1} done={Boolean(matchId)}>
+              Partido
+            </Step>
+          }
         >
-          <p className="mb-4 text-sm text-muted-foreground">
-            La señal todavía no tiene evidencia: por defecto se registra en papel. Hacen falta 100
-            apuestas en papel con CLV positivo para considerarla.
-          </p>
-          <RegisterBetForm
-            key={`${matchId}-signal`}
-            matchId={matchId}
-            outcome={draft.outcome}
-            bookmaker={draft.bookmaker}
-            odds={draft.odds}
-            fromSignal
-          />
+          <div className="grid gap-3 sm:grid-cols-[12rem_1fr]">
+            <label className="flex flex-col gap-1.5 text-xs font-medium text-muted-foreground">
+              Fecha
+              <input
+                type="date"
+                className="field"
+                value={date}
+                onChange={(event) => {
+                  setDate(event.target.value || todayLima());
+                  setMatchId("");
+                  setEvaluated(null);
+                }}
+              />
+            </label>
+            <label className="flex min-w-0 flex-col gap-1.5 text-xs font-medium text-muted-foreground">
+              Partido
+              <select
+                className="field"
+                value={matchId}
+                onChange={(event) => {
+                  setMatchId(event.target.value);
+                  setEvaluated(null);
+                }}
+              >
+                <option value="">Elige un partido…</option>
+                {matches.data?.matches.map((m) => (
+                  <option key={m.match_id} value={m.match_id}>
+                    {m.home_team} – {m.away_team} ({m.league}, {kickoff(m.kickoff)})
+                  </option>
+                ))}
+                {matchId && !matches.data?.matches.some((m) => m.match_id === matchId) && (
+                  <option value={matchId}>{matchId}</option>
+                )}
+              </select>
+            </label>
+          </div>
+          {matches.isPending && (
+            <div className="mt-3">
+              <Loading what="partidos" variant="table" />
+            </div>
+          )}
+          {matches.isError && (
+            <div className="mt-3">
+              <ErrorBox error={matches.error} />
+            </div>
+          )}
+          {/* The fallback lives with the match choice: it is the answer to "my match is missing". */}
+          <details
+            className="group mt-4 border-t pt-3"
+            onToggle={(event) => setNoReferenceOpen(event.currentTarget.open)}
+          >
+            <summary className="flex w-fit cursor-pointer list-none items-center gap-1.5 rounded-md text-sm text-muted-foreground transition-colors hover:text-foreground">
+              ¿El partido no aparece? Registrar una apuesta sin cuota de referencia
+              <ChevronDown
+                aria-hidden
+                className="size-4 transition-transform duration-150 group-open:rotate-180"
+              />
+            </summary>
+            <div className="mt-4">{noReferenceOpen && <NoReferenceBet defaultDate={date} />}</div>
+          </details>
         </Panel>
-      ) : (
-        <div className="grid gap-4 lg:grid-cols-5">
-          <Panel title="Evaluar cuota" icon={Scale} className="lg:col-span-3">
-            <ManualOddsForm
-              key={matchId}
+        {!matchId ? (
+          <Empty>Elige un partido para evaluar una cuota.</Empty>
+        ) : fromSignal && draft?.outcome && draft.bookmaker && draft.odds ? (
+          <Panel
+            title={<Step n={2}>Anotar la señal experimental</Step>}
+            action={<ExperimentalBadge />}
+            className="border-experimental-border"
+          >
+            <p className="mb-4 text-sm text-muted-foreground">
+              La señal todavía no tiene evidencia: por defecto se registra en papel. Hacen falta 100
+              apuestas en papel con CLV positivo para considerarla.
+            </p>
+            <RegisterBetForm
+              key={`${matchId}-signal`}
               matchId={matchId}
-              defaultOutcome={draft?.matchId === matchId ? draft.outcome : undefined}
-              defaultBookmaker={draft?.matchId === matchId ? draft.bookmaker : undefined}
-              defaultOdds={draft?.matchId === matchId ? draft.odds : undefined}
-              onEvaluated={(input, result) => setEvaluated({ ...input, result })}
+              outcome={draft.outcome}
+              bookmaker={draft.bookmaker}
+              odds={draft.odds}
+              fromSignal
             />
           </Panel>
-          <Panel title="Registrar apuesta" icon={NotebookPen} className="lg:col-span-2">
-            {evaluated ? (
-              <RegisterBetForm
-                key={`${evaluated.bookmaker}-${evaluated.outcome}-${evaluated.odds}`}
+        ) : (
+          <div className="grid items-start gap-5 lg:grid-cols-5">
+            <Panel
+              title={
+                <Step n={2} done={Boolean(evaluated)}>
+                  Evaluar cuota
+                </Step>
+              }
+              className="lg:col-span-3"
+            >
+              <ManualOddsForm
+                key={matchId}
                 matchId={matchId}
-                outcome={evaluated.outcome}
-                bookmaker={evaluated.bookmaker}
-                odds={evaluated.odds}
-                suggestedStake={evaluated.result.suggested_stake}
-                // a "valor" verdict IS the experimental signal: paper by default, flagged
-                fromSignal={evaluated.result.verdict === "valor"}
+                defaultOutcome={draft?.matchId === matchId ? draft.outcome : undefined}
+                defaultBookmaker={draft?.matchId === matchId ? draft.bookmaker : undefined}
+                defaultOdds={draft?.matchId === matchId ? draft.odds : undefined}
+                onEvaluated={(input, result) => setEvaluated({ ...input, result })}
               />
-            ) : (
-              <p className="text-sm text-muted-foreground">Evalúa primero la cuota.</p>
-            )}
-          </Panel>
-        </div>
-      )}
+            </Panel>
+            <Panel title={<Step n={3}>Registrar apuesta</Step>} className="lg:col-span-2">
+              {evaluated ? (
+                <RegisterBetForm
+                  key={`${evaluated.bookmaker}-${evaluated.outcome}-${evaluated.odds}`}
+                  matchId={matchId}
+                  outcome={evaluated.outcome}
+                  bookmaker={evaluated.bookmaker}
+                  odds={evaluated.odds}
+                  suggestedStake={evaluated.result.suggested_stake}
+                  // a "valor" verdict IS the experimental signal: paper by default, flagged
+                  fromSignal={evaluated.result.verdict === "valor"}
+                />
+              ) : (
+                <p className="text-sm text-muted-foreground">Evalúa primero la cuota.</p>
+              )}
+            </Panel>
+          </div>
+        )}
+      </div>
     </>
   );
 }
