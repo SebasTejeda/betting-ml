@@ -29,13 +29,14 @@ from betting_ml.application.build_europe import (
 )
 from betting_ml.config import TeamAliases, load_europe_aliases, load_leagues, load_team_aliases
 from betting_ml.domain.ratings import snapshot_date
+from tests.http_fakes import StreamedBody
 
 FIXTURES = Path(__file__).resolve().parents[1] / "fixtures"
 OF_SAMPLE = FIXTURES / "openfootball" / "cl_2023-24_sample.txt"
 ELO_SAMPLE = FIXTURES / "clubelo" / "2023-09-18.csv"
 
 
-class _Response:
+class _Response(StreamedBody):
     def __init__(self, content: bytes, status_code: int = 200) -> None:
         self.content = content
         self.status_code = status_code

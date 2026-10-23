@@ -95,7 +95,7 @@ Una a la vez: implementar, tests (incluidos los negativos), `lint` y `test` en v
   - Se regeneran `openapi.json` y `schema.d.ts`.
   - Tests MSW de las dos ramas en verde, más un test de 401 en Análisis.
   - Postman con `appApiKey` en la carpeta de análisis.
-- [ ] **I07** Fuentes externas nuevas (ClubElo, openfootball, cuotas por evento).
+- [x] **I07** Fuentes externas nuevas (ClubElo, openfootball, cuotas por evento).
   - Timeout y límite de bytes por descarga (era cobertura aplazada de la auditoría T021).
   - Redacción de la clave en las URL y validación de lo que se escribe en disco.
 - [ ] **I08** 🔍 Checkpoint y cierre.

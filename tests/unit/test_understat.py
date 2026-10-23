@@ -11,6 +11,7 @@ from betting_ml.adapters.understat import (
     parse_league_data,
     season_year,
 )
+from tests.http_fakes import StreamedBody
 
 FIXTURE = Path(__file__).parents[1] / "fixtures" / "understat_EPL_2024.json"
 
@@ -49,7 +50,7 @@ def test_invalid_payload() -> None:
         parse_league_data({"teams": {}}, "E0", "2024-25")
 
 
-class _Resp:
+class _Resp(StreamedBody):
     status_code = 200
 
     def __init__(self, content: bytes) -> None:

@@ -12,6 +12,7 @@ from betting_ml.adapters.football_data import (
     season_code,
 )
 from betting_ml.adapters.http import DownloadError, HttpClient
+from tests.http_fakes import StreamedBody
 
 FIXTURES = Path(__file__).parents[1] / "fixtures"
 
@@ -105,7 +106,7 @@ def test_bad_inputs() -> None:
         parse_csv(b"Div,Date,HomeTeam,AwayTeam\nE0,2014-08-16,A,B\n", "E0", "2014-15")
 
 
-class _FakeResponse:
+class _FakeResponse(StreamedBody):
     def __init__(self, content: bytes, status: int = 200) -> None:
         self.content = content
         self.status_code = status

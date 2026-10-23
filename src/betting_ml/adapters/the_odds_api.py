@@ -24,6 +24,9 @@ logger = logging.getLogger(__name__)
 logging.getLogger("httpx").setLevel(logging.WARNING)
 BASE_URL = "https://api.the-odds-api.com/v4"
 SOURCE = "the_odds_api"
+# A league's odds are ~0.1-1 MB; bigger answers are refused (spec 004, integration I07).
+MAX_RESPONSE_BYTES = 5 * 1024 * 1024
+RESPONSE_DEADLINE_SECONDS = 60.0
 
 
 class OddsApiError(RuntimeError):
@@ -70,6 +73,9 @@ class TheOddsApiClient:
         backoff_seconds: float = 2.0,
         sleep: Callable[[float], None] = time.sleep,
         base_url: str = BASE_URL,
+        max_bytes: int = MAX_RESPONSE_BYTES,
+        deadline_seconds: float = RESPONSE_DEADLINE_SECONDS,
+        clock: Callable[[], float] = time.monotonic,
     ) -> None:
         if not api_key:
             raise ValueError("ODDS_API_KEY is not configured")
@@ -80,6 +86,9 @@ class TheOddsApiClient:
         self.backoff_seconds = backoff_seconds
         self._sleep = sleep
         self.base_url = base_url
+        self.max_bytes = max_bytes
+        self.deadline_seconds = deadline_seconds
+        self._clock = clock
         self.last_credits: Credits | None = None
 
     def __repr__(self) -> str:  # never expose the key
@@ -91,7 +100,7 @@ class TheOddsApiClient:
         last_error: Exception | None = None
         for attempt in range(1, self.retries + 1):
             try:
-                response = self.http.get(url, params=query)
+                response = self._bounded_get(path, url, query)
             except httpx.HTTPError as exc:  # network / timeout
                 last_error = exc
             else:
@@ -109,6 +118,38 @@ class TheOddsApiClient:
         raise OddsApiError(
             503, self._redact(f"{path} failed after {self.retries} attempts: {last_error}")
         )
+
+    def _bounded_get(self, path: str, url: str, query: dict[str, str]) -> httpx.Response:
+        """The whole answer, read in chunks: too large or too slow is refused, never retried
+        (and never cached). ``path`` names it in errors; the URL carries the key."""
+        with self.http.stream("GET", url, params=query) as streamed:
+            declared = streamed.headers.get("content-length")
+            if declared is not None and declared.isdigit() and int(declared) > self.max_bytes:
+                raise OddsApiError(
+                    502, f"{path}: {declared} bytes declared, limit {self.max_bytes}"
+                )
+            started = self._clock()
+            body = bytearray()
+            for chunk in streamed.iter_bytes():
+                body += chunk
+                if len(body) > self.max_bytes:
+                    raise OddsApiError(502, f"{path}: more than {self.max_bytes} bytes")
+                if self._clock() - started > self.deadline_seconds:
+                    raise OddsApiError(
+                        502, f"{path}: answer not complete after {self.deadline_seconds}s"
+                    )
+            # iter_bytes already decoded the body (counted decoded: a gzip bomb stops too)
+            headers = [
+                (name, value)
+                for name, value in streamed.headers.items()
+                if name.lower() not in {"content-encoding", "content-length", "transfer-encoding"}
+            ]
+            return httpx.Response(
+                streamed.status_code,
+                headers=headers,
+                content=bytes(body),
+                request=streamed.request,
+            )
 
     def _redact(self, text: str) -> str:
         return text.replace(self._api_key, "***")

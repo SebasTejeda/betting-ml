@@ -23,6 +23,7 @@ import hashlib
 import json
 import logging
 import re
+from collections.abc import Callable
 from datetime import UTC, date, datetime
 from pathlib import Path
 
@@ -216,7 +217,13 @@ class OpenFootballSource:
     def download(self, competition: str, season: str, force: bool = False) -> Path | None:
         """Path of the cached file, or ``None`` if the repo has no file for that season."""
         url = self.base_url.format(season=season, file=COMPETITION_FILES[competition])
-        return self._download(url, self.raw_path(competition, season), season, force)
+        return self._download(
+            url,
+            self.raw_path(competition, season),
+            season,
+            force,
+            lambda text: _checked(text, competition, season),
+        )
 
     def league_path(self, folder: str, file: str, season: str) -> Path:
         return self.raw_dir / "europe" / folder / f"{season}_{file}.txt"
@@ -224,19 +231,25 @@ class OpenFootballSource:
     def fetch_league(self, folder: str, file: str, country: str, season: str) -> pd.DataFrame:
         """Played matches of a domestic league of `openfootball/europe` (empty if missing)."""
         url = LEAGUE_URL.format(folder=folder, season=season, file=file)
-        path = self._download(url, self.league_path(folder, file, season), season, force=False)
+        path = self._download(
+            url,
+            self.league_path(folder, file, season),
+            season,
+            False,
+            lambda text: _checked(text, file, season, country),
+        )
         if path is None:
             return pd.DataFrame(columns=COLUMNS)
-        content = path.read_text(encoding="utf-8")
-        frame = parse_txt(content, file, season, country=country)
-        expected = declared_matches(content)
-        if expected is not None and len(frame) > expected:
-            raise OpenFootballFormatError(
-                f"{file} {season}: parsed {len(frame)} matches but the header declares {expected}"
-            )
-        return frame
+        return _checked(path.read_text(encoding="utf-8"), file, season, country)
 
-    def _download(self, url: str, path: Path, season: str, force: bool) -> Path | None:
+    def _download(
+        self,
+        url: str,
+        path: Path,
+        season: str,
+        force: bool,
+        validate: Callable[[str], object],
+    ) -> Path | None:
         if path.exists() and not force and season not in self.refresh_seasons:
             return path
         logger.info("Downloading %s", url)
@@ -247,6 +260,11 @@ class OpenFootballSource:
                 logger.warning("openfootball has no %s", url)
                 return None
             raise
+        try:
+            text = content.decode("utf-8")
+        except UnicodeDecodeError as exc:
+            raise OpenFootballFormatError(f"{url}: not UTF-8 text") from exc
+        validate(text)  # never cache (or overwrite a good copy with) a file that cannot be read
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(content)
         meta = {
@@ -263,13 +281,23 @@ class OpenFootballSource:
         if path is None:
             return pd.DataFrame(columns=COLUMNS)
         content = path.read_text(encoding="utf-8")
-        frame = parse_txt(content, competition, season)
-        expected = declared_matches(content)
-        if expected is not None and len(frame) > expected:
-            raise OpenFootballFormatError(
-                f"{competition} {season}: parsed {len(frame)} matches but the header declares {expected}"
-            )
+        frame = _checked(content, competition, season)
         logger.info(
-            "%s %s: %d played matches (header: %s)", competition, season, len(frame), expected
+            "%s %s: %d played matches (header: %s)",
+            competition,
+            season,
+            len(frame),
+            declared_matches(content),
         )
         return frame
+
+
+def _checked(content: str, name: str, season: str, country: str | None = None) -> pd.DataFrame:
+    """Parsed matches, checked against the number the header declares."""
+    frame = parse_txt(content, name, season, country=country)
+    expected = declared_matches(content)
+    if expected is not None and len(frame) > expected:
+        raise OpenFootballFormatError(
+            f"{name} {season}: parsed {len(frame)} matches but the header declares {expected}"
+        )
+    return frame

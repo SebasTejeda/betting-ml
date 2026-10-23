@@ -357,4 +357,8 @@ Plan: [`specs/004-match-analysis/integration.md`](specs/004-match-analysis/integ
   - CSP compatible (nada externo ni inline). Contrato regenerado sin cambios.
   - Postman: el refresco con clave ya no acepta 401, y hay un caso de 422 sin eco.
   - 75 tests de frontend en verde.
+- 2026-10-22 · I07 · Descargas externas acotadas (cierra la cobertura aplazada de la auditoría T021).
+  - HttpClient: streaming con límite de 20 MB y plazo de 120 s, sin reintentos al superarlos.
+  - The Odds API: 5 MB y 60 s, con gzip contado ya descomprimido.
+  - openfootball valida antes de escribir en disco y no pisa una copia buena.
 

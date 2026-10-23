@@ -402,3 +402,22 @@ Formato:
   - El refresco con clave deja de aceptar un 401 como respuesta válida, y un 429 debe ser `RATE_LIMITED` u `ODDS_BUDGET_LOW`.
   - Petición nueva: "match_id inválido (422 sin eco)".
 
+## 2026-10-22 — I07: fuentes externas acotadas
+- **Cobertura aplazada de la auditoría T021, ya cerrada.** La auditoría de la spec 003 dejó pendiente que `adapters/http.py` no limitaba bytes. Ahora toda descarga por `HttpClient` (ClubElo, openfootball, football-data, fixtures y Understat) lleva:
+  - el `timeout` por operación de red que ya tenía;
+  - lectura en streaming con un plazo total (`deadline_seconds`, 120 s);
+  - un límite de tamaño (`max_bytes`, 20 MB). Hoy el mayor archivo es una temporada de Understat, de unos 0,6 MB. Una `Content-Length` declarada por encima del límite se rechaza antes de leer.
+
+  Superar un límite no se reintenta (`DownloadTooLargeError`, o `DownloadError` por el plazo).
+- **`HttpClient.get` devuelve `Download(url, content)`** en lugar de la respuesta de `requests`, porque una respuesta leída en streaming ya no ofrece `.content`. Los adaptadores solo usaban `.content`, así que no cambian. Los dobles de los tests heredan `tests/http_fakes.StreamedBody`.
+- **The Odds API**, con el mismo criterio: 5 MB y 60 s por respuesta, leyendo con `httpx.stream`.
+  - El cuerpo se cuenta ya descomprimido, así que una bomba gzip también se corta.
+  - Al reconstruir la respuesta se quitan `content-encoding` y las cabeceras de longitud, para que httpx no la descomprima dos veces. Lo vigila un test con gzip; la mutación que conserva la cabecera lo hace fallar.
+  - El error es un `502 ODDS_API_ERROR` que nombra la ruta, nunca la URL con la clave.
+- **Nada ilegible en disco.**
+  - openfootball escribía el archivo antes de leerlo. Ahora lo decodifica (UTF-8) y lo parsea, con el control del número de partidos declarado, antes de escribir. Una descarga rota no se cachea ni pisa la copia buena de la temporada en curso.
+  - ClubElo ya validaba antes de escribir.
+  - Las rutas de la caché salen de la configuración (competición, temporada) o de un `match_id` validado (I01/I03), nunca de datos recibidos.
+- **Clave en las URL.** Solo The Odds API lleva clave. Sus errores y logs nombran la ruta y la redactan (`_redact`, I04). Las demás fuentes no usan clave.
+- Mutaciones comprobadas: quitar cada límite, el plazo o la validación de openfootball, o conservar `content-encoding`, hace fallar algún test.
+
