@@ -38,3 +38,22 @@
 - **1X2 compartido.** Los tonos de Local, Empate y Visita y la barra repartida viven en `lib/outcome.ts` y `components/OutcomeSplit.tsx`, y los usan Análisis y Partido. El empate pasa del ámbar (que significa experimental) a un gris neutro, también en el gráfico.
 - **Tablas.** Las cabeceras de fila (`scope="row"`) ya no heredan el estilo en mayúsculas de las cabeceras de columna.
 - **Test.** El test de Partido comprueba ahora las probabilidades en la tabla "Referencia y modelo" y localiza la tabla de casas por su nombre. La información comprobada es la misma.
+
+## 2026-10-23 — U03: Mis apuestas
+- **Orden de lectura.**
+  - Primero las cifras y los límites, después la tabla de apuestas (lo que se usa a diario) y al final los gráficos y la evidencia por mercado.
+  - Antes la tabla estaba al fondo de la página.
+  - La tabla se sigue mostrando aunque falle el resumen: las cifras de arriba y los gráficos de abajo son dos bloques separados.
+- **Indicadores.** Las seis cajas pasan a ser una sola franja dividida. Las cifras se leen juntas: el CLV primero, y el ROI con su aviso de ruido.
+- **Límite mensual (juego responsable).**
+  - La pérdida del mes se muestra en grande.
+  - La barra es azul mientras queda margen, ámbar desde el 80 % y roja en el límite. Antes era verde, y el verde queda reservado a cifras con signo positivo.
+  - El límite y su bloqueo no cambian.
+- **Acciones.** "Borrar" pasa de botón rojo relleno a botón discreto en rojo. Sigue siendo reconocible, pero ya no grita en cada fila.
+- **Selecciones en español.** "over", "under", "yes", "no", "home", "draw" y "away" se muestran como "más de", "menos de", "sí", "no", "local", "empate" y "visita". Los códigos desconocidos se muestran tal cual. El test que leía "over 2.5" lee ahora "más de 2.5".
+- **Gráficos.**
+  - Las barras de CLV por liga y casa son verdes o rojas según el signo.
+  - Sin apuestas liquidadas, los dos paneles vacíos (bankroll y CLV) se reducen a una sola línea.
+- **Avisos.**
+  - La nota "ROI con menos de 300 apuestas" pasa de caja informativa a texto junto al selector de tipo.
+  - El texto de liquidación manual se mantiene íntegro.

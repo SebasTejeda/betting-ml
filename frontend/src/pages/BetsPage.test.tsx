@@ -195,5 +195,5 @@ test("bets on other markets show their selection", async () => {
     bet({ id: 3, kickoff: FUTURE, outcome: null, market: "totals", selection: "over", line: 2.5 }),
   ]);
   renderApp("/bets");
-  expect(await screen.findByText(/Más\/Menos goles · over 2.5/)).toBeInTheDocument();
+  expect(await screen.findByText(/Más\/Menos goles · más de 2.5/)).toBeInTheDocument();
 });

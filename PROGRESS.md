@@ -388,3 +388,4 @@ Plan: [`specs/004-match-analysis/integration.md`](specs/004-match-analysis/integ
 - 2026-10-23 · U00 · Diagnóstico de todas las páginas y dirección elegida por el dueño.
 - 2026-10-23 · U01 · Sistema de diseño (tokens con contraste AA calculado, tipografía, superficies, componentes comunes) y navegación en dos grupos con barra móvil de 5 columnas. La página Análisis queda rediseñada como piloto. 74 tests frontend en verde.
 - 2026-10-23 · U02 · Hoy, Top del día y Partido rediseñados: filtros sin caja, tarjetas con las acciones alineadas, Top como lista de columnas alineadas, y Partido con el marcador de Análisis, las probabilidades en tabla y las casas de referencia plegadas. 74 tests frontend en verde.
+- 2026-10-23 · U03 · Mis apuestas rediseñada: cifras en una franja, límite mensual destacado con colores de uso, tabla de apuestas antes de los gráficos (y visible aunque falle el resumen), selecciones en español y "Borrar" discreto. 74 tests frontend en verde.
